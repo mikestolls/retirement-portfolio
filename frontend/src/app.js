@@ -1,14 +1,15 @@
 import React from 'react';
 import './css/app.css';
 import Home from './components/home';
+import TestButton from './components/test-button';
+import YearByYearTable from './components/year-by-year-table';
+import InputData from './components/input-data';
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>React Flask Docker Template</h1>
-        <Home />
-      </header>
+      <InputData />
+      <YearByYearTable />
     </div>
   );
 }
