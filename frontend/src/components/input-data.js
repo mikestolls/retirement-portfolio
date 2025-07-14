@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useRetirement } from '../context/retirement-context';
 
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
@@ -26,10 +27,16 @@ const contribution_frequencies = [
 
 export default function InputData() {
     const [formData, setFormData] = useState({
-        'initial-investment': 0,
-        'regular-contribution': 0,
+        'initial-investment': 1000,
+        'regular-contribution': 10,
         'contribution-frequency': 12,
+        'age': 18,
+        'retirement-age': 65,
+        'retirement-withdrawal': 4,
+        'retirement-inflation': 2,
     });
+    // Use the shared context
+    const { updateRetirementData, loading, error } = useRetirement();
 
     const handleChange = (event) => {
         const { name, value } = event.target;
@@ -41,42 +48,34 @@ export default function InputData() {
 
     async function handleSubmit(event) {
         event.preventDefault();
+        
+        // Frontend validation
+        const requiredFields = ['initial-investment', 'regular-contribution', 'age', 'retirement-age'];
+        for (const field of requiredFields) {
+            if (Number(formData[field]) < 0) {
+                return;
+            }
+        }
+        
+        if (Number(formData['age']) >= Number(formData['retirement-age'])) {
+            return;
+        }
+        
         const formDataToSubmit = {
             initial_investment: Number(formData['initial-investment']),
             regular_contribution: Number(formData['regular-contribution']),
-            frequency: Number(formData['contribution-frequency'])
+            contribution_frequency: Number(formData['contribution-frequency']),
+            age: Number(formData['age']),
+            retirement_age: Number(formData['retirement-age']),
+            retirement_withdrawal: Number(formData['retirement-withdrawal']),
+            retirement_inflation: Number(formData['retirement-inflation']),
         };
     
-        try {
-            console.log(formDataToSubmit);
-    
-            const response = await fetch('XXXXXXXXXXXXXXXXXXXXXXXXXXXX', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    initial_investment: data.get('initial-investment'),
-                    regular_contribution: data.get('regular-contribution'),
-                    frequency: data.get('contribution-frequency'),
-                }),
-            });
-            const result = await response.json();
-            console.log(result);
-        } catch (error) {
-            console.error('Error submitting form:', error);
-        }
+        // Use the context function to update data
+        await updateRetirementData(formDataToSubmit);
     }
 
     return (
-        //Initial Investment
-        //Regular Contribution
-        //Frequency
-        //Age
-        //Retirement Age
-        //Base Retirement Withdrawal %
-        //Retirement Inflation %
-        //Contributions per Year
         <div>
             <form onSubmit={handleSubmit}>
             <Stack spacing={2}>
@@ -86,6 +85,7 @@ export default function InputData() {
                     variant="standard"
                     required
                     type="number"
+                    slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
                     value={formData['initial-investment']}
                     onChange={handleChange}/>
                 <TextField
@@ -94,6 +94,7 @@ export default function InputData() {
                     variant="standard"
                     required
                     type="number"
+                    slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
                     value={formData['regular-contribution']}
                     onChange={handleChange}/>
                 <TextField 
@@ -103,7 +104,6 @@ export default function InputData() {
                     variant="standard"
                     align="left"
                     required
-                    type="number"
                     value={formData['contribution-frequency']}
                     onChange={handleChange}>
                     {contribution_frequencies.map((option) => (
@@ -112,9 +112,46 @@ export default function InputData() {
                         </MenuItem>
                     ))}
                 </TextField>
+                <TextField
+                    label="Age"
+                    name="age"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 100 } }}
+                    value={formData['age']}
+                    onChange={handleChange}/>
+                <TextField
+                    label="Retirement Age"
+                    name="retirement-age"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 100 } }}
+                    value={formData['retirement-age']}
+                    onChange={handleChange}/>
+                <TextField
+                    label="Retirement Withdrawal %"
+                    name="retirement-withdrawal"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 10, step: 0.1 } }}
+                    value={formData['retirement-withdrawal']}
+                    onChange={handleChange}/>
+                <TextField
+                    label="Retirement Inflation %"
+                    name="retirement-inflation"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 10, step: 0.1 } }}
+                    value={formData['retirement-inflation']}
+                    onChange={handleChange}/>
             </Stack>
-            <Button type="submit" variant="contained" size="large">
-                Submit
+            {error && <div style={{color: 'red', marginTop: '10px'}}>{error}</div>}
+            <Button type="submit" variant="contained" size="large" disabled={loading}>
+                {loading ? 'Submitting...' : 'Submit'}
             </Button>
             </form>
         </div>

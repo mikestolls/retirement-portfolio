@@ -1,16 +1,17 @@
 import React from 'react';
 import './css/app.css';
-import Home from './components/home';
-import TestButton from './components/test-button';
 import YearByYearTable from './components/year-by-year-table';
 import InputData from './components/input-data';
+import { RetirementProvider } from './context/retirement-context';
 
 function App() {
   return (
-    <div className="App">
-      <InputData />
-      <YearByYearTable />
-    </div>
+    <RetirementProvider>
+      <div className="App">
+        <InputData />
+        <YearByYearTable />
+      </div>
+    </RetirementProvider>
   );
 }
 

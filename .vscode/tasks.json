@@ -1,0 +1,76 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Flask and React",
+            "dependsOn": ["Start Flask", "Start React"],
+            "dependsOrder": "parallel"
+        },
+        {
+            "label": "Start Flask",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+			"isBackground": true,
+            "args": [
+                "-m",
+                "flask",
+                "run",
+                "--host=0.0.0.0",
+                "--port=5000",
+                "--reload"
+            ],
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "\\* Running on",
+                    "endsPattern": "\\* Debugger PIN"
+                }
+            },
+            "options": {
+                "env": {
+					"FLASK_APP": "backend/app.py",
+					"FLASK_DEBUG": "1"
+                }
+            }
+        },
+        {
+            "label": "Start React",
+            "isBackground": true, // This makes the task non-blocking
+            "type": "shell",
+            "command": "npm",
+            "args": [
+                "start",
+            ],
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^Starting the development server",
+                    "endsPattern": "^Compiled successfully|^Failed to compile"
+                }
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/frontend"
+            }
+        },
+        {
+            "label": "Terminate All Tasks",
+            "command": "echo ${input:terminate}",
+            "type": "shell",
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "terminate",
+            "type": "command",
+            "command": "workbench.action.tasks.terminate",
+            "args": "terminateAll"
+        }
+    ]
+}

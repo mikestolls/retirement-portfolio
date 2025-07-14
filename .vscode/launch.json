@@ -1,0 +1,30 @@
+{
+     "configurations": [
+        {
+            "name": "Python Debugger - Flask",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "flask",
+            "env": {
+                "FLASK_APP": "backend/app.py",
+                "FLASK_DEBUG": "1"
+            },
+            "args": [
+                "run",
+                "--host=0.0.0.0",
+                "--port=5000",
+                "--reload"
+            ],
+            "jinja": true,
+            "autoStartBrowser": false
+        },
+        {
+            "name": "React Debugger - Chrome",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}",
+            "preLaunchTask": "Run Flask and React",
+            "postDebugTask": "Terminate All Tasks",
+        }
+    ]
