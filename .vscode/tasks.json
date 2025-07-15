@@ -2,15 +2,26 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Run Flask and React",
-            "dependsOn": ["Start Flask", "Start React"],
-            "dependsOrder": "parallel"
+            "label": "Start DynamoDB Local",
+            "type": "shell",
+            "command": "docker run --rm -p 8000:8000 amazon/dynamodb-local",
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".*",
+                    "endsPattern": ".*"
+                }
+            }
         },
         {
             "label": "Start Flask",
             "type": "shell",
             "command": "${command:python.interpreterPath}",
-			"isBackground": true,
+            "isBackground": true,
             "args": [
                 "-m",
                 "flask",
@@ -31,18 +42,23 @@
             },
             "options": {
                 "env": {
-					"FLASK_APP": "backend/app.py",
-					"FLASK_DEBUG": "1"
+                    "FLASK_APP": "backend/app.py",
+                    "FLASK_DEBUG": "1",
+                    "AWS_ACCESS_KEY_ID": "dummy",
+                    "AWS_SECRET_ACCESS_KEY": "dummy",
+                    "AWS_SESSION_TOKEN": "dummy",
+                    "AWS_DEFAULT_REGION": "us-east-1",
+                    "DYNAMODB_ENDPOINT": "http://localhost:8000"
                 }
             }
         },
         {
             "label": "Start React",
-            "isBackground": true, // This makes the task non-blocking
+            "isBackground": true,
             "type": "shell",
             "command": "npm",
             "args": [
-                "start",
+                "start"
             ],
             "problemMatcher": {
                 "pattern": {
@@ -57,6 +73,16 @@
             "options": {
                 "cwd": "${workspaceFolder}/frontend"
             }
+        },
+        {
+            "label": "Start DynamoDB Local, Flask and React",
+            "dependsOn": ["Start DynamoDB Local", "Start Flask", "Start React"],
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "Start DynamoDB Local and React",
+            "dependsOn": ["Start DynamoDB Local", "Start React"],
+            "dependsOrder": "sequence"
         },
         {
             "label": "Terminate All Tasks",

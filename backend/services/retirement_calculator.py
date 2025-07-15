@@ -1,4 +1,5 @@
 # Retirement calculator service - contains business logic for retirement calculations
+from decimal import Decimal
 
 def calculate_retirement_projection(input_data):
     """
@@ -14,15 +15,16 @@ def calculate_retirement_projection(input_data):
     retirement_age = input_data['retirement_age']
     death_age = 90  # Assumption
     
-    initial_investment = input_data['initial_investment']
-    regular_contribution = input_data['regular_contribution']
-    contribution_frequency = input_data['contribution_frequency']
+    # Convert numeric inputs to Decimal for precise financial calculations
+    initial_investment = Decimal(str(input_data['initial_investment']))
+    regular_contribution = Decimal(str(input_data['regular_contribution']))
+    contribution_frequency = Decimal(str(input_data['contribution_frequency']))
     annual_contribution = regular_contribution * contribution_frequency
     
     # Investment return assumptions
-    annual_return_rate = 0.07  # 7% average annual return
-    inflation_rate = input_data['retirement_inflation'] / 100
-    withdrawal_rate = input_data['retirement_withdrawal'] / 100
+    annual_return_rate = Decimal('0.07')  # 7% average annual return
+    inflation_rate = Decimal(str(input_data['retirement_inflation'])) / Decimal('100')
+    withdrawal_rate = Decimal(str(input_data['retirement_withdrawal'])) / Decimal('100')
     
     retirement_data = []
     current_amount = initial_investment
@@ -40,10 +42,10 @@ def calculate_retirement_projection(input_data):
         
         retirement_data.append({
             "age": current_age,
-            "begin_amount": round(begin_amount, 2),
-            "contribution": round(contribution, 2),
-            "growth": round(growth, 2),
-            "end_amount": round(end_amount, 2),
+            "begin_amount": float(round(begin_amount, 2)),
+            "contribution": float(round(contribution, 2)),
+            "growth": float(round(growth, 2)),
+            "end_amount": float(round(end_amount, 2)),
             "withdrawal": 0
         })
         
@@ -65,11 +67,11 @@ def calculate_retirement_projection(input_data):
         
         retirement_data.append({
             "age": current_age,
-            "begin_amount": round(begin_amount, 2),
+            "begin_amount": float(round(begin_amount, 2)),
             "contribution": 0,
-            "growth": round(growth, 2),
-            "end_amount": round(end_amount, 2),
-            "withdrawal": round(withdrawal, 2)
+            "growth": float(round(growth, 2)),
+            "end_amount": float(round(end_amount, 2)),
+            "withdrawal": float(round(withdrawal, 2))
         })
         
         current_amount = end_amount

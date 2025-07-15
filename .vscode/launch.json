@@ -7,7 +7,12 @@
             "module": "flask",
             "env": {
                 "FLASK_APP": "backend/app.py",
-                "FLASK_DEBUG": "1"
+                "FLASK_DEBUG": "1",
+                "AWS_ACCESS_KEY_ID": "dummy",
+                "AWS_SECRET_ACCESS_KEY": "dummy",
+                "AWS_SESSION_TOKEN": "dummy",
+                "AWS_DEFAULT_REGION": "us-east-1",
+                "DYNAMODB_ENDPOINT": "http://localhost:8000"
             },
             "args": [
                 "run",
@@ -16,15 +21,18 @@
                 "--reload"
             ],
             "jinja": true,
-            "autoStartBrowser": false
+            "autoStartBrowser": false,
+            "preLaunchTask": "Start DynamoDB Local and React",
+            "postDebugTask": "Terminate All Tasks"
         },
         {
             "name": "React Debugger - Chrome",
             "type": "chrome",
             "request": "launch",
             "url": "http://localhost:3000",
-            "webRoot": "${workspaceFolder}",
-            "preLaunchTask": "Run Flask and React",
-            "postDebugTask": "Terminate All Tasks",
+            "webRoot": "${workspaceFolder}/frontend",
+            "preLaunchTask": "Start DynamoDB Local, Flask and React",
+            "postDebugTask": "Terminate All Tasks"
         }
     ]
+}
