@@ -22,6 +22,22 @@ Retirement portfolio web app running React frontend and Flask backend with Dynam
 - Python 3.8+
 - Node.js 14+
 
+## Docker Setup Notes
+
+### Network Configuration
+- Backend service is accessible at `http://localhost:5000/api` from the host
+- Within Docker network, services can reference each other by name (e.g., `http://dynamodb-local:8000`)
+
+### Common Issues & Solutions
+- **Import Error**: When using Docker, imports should be relative to the container's working directory (`/app`), not using `backend.` prefix
+- **DynamoDB Connection**: Backend must use `http://dynamodb-local:8000` to connect to DynamoDB container
+- **Frontend API URL**: Set `REACT_APP_BACKEND_API_URL=http://localhost:5000/api` for browser access
+
+### DynamoDB Notes
+- Table uses `portfolio_id` as primary key
+- Global Secondary Index on `user_id` with `KEYS_ONLY` projection for efficient queries
+- Timestamps (`created_at`, `updated_at`) are managed in application code
+
 ### Running the Application
 
 1. Start the application using Docker Compose:
