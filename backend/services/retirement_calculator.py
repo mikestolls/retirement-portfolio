@@ -11,20 +11,20 @@ def calculate_retirement_projection(input_data):
     Returns:
         dict: Retirement projection data by year
     """
-    age = input_data['age']
-    retirement_age = input_data['retirement_age']
+    age = int(input_data['age'])
+    retirement_age = int(input_data['retirement_age'])
     death_age = 90  # Assumption
     
     # Convert numeric inputs to Decimal for precise financial calculations
-    initial_investment = Decimal(str(input_data['initial_investment']))
-    regular_contribution = Decimal(str(input_data['regular_contribution']))
-    contribution_frequency = Decimal(str(input_data['contribution_frequency']))
+    initial_investment = int(input_data['initial_investment'])
+    regular_contribution = int(input_data['regular_contribution'])
+    contribution_frequency = int(input_data['contribution_frequency'])
     annual_contribution = regular_contribution * contribution_frequency
     
     # Investment return assumptions
-    annual_return_rate = Decimal('0.07')  # 7% average annual return
-    inflation_rate = Decimal(str(input_data['retirement_inflation'])) / Decimal('100')
-    withdrawal_rate = Decimal(str(input_data['retirement_withdrawal'])) / Decimal('100')
+    annual_return_rate = 0.07 # 7% average annual return
+    inflation_rate = float(input_data['retirement_inflation']) / 100.0
+    withdrawal_rate = float(input_data['retirement_withdrawal']) / 100.0
     
     retirement_data = []
     current_amount = initial_investment

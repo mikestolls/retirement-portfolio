@@ -14,25 +14,25 @@ def health_check():
 
 @api_bp.route('/get_retirement_data', methods=['GET'])
 def get_retirement_data():
-    # Get portfolio ID from query params or use latest
-    portfolio_id = request.args.get('portfolio_id')
-    user_id = request.args.get('user_id', DEFAULT_USER_ID)
-    
-    if portfolio_id:
+    try:
+        # Get portfolio ID from query params or use latest
+        user_id = 'user' # request.args.get('user_id', DEFAULT_USER_ID)
+        portfolio_id = 'portfolio_id' #request.args.get('portfolio_id')
+        
         # Get specific portfolio
         portfolio = get_portfolio(portfolio_id)
         if not portfolio:
             return jsonify({"message": "Portfolio not found", "status": "error"}), 404
-        return jsonify(portfolio), 200
-    else:
-        # Get latest portfolio for user
-        portfolios = get_user_portfolios(user_id)
-        if not portfolios:
-            return jsonify({"retirement_data": []}), 200
-        
-        # Sort by updated_at and return the latest
-        latest = sorted(portfolios, key=lambda x: x.get('updated_at', ''), reverse=True)[0]
-        return jsonify(latest), 200
+                
+        # Calculate retirement projection
+        retirement_data = calculate_retirement_projection(portfolio['input_data'])
+
+        return jsonify(retirement_data), 200
+    except Exception as e:
+        return jsonify({
+            "message": f"An error occurred: {str(e)}",
+            "status": "error"
+        }), 500
 
 @api_bp.route('/update_retirement_input', methods=['POST'])
 def update_retirement_input():
@@ -46,8 +46,8 @@ def update_retirement_input():
             }), 400
         
         # Get user ID from request or use default
-        user_id = request.args.get('user_id', DEFAULT_USER_ID)
-        portfolio_id = request.args.get('portfolio_id')
+        user_id = 'user' # request.args.get('user_id', DEFAULT_USER_ID)
+        portfolio_id = 'portfolio_id' # request.args.get('portfolio_id')
         
         # Create and validate input model
         retirement_input = RetirementInput(input_data)
@@ -62,15 +62,10 @@ def update_retirement_input():
         # Get validated input data
         validated_input = retirement_input.to_dict()
         
-        # Calculate retirement projection
-        retirement_data = calculate_retirement_projection(validated_input)
-        
         # Save to DynamoDB
         portfolio_data = {
-            'portfolio_id': portfolio_id,  # Will be auto-generated if None
-            'name': input_data.get('name', 'My Retirement Portfolio'),
-            'input_data': validated_input,
-            'retirement_data': retirement_data.get('retirement_data', [])
+            'portfolio_id': portfolio_id,
+            'input_data': validated_input
         }
         
         saved_id = save_portfolio(user_id, portfolio_data)

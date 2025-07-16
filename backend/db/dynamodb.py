@@ -11,10 +11,13 @@ from utils.converter import convert_floats_to_decimals
 
 # Get DynamoDB configuration from environment variables
 DYNAMODB_ENDPOINT = os.environ.get('DYNAMODB_ENDPOINT')
-AWS_REGION = os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
+AWS_REGION = os.environ.get('AWS_DEFAULT_REGION')
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_SESSION_TOKEN = os.environ.get('AWS_SESSION_TOKEN')
 
 # Table names
-USERS_TABLE = 'retirement_users'
+USERS_TABLE = 'users'
 PORTFOLIOS_TABLE = 'retirement_portfolios'
 
 # Initialize DynamoDB client
@@ -27,9 +30,9 @@ def get_dynamodb_client():
                 'dynamodb',
                 endpoint_url=DYNAMODB_ENDPOINT,
                 region_name=AWS_REGION,
-                aws_access_key_id='dummy',
-                aws_secret_access_key='dummy',
-                aws_session_token='dummy'
+                aws_access_key_id=AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                aws_session_token=AWS_SESSION_TOKEN
             )
         else:  # AWS environment
             return boto3.resource('dynamodb', region_name=AWS_REGION)
@@ -75,7 +78,7 @@ def create_tables_if_not_exist():
                     'KeySchema': [
                         {'AttributeName': 'user_id', 'KeyType': 'HASH'},
                     ],
-                    'Projection': {'ProjectionType': 'ALL'},
+                    'Projection': {'ProjectionType': 'KEYS_ONLY'},
                     'ProvisionedThroughput': {'ReadCapacityUnits': 5, 'WriteCapacityUnits': 5}
                 }
             ],
@@ -97,21 +100,30 @@ def save_portfolio(user_id, portfolio_data):
     table = dynamodb.Table(PORTFOLIOS_TABLE)
     
     # Generate portfolio ID if not provided
-    portfolio_id = portfolio_data.get('portfolio_id', str(uuid.uuid4()))
+    portfolio_id = portfolio_data.get('portfolio_id')
     
+    # Check if item exists
+    existing_item = get_portfolio(portfolio_id)
+    
+    # Set timestamps
+    current_time = datetime.now().isoformat()
+    if existing_item:
+        # Keep original created_at for updates
+        created_at = existing_item.get('created_at', current_time)
+    else:
+        # New item gets current timestamp
+        created_at = current_time
+        
     # Convert all floats to Decimals for DynamoDB
     input_data = convert_floats_to_decimals(portfolio_data.get('input_data', {}))
-    retirement_data = convert_floats_to_decimals(portfolio_data.get('retirement_data', []))
     
     # Prepare item for DynamoDB
     item = {
-        'portfolio_id': 'demo-portfolio' if portfolio_id is None else portfolio_id,
+        'portfolio_id': portfolio_id,
         'user_id': user_id,
-        'created_at': datetime.now().isoformat(),
-        'updated_at': datetime.now().isoformat(),
-        'name': portfolio_data.get('name', 'My Retirement Portfolio'),
-        'input_data': input_data,
-        'retirement_data': retirement_data
+        'created_at': created_at,
+        'updated_at': current_time,
+        'input_data': input_data
     }
     
     # Save to DynamoDB
@@ -132,7 +144,7 @@ def get_portfolio(portfolio_id):
     dynamodb = get_dynamodb_client()
     table = dynamodb.Table(PORTFOLIOS_TABLE)
     
-    response = table.get_item(Key={'portfolio_id': 'demo-portfolio' if portfolio_id is None else portfolio_id})
+    response = table.get_item(Key={'portfolio_id': portfolio_id})
     
     return response.get('Item')
 
