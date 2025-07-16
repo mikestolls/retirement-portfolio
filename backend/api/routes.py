@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
-from backend.models.retirement_input import RetirementInput
-from backend.services.retirement_calculator import calculate_retirement_projection
-from backend.db.dynamodb import save_portfolio, get_portfolio, get_user_portfolios
+from models.retirement_input import RetirementInput
+from services.retirement_calculator import calculate_retirement_projection
+from db.dynamodb import save_portfolio, get_portfolio, get_user_portfolios
 
 api_bp = Blueprint('api', __name__)
 

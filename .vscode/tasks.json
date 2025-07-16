@@ -20,7 +20,7 @@
         {
             "label": "Start Flask",
             "type": "shell",
-            "command": "${command:python.interpreterPath}",
+            "command": "python",
             "isBackground": true,
             "args": [
                 "-m",

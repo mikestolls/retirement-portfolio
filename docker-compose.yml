@@ -13,6 +13,9 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - REACT_APP_BACKEND_API_URL=http://localhost:5000/api
+    networks:
+      - frontend_network
+      - backend_network
     depends_on:
       - backend
 
@@ -28,10 +31,12 @@ services:
       - FLASK_ENV=development
       - FLASK_APP=app.py
       - FLASK_DEBUG=1
-      - AWS_ACCESS_KEY_ID=local
-      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
       - AWS_DEFAULT_REGION=us-east-1
       - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+    networks:
+      - backend_network
     depends_on:
       - dynamodb-local
 
@@ -40,12 +45,17 @@ services:
     ports:
       - "8000:8000"
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data/"
+    networks:
+      - backend_network
     volumes:
       - dynamodb-data:/home/dynamodblocal/data
+    user: root
 
 volumes:
   dynamodb-data:
 
 networks:
-  default:
+  frontend_network:
+    driver: bridge
+  backend_network:
     driver: bridge
