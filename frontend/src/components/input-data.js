@@ -149,7 +149,6 @@ export default function InputData() {
                     value={formData['retirement-inflation']}
                     onChange={handleChange}/>
             </Stack>
-            {error && <div style={{color: 'red', marginTop: '10px'}}>{error}</div>}
             <Button type="submit" variant="contained" size="large" disabled={loading}>
                 {loading ? 'Submitting...' : 'Submit'}
             </Button>

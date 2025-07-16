@@ -11,13 +11,8 @@ import { TableRow } from '@mui/material';
 import '../css/year-by-year-table.css';
 
 export default function YearByYearTable() {
-    const { retirementData, loading, error, fetchRetirementData } = useRetirement();
-    
-    useEffect(() => {
-        // Fetch data when component mounts
-        fetchRetirementData();
-    }, []);
-    
+    const { retirementData, loading, error } = useRetirement();
+     
     // Use the data from context
     const data = retirementData?.retirement_data || [];
     

@@ -61,7 +61,7 @@ export const RetirementProvider = ({ children }) => {
     <RetirementContext.Provider value={{ 
       retirementData, 
       loading, 
-      error, 
+      error,
       fetchRetirementData,
       updateRetirementData
     }}>
