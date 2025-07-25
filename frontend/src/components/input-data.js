@@ -8,40 +8,42 @@ import Button from '@mui/material/Button';
 
 const contribution_frequencies = [
     {
-      value: 12,
-      label: 'Monthly',
+        value: 12,
+        label: 'Monthly',
     },
     {
         value: 24,
         label: 'Bi-Monthly',
     },
     {
-      value: 52,
-      label: 'Weekly',
+        value: 52,
+        label: 'Weekly',
     },
     {
-      value: 26,
-      label: 'Bi-Weekly',
+        value: 26,
+        label: 'Bi-Weekly',
     }
-  ];
-  const withdrawal_frequencies = [
+];
+
+const withdrawal_frequencies = [
     {
-      value: 12,
-      label: 'Monthly',
+        value: 12,
+        label: 'Monthly',
     },
     {
         value: 24,
-    label: 'Bi-Monthly',
+        label: 'Bi-Monthly',
     },
     {
-      value: 52,
-      label: 'Weekly',
+        value: 52,
+        label: 'Weekly',
     },
     {
-      value: 26,
-      label: 'Bi-Weekly',
+        value: 26,
+        label: 'Bi-Weekly',
     }
-  ];
+];
+
 export default function InputData() {
     const [formData, setFormData] = useState({
         'initial-investment': 1000,

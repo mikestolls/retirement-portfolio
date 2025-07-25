@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ThemeProvider, createTheme, CssBaseline
-} from '@mui/material';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 
 import { RetirementProvider } from './context/retirement-context';
 import MainDashboard from './components/main-dashboard.js';
+import InputData from './components/input-data.js';
 
 const theme = createTheme({
   palette: {
@@ -23,16 +24,18 @@ function App() {
   const [currentTab, setCurrentTab] = useState(0);
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-        <div className="App">
-          <RetirementProvider>
-            <MainDashboard>
-
-            </MainDashboard>
-          </RetirementProvider>
-        </div>
-    </ThemeProvider>
+    <Router>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <RetirementProvider>
+          <div className="App">
+            <Routes>
+              <Route path="/*" element={<MainDashboard />} />
+            </Routes>
+          </div>
+        </RetirementProvider>
+      </ThemeProvider>
+    </Router>
   );
 }
 

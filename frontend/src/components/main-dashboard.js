@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { styled, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import MuiDrawer from '@mui/material/Drawer';
@@ -107,8 +108,8 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'drawer
   
 const drawerWidth = 240;
 const drawerOptions = [
-  [{ text: 'Family Info', icon: <HouseIcon /> }, { text: 'Retirement Funds', icon: <SavingsIcon /> }, { text: 'Retirement Strategy', icon: <ElderlyIcon /> }], 
-  [{ text: 'Settings', icon: <SettingsIcon /> }]
+  [{ text: 'Family Info', icon: <HouseIcon />, path: '/family_info'}, { text: 'Retirement Funds', icon: <SavingsIcon />, path:'/retirement_funds' }, { text: 'Retirement Strategy', icon: <ElderlyIcon />, path: '/retirement_strategy' }], 
+  [{ text: 'Settings', icon: <SettingsIcon />, path: '/settings' }]
 ];
 const userOptions = ['Profile', 'Account', 'Logout'];
 
@@ -116,6 +117,8 @@ export default function MainDashboard() {
   const theme = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorElUser, setAnchorElUser] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleDrawerOpen = () => {
     setDrawerOpen(true);
@@ -174,7 +177,7 @@ export default function MainDashboard() {
                 vertical: 'top',
                 horizontal: 'right',
               }}
-              drawerOpen={Boolean(anchorElUser)}
+              open={Boolean(anchorElUser)}
               onClose={handleCloseUserMenu}
             >
               {userOptions.map((userOptions) => (
@@ -215,6 +218,8 @@ export default function MainDashboard() {
                           justifyContent: 'center',
                         },
                   ]}
+                  selected={location.pathname === item.path}
+                  onClick={() => navigate(item.path)}
                 >
                   <ListItemIcon
                     sx={[
