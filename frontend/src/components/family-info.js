@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Box, Tabs, Tab } from '@mui/material';
+import { useEffect } from 'react';
+import { useRetirement } from '../context/retirement-context';
+
+import { Box, Tabs, Tab, Button } from '@mui/material';
 import PropTypes from 'prop-types';
 
 function FamilyTabPanel(props) {
@@ -32,30 +35,43 @@ function tabProperty(index) {
 }
 
 export default function FamilyInfo() {
-  const [value, setValue] = React.useState(0);
+  // Use the shared context
+  const { updateFamilyInfoData, fetchFamilyInfoData, familyInfoData, loading, error } = useRetirement();
 
-  const handleChange = (event, newValue) => {
-    setValue(newValue);
+  const [activeTab, setActiveTab] = React.useState(0);
+
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
   };
+
+  useEffect(() => { fetchFamilyInfoData(); }, []);
 
   return (
       <div>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
-                  <Tab label="Child One" {...tabProperty(0)} />
-                  <Tab label="Child Two" {...tabProperty(1)} />
-                  <Tab label="Child Three" {...tabProperty(2)} />
+              <Tabs value={activeTab} onChange={handleTabChange} aria-label='Family Info Tabs'>
+                {familyInfoData?.familyinfo_data?.map((member, index) => (
+                  <Tab
+                    key={index}
+                    label={member.name}
+                    {...tabProperty(0)}
+                  />
+                ))}
+                <Tab label="Add Member" {...tabProperty(1)} onClick={() => updateFamilyInfoData({ name: 'New Member', age: 0 })}/>
               </Tabs>
           </Box>
-          <FamilyTabPanel value={value} index={0}>
-              Item One
-          </FamilyTabPanel>
-          <FamilyTabPanel value={value} index={1}>
-              Item Two
-          </FamilyTabPanel>
-          <FamilyTabPanel value={value} index={2}>
-              Item Three
-          </FamilyTabPanel>
+          {familyInfoData?.familyinfo_data?.map((member, index) => (
+            <FamilyTabPanel key={index} value={activeTab} index={index}>
+              <p>{member.name}</p>
+              <p>{member.age}</p>
+              <Button variant="contained" onClick={() => updateFamilyInfoData(member)}>
+                Update {member.name}
+              </Button>
+              <Button variant="contained" onClick={() => updateFamilyInfoData(index, true)}>
+                Delete {member.name}
+              </Button>
+            </FamilyTabPanel>
+          ))}
       </div>
   );
 }

@@ -3,9 +3,14 @@ import React, { createContext, useState, useContext } from 'react';
 const RetirementContext = createContext();
 
 export const RetirementProvider = ({ children }) => {
-  const [retirementData, setRetirementData] = useState({ retirement_data: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  const [retirementData, setRetirementData] = useState({ retirement_data: [] });
+  const [familyInfoData, setFamilyInfoData] = useState({ familyinfo_data: [
+    { name: 'Stoolz', age: 39 },
+  ]
+  });
 
   const fetchRetirementData = async () => {
     setLoading(true);
@@ -57,13 +62,58 @@ export const RetirementProvider = ({ children }) => {
     }
   };
 
+  const fetchFamilyInfoData = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // For now, set mock data with proper structure
+      setFamilyInfoData({ familyinfo_data: [FamilyMemberInfo] });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateFamilyInfoData = async (member, isDelete = false) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isDelete) {
+        // Remove member by index
+        setFamilyInfoData(prevData => ({
+          ...prevData,
+          familyinfo_data: (prevData?.familyinfo_data || []).filter((_, index) => index !== member)
+        }));
+      } else {
+        // Add new member to existing list
+        setFamilyInfoData(prevData => ({
+          ...prevData,
+          familyinfo_data: [...(prevData?.familyinfo_data || []), member]
+        }));
+      }
+      
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <RetirementContext.Provider value={{ 
       retirementData, 
+      familyInfoData,
       loading, 
       error,
       fetchRetirementData,
-      updateRetirementData
+      updateRetirementData,
+      fetchFamilyInfoData,
+      updateFamilyInfoData,
     }}>
       {children}
     </RetirementContext.Provider>
