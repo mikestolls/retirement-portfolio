@@ -24,7 +24,24 @@ const contribution_frequencies = [
       label: 'Bi-Weekly',
     }
   ];
-
+  const withdrawal_frequencies = [
+    {
+      value: 12,
+      label: 'Monthly',
+    },
+    {
+        value: 24,
+    label: 'Bi-Monthly',
+    },
+    {
+      value: 52,
+      label: 'Weekly',
+    },
+    {
+      value: 26,
+      label: 'Bi-Weekly',
+    }
+  ];
 export default function InputData() {
     const [formData, setFormData] = useState({
         'initial-investment': 1000,

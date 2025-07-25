@@ -1,0 +1,180 @@
+import React, { useState } from 'react';
+import { 
+  Typography, Grid, TextField, Button, Paper, Box, 
+  Divider, Slider, FormControlLabel, Switch
+} from '@mui/material';
+import { useRetirement } from '../context/retirement-context';
+
+export default function Settings() {
+  const { updateSettings, settings } = useRetirement();
+  
+  const [formData, setFormData] = useState({
+    retirementWithdrawal: 4,
+    inflationRate: 2.5,
+    socialSecurityAge: 67,
+    socialSecurityMonthly: 2000,
+    includeInflation: true,
+    includeSocialSecurity: true,
+    includeTaxes: true,
+    taxRate: 20
+  });
+  
+  const handleChange = (field, value) => {
+    setFormData({
+      ...formData,
+      [field]: value
+    });
+  };
+  
+  const handleSubmit = () => {
+    updateSettings(formData);
+  };
+  
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>Retirement Settings</Typography>
+      <Typography variant="body2" color="text.secondary" paragraph>
+        Customize your retirement calculation assumptions.
+      </Typography>
+      
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Withdrawal & Inflation</Typography>
+        
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={6}>
+            <Typography gutterBottom>Retirement Withdrawal Rate (%)</Typography>
+            <Slider
+              value={formData.retirementWithdrawal}
+              onChange={(e, newValue) => handleChange('retirementWithdrawal', newValue)}
+              step={0.1}
+              marks={[
+                { value: 2, label: '2%' },
+                { value: 4, label: '4%' },
+                { value: 6, label: '6%' },
+                { value: 8, label: '8%' }
+              ]}
+              min={1}
+              max={10}
+              valueLabelDisplay="auto"
+            />
+            <Typography variant="body2" color="text.secondary">
+              The standard "4% rule" suggests withdrawing 4% of your portfolio in the first year of retirement, 
+              then adjusting for inflation each year after.
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Typography gutterBottom>Inflation Rate (%)</Typography>
+            <Slider
+              value={formData.inflationRate}
+              onChange={(e, newValue) => handleChange('inflationRate', newValue)}
+              step={0.1}
+              marks={[
+                { value: 1, label: '1%' },
+                { value: 2, label: '2%' },
+                { value: 3, label: '3%' },
+                { value: 4, label: '4%' }
+              ]}
+              min={0}
+              max={6}
+              valueLabelDisplay="auto"
+            />
+            <Typography variant="body2" color="text.secondary">
+              Historical average inflation in the US has been around 2-3% annually.
+            </Typography>
+          </Grid>
+        </Grid>
+      </Paper>
+      
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Social Security</Typography>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.includeSocialSecurity}
+                  onChange={(e) => handleChange('includeSocialSecurity', e.target.checked)}
+                />
+              }
+              label="Include Social Security in calculations"
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Social Security Starting Age"
+              type="number"
+              value={formData.socialSecurityAge}
+              onChange={(e) => handleChange('socialSecurityAge', Number(e.target.value))}
+              disabled={!formData.includeSocialSecurity}
+              InputProps={{ inputProps: { min: 62, max: 70 } }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Estimated Monthly Benefit"
+              type="number"
+              value={formData.socialSecurityMonthly}
+              onChange={(e) => handleChange('socialSecurityMonthly', Number(e.target.value))}
+              disabled={!formData.includeSocialSecurity}
+              InputProps={{ inputProps: { min: 0, step: 100 } }}
+            />
+          </Grid>
+        </Grid>
+      </Paper>
+      
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Tax Settings</Typography>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.includeTaxes}
+                  onChange={(e) => handleChange('includeTaxes', e.target.checked)}
+                />
+              }
+              label="Include tax estimates in calculations"
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Typography gutterBottom>Estimated Retirement Tax Rate (%)</Typography>
+            <Slider
+              value={formData.taxRate}
+              onChange={(e, newValue) => handleChange('taxRate', newValue)}
+              disabled={!formData.includeTaxes}
+              step={1}
+              marks={[
+                { value: 0, label: '0%' },
+                { value: 10, label: '10%' },
+                { value: 20, label: '20%' },
+                { value: 30, label: '30%' }
+              ]}
+              min={0}
+              max={40}
+              valueLabelDisplay="auto"
+            />
+          </Grid>
+        </Grid>
+      </Paper>
+      
+      <Box display="flex" justifyContent="flex-end">
+        <Button 
+          variant="contained" 
+          color="primary" 
+          size="large"
+          onClick={handleSubmit}
+        >
+          Save Settings
+        </Button>
+      </Box>
+    </Box>
+  );
+}
