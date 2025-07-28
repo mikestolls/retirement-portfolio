@@ -36,7 +36,7 @@ function tabProperty(index) {
 
 export default function RetirementFundsInfo() {
   // Use the shared context
-  const { updateFamilyInfoData, fetchFamilyInfoData, familyInfoData, loading, error } = useRetirement();
+  const { loading, error } = useRetirement();
 
   const [activeTab, setActiveTab] = React.useState(0);
 
@@ -44,34 +44,8 @@ export default function RetirementFundsInfo() {
     setActiveTab(newValue);
   };
 
-  useEffect(() => { fetchFamilyInfoData(); }, []);
-
   return (
-      <div>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              <Tabs value={activeTab} onChange={handleTabChange} aria-label='Retirement Funds Info Tabs'>
-                {familyInfoData?.familyinfo_data?.map((member, index) => (
-                  <Tab
-                    key={index}
-                    label={member.name}
-                    {...tabProperty(0)}
-                  />
-                ))}
-                <Tab label="Add Member" {...tabProperty(1)} onClick={() => updateFamilyInfoData({ name: 'New Member', age: 0 })}/>
-              </Tabs>
-          </Box>
-          {familyInfoData?.familyinfo_data?.map((member, index) => (
-            <RetirementFundsTabPanel key={index} value={activeTab} index={index}>
-              <p>{member.name}</p>
-              <p>{member.age}</p>
-              <Button variant="contained" onClick={() => updateFamilyInfoData(member)}>
-                Update {member.name}
-              </Button>
-              <Button variant="contained" onClick={() => updateFamilyInfoData(index, true)}>
-                Delete {member.name}
-              </Button>
-            </RetirementFundsTabPanel>
-          ))}
-      </div>
+    <div>
+    </div>
   );
 }
