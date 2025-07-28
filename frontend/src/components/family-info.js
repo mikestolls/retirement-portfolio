@@ -50,18 +50,18 @@ export default function FamilyInfo() {
     setFormStates(prev => ({ ...prev, [index]: data }));
   };
 
-  async function handleSubmit(event, memberIndex) {
+  async function handleSubmit(event, index) {
     event.preventDefault();
     
     // Update the specific member in the context
-    await updateFamilyInfoData(memberIndex, formData);
+    await updateFamilyInfoData(index, formStates[memberIindexdex]);
     setFormData({}); // Clear form after successful update
   }
   
-  const handleChange = (memberIndex) => (event) => {
+  const handleChange = (index) => (event) => {
     const { name, value } = event.target;
-    setFormData(memberIndex, {
-      ...getFormData(memberIndex),
+    setFormData(index, {
+      ...getFormData(index),
       [name]: value
     });
   };
@@ -96,22 +96,26 @@ export default function FamilyInfo() {
 
   return (
     <div>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={activeTab} onChange={handleTabChange} aria-label='Family Info Tabs'>
-              {familyInfoData?.familyinfo_data?.map((member, index) => (
-                <Tab
-                  key={index}
-                  label={member.name}
-                  {...tabProperty(0)}
-                />
-              ))}
-              <Tab label="Add Member" {...tabProperty(familyInfoData?.familyinfo_data?.length || 0)} onClick={() => updateFamilyInfoData(familyInfoData?.familyinfo_data?.length, { name: 'New Member', age: 18 })}/>
-            </Tabs>
-        </Box>
-        {familyInfoData?.familyinfo_data?.map((member, index) => (
-          <FamilyTabPanel key={index} value={activeTab} index={index}>
-            <div>
-              <form onSubmit={(e) => handleSubmit(e, index)}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={activeTab} onChange={handleTabChange} aria-label='Family Info Tabs'>
+            {familyInfoData?.familyinfo_data?.map((member, index) => (
+              <Tab
+                key={index}
+                label={member.name}
+                {...tabProperty(0)}
+              />
+            ))}
+            <Tab label="Add Member" {...tabProperty(familyInfoData?.familyinfo_data?.length || 0)} onClick={() => 
+              updateFamilyInfoData(familyInfoData?.familyinfo_data?.length, {
+                'name': 'New Member',
+                'age': 18
+              })}/>
+          </Tabs>
+      </Box>
+      {familyInfoData?.familyinfo_data?.map((member, index) => (
+        <FamilyTabPanel key={index} value={activeTab} index={index}>
+          <div>
+            <form onSubmit={(e) => handleSubmit(e, index)}>
               <Stack spacing={2}>
                 <TextField 
                   label="Name" 
@@ -119,8 +123,7 @@ export default function FamilyInfo() {
                   variant="standard"
                   required
                   value={getFormData(index).name || member.name}
-                  onChange={handleChange(index)}
-                />
+                  onChange={handleChange(index)}/>
                 <TextField
                   label="Age"
                   name="age"
@@ -129,8 +132,7 @@ export default function FamilyInfo() {
                   type="number"
                   slotProps={{ htmlInput: { min: 0, max: 100 } }}
                   value={getFormData(index).age || member.age}
-                  onChange={handleChange(index)}
-                />
+                  onChange={handleChange(index)}/>
               </Stack>
               <p/>
               <Stack direction="row" spacing={2}>
@@ -141,10 +143,10 @@ export default function FamilyInfo() {
                     {loading ? 'Deleting...' : 'Delete'}
                 </Button>
               </Stack>
-              </form>
-            </div>
-          </FamilyTabPanel>
-        ))}
+            </form>
+          </div>
+        </FamilyTabPanel>
+      ))}
     </div>
   );
 }

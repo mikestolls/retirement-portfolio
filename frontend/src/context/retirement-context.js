@@ -15,8 +15,9 @@ export const RetirementProvider = ({ children }) => {
   ] });
 
   // defaulting retirement data
-  const [retirementData, setRetirementData] = useState({ retirement_data: [
+  const [retirementFundInfoData, setRetirementFundInfoData] = useState({ retirementfund_data: [
     {
+      'name': 'Fund',
       'initial-investment': 1000,
       'regular-contribution': 10,
       'contribution-frequency': 12,
@@ -27,20 +28,20 @@ export const RetirementProvider = ({ children }) => {
     }
   ] });
 
-  const fetchRetirementData = async () => {
+  const fetchRetirementFundInfoData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Fetch data from the backend API
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_retirement_data`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch retirement data');
+      if (process.env.REACT_APP_BACKEND_API_URL) {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_retirement_fund_data`);
+        if (response.ok) {
+          const data = await response.json();
+          setRetirementFundInfoData(data);
+          return;
+        }
       }
-
-      const data = await response.json();
-      setRetirementData(data);
+      // Fallback to offline data - keep existing data
     } catch (err) {
       setError(err.message);
     } finally {
@@ -48,26 +49,41 @@ export const RetirementProvider = ({ children }) => {
     }
   };
 
-  const updateRetirementData = async (formData) => {
+  const updateRetirementFundInfoData  = async (fundIndex, updatedFund) => {
     setLoading(true);
     setError(null);
 
-    try {
-      // Send updated data to the backend API
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_input`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update data');
+    try {      
+      const updatedData = {
+        ...retirementFundInfoData,
+        retirementfund_data: updatedFund === null
+          ? // Delete fund at fundIndex
+            (retirementFundInfoData?.retirementfund_data || []).filter((_, index) => index !== fundIndex)
+          : fundIndex < (retirementFundInfoData?.retirementfund_data?.length || 0)
+            ? // Update existing fund
+              (retirementFundInfoData?.retirementfund_data || []).map((fund, index) => 
+                index === fundIndex ? { ...fund, ...updatedFund } : fund
+              )
+            : // Add new fund
+              [...(retirementFundInfoData?.retirementfund_data || []), updatedFund]
+      };
+
+      // Try to sync with backend
+      if (process.env.REACT_APP_BACKEND_API_URL) {
+        try {
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_fund_data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+          });
+          if (!response.ok) throw new Error('Backend sync failed');
+        } catch (backendError) {
+          console.warn('Backend sync failed, continuing offline:', backendError);
+        }
       }
       
-      await fetchRetirementData();
+      // Update local state regardless of backend status
+      setRetirementFundInfoData(updatedData);
       return true;
     } catch (err) {
       setError(err.message);
@@ -144,11 +160,11 @@ export const RetirementProvider = ({ children }) => {
 
   return (
     <RetirementContext.Provider value={{ 
-      retirementData, 
+      retirementFundInfoData, 
       familyInfoData,
       loading, 
       error,
-      updateRetirementData,
+      updateRetirementFundInfoData ,
       updateFamilyInfoData,
     }}>
       {children}
