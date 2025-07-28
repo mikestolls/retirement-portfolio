@@ -21,7 +21,6 @@ export const RetirementProvider = ({ children }) => {
       'initial-investment': 1000,
       'regular-contribution': 10,
       'contribution-frequency': 12,
-      'age': 18,
       'retirement-age': 65,
       'retirement-withdrawal': 4,
       'retirement-inflation': 2,

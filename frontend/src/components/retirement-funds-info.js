@@ -105,7 +105,7 @@ export default function RetirementFundsInfo() {
       });
 
       // If deleting the last member and it's the active tab, shift left
-      if (index === familyInfoData?.familyinfo_data?.length - 1 && activeTab === index) {
+      if (index === retirementFundInfoData?.retirementfund_data?.length - 1 && activeTab === index) {
         setActiveTab(Math.max(0, index - 1));
       }
       
@@ -143,13 +143,20 @@ export default function RetirementFundsInfo() {
             <form onSubmit={(e) => handleSubmit(e, index)}>
             <Stack spacing={2}>
               <TextField 
+                label="Name" 
+                name="name"
+                variant="standard"
+                required
+                value={getFormData(index)['name'] || fund['name']}
+                onChange={handleChange(index)}/>
+              <TextField 
                 label="Initial Investment" 
                 name="initial-investment"
                 variant="standard"
                 required
                 type="number"
                 slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
-                value={getFormData(index).initial_investment || fund.initial_investment}
+                value={getFormData(index)['initial-investment'] || fund['initial-investment']}
                 onChange={handleChange(index)}/>
               <TextField
                 label="Regular Contribution"
@@ -158,7 +165,7 @@ export default function RetirementFundsInfo() {
                 required
                 type="number"
                 slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
-                value={getFormData(index).regular_contribution || fund.regular_contribution}
+                value={getFormData(index)['regular-contribution'] || fund['regular-contribution']}
                 onChange={handleChange(index)}/>
               <TextField 
                 label="Frequency"
@@ -182,7 +189,7 @@ export default function RetirementFundsInfo() {
                 required
                 type="number"
                 slotProps={{ htmlInput: { min: 0, max: 100 } }}
-                value={getFormData(index).retirement_age || fund.retirement_age}
+                value={getFormData(index)['retirement-age'] || fund['retirement-age']}
                 onChange={handleChange(index)}/>
               <TextField
                 label="Retirement Withdrawal %"
@@ -191,7 +198,7 @@ export default function RetirementFundsInfo() {
                 required
                 type="number"
                 slotProps={{ htmlInput: { min: 0, max: 10, step: 0.1 } }}
-                value={getFormData(index).retirement_withdrawal || fund.retirement_withdrawal}
+                value={getFormData(index)['retirement-withdrawal'] || fund['retirement-withdrawal']}
                 onChange={handleChange(index)}/>
               <TextField
                 label="Retirement Inflation %"
@@ -200,7 +207,7 @@ export default function RetirementFundsInfo() {
                 required
                 type="number"
                 slotProps={{ htmlInput: { min: 0, max: 10, step: 0.1 } }}
-                value={getFormData(index).retirement_inflation || fund.retirement_inflation}
+                value={getFormData(index)['retirement-inflation'] || fund['retirement-inflation']}
                 onChange={handleChange(index)}/>
             </Stack>
             <p/>

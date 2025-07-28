@@ -54,7 +54,7 @@ export default function FamilyInfo() {
     event.preventDefault();
     
     // Update the specific member in the context
-    await updateFamilyInfoData(index, formStates[memberIindexdex]);
+    await updateFamilyInfoData(index, formStates[index]);
     setFormData({}); // Clear form after successful update
   }
   
@@ -122,7 +122,7 @@ export default function FamilyInfo() {
                   name="name"
                   variant="standard"
                   required
-                  value={getFormData(index).name || member.name}
+                  value={getFormData(index)['name'] || member['name']}
                   onChange={handleChange(index)}/>
                 <TextField
                   label="Age"
@@ -131,7 +131,7 @@ export default function FamilyInfo() {
                   required
                   type="number"
                   slotProps={{ htmlInput: { min: 0, max: 100 } }}
-                  value={getFormData(index).age || member.age}
+                  value={getFormData(index)['age'] || member['age']}
                   onChange={handleChange(index)}/>
               </Stack>
               <p/>
