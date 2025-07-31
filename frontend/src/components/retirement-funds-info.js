@@ -56,15 +56,21 @@ function tabProperty(index) {
 
 export default function RetirementFundsInfo() {
   // Use the shared context
-  const { updateRetirementFundInfoData, retirementFundInfoData, loading, error } = useRetirement();
+  const { updateRetirementFundInfoData, fetchRetirementFundInfoData, retirementFundInfoData, loading, error } = useRetirement();
 
+  // fetch on mount from backend
+  useEffect(() => { 
+    fetchRetirementFundInfoData(); 
+  }, []);
+
+  // handling tab changes
   const [activeTab, setActiveTab] = React.useState(0);
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
 
+  // Form state management
   const [formStates, setFormStates] = useState({});
-
   const getFormData = (index) => formStates[index] || {};
   const setFormData = (index, data) => {
     setFormStates(prev => ({ ...prev, [index]: data }));

@@ -36,15 +36,21 @@ function tabProperty(index) {
 
 export default function FamilyInfo() {
   // Use the shared context
-  const { updateFamilyInfoData, familyInfoData, loading, error } = useRetirement();
+  const { updateFamilyInfoData, fetchFamilyInfoData, familyInfoData, loading, error } = useRetirement();
 
+  // fetch on mount from backend
+  useEffect(() => { 
+    fetchFamilyInfoData(); 
+  }, []);
+
+  // handling tab changes
   const [activeTab, setActiveTab] = React.useState(0);
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
 
+  // Form state management
   const [formStates, setFormStates] = useState({});
-
   const getFormData = (index) => formStates[index] || {};
   const setFormData = (index, data) => {
     setFormStates(prev => ({ ...prev, [index]: data }));
@@ -62,7 +68,7 @@ export default function FamilyInfo() {
     const { name, value } = event.target;
     setFormData(index, {
       ...getFormData(index),
-      [name]: value
+      [name]: name === 'age' ? parseInt(value) || 0 : value
     });
   };
 

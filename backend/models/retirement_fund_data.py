@@ -1,7 +1,7 @@
-# Data models for retirement calculator
+# Data model for retirement fund info
 
-class RetirementInput:
-    # Model for retirement input parameters
+class RetirementFundData:
+    # Model for retirement fund info parameters
     def __init__(self, data):
         self.initial_investment = data.get('initial_investment', 0)
         self.regular_contribution = data.get('regular_contribution', 0)
@@ -13,7 +13,7 @@ class RetirementInput:
     
     def validate(self):
         """
-        Validate retirement input parameters
+        Validate retirement fund info parameters
         
         Returns:
             tuple: (is_valid, error_message)
@@ -24,14 +24,14 @@ class RetirementInput:
         if self.regular_contribution < 0:
             return False, "Regular contribution must be non-negative"
         
-        if self.age < 0 or self.age > 100:
-            return False, "Age must be between 0 and 100"
+        if self.age < 0 or self.age > 150:
+            return False, "Age must be between 0 and 150"
         
         if self.retirement_age < self.age:
             return False, "Retirement age must be greater than current age"
         
-        if self.retirement_age > 100:
-            return False, "Retirement age must be less than 100"
+        if self.retirement_age > 150:
+            return False, "Retirement age must be less than 150"
         
         if self.retirement_withdrawal < 0 or self.retirement_withdrawal > 20:
             return False, "Withdrawal rate must be between 0 and 20"
