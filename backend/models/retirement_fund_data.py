@@ -3,13 +3,7 @@
 class RetirementFundData:
     # Model for retirement fund info parameters
     def __init__(self, data):
-        self.initial_investment = data.get('initial_investment', 0)
-        self.regular_contribution = data.get('regular_contribution', 0)
-        self.contribution_frequency = data.get('contribution_frequency', 12)
-        self.age = data.get('age', 0)
-        self.retirement_age = data.get('retirement_age', 65)
-        self.retirement_withdrawal = data.get('retirement_withdrawal', 4)
-        self.retirement_inflation = data.get('retirement_inflation', 2)
+        self.retirement_fund_data = data.get('retirement_fund_data', {})
     
     def validate(self):
         """
@@ -18,26 +12,27 @@ class RetirementFundData:
         Returns:
             tuple: (is_valid, error_message)
         """
-        if self.initial_investment < 0:
-            return False, "Initial investment must be non-negative"
-        
-        if self.regular_contribution < 0:
-            return False, "Regular contribution must be non-negative"
-        
-        if self.age < 0 or self.age > 150:
-            return False, "Age must be between 0 and 150"
-        
-        if self.retirement_age < self.age:
-            return False, "Retirement age must be greater than current age"
-        
-        if self.retirement_age > 150:
-            return False, "Retirement age must be less than 150"
-        
-        if self.retirement_withdrawal < 0 or self.retirement_withdrawal > 20:
-            return False, "Withdrawal rate must be between 0 and 20"
-        
-        if self.retirement_inflation < 0 or self.retirement_inflation > 15:
-            return False, "Inflation rate must be between 0 and 15"
+        for fund in self.retirement_fund_data:
+            name = fund.get('name', '')
+            family_member_id = fund.get('family-member-id', '')
+            initial_investment = float(fund.get('initial-investment', 0))
+            regular_contribution = float(fund.get('regular-contribution', 0))
+            contribution_frequency = int(fund.get('contribution-frequency', 0))
+
+            if name is not None and len(name) < 1:
+                return False, "Name must be at least 1 character long"
+            
+            if family_member_id is None or len(family_member_id) < 1:
+                return False, "Family member ID must be provided"
+                                    
+            if initial_investment < 0:
+                return False, "Initial investment must be non-negative"
+            
+            if regular_contribution < 0:
+                return False, "Regular contribution must be non-negative"
+            
+            if contribution_frequency <= 0:
+                return False, "Contribution frequency must be greater than 0"
         
         return True, ""
     
@@ -49,11 +44,5 @@ class RetirementFundData:
             dict: Dictionary representation of the model
         """
         return {
-            'initial_investment': self.initial_investment,
-            'regular_contribution': self.regular_contribution,
-            'contribution_frequency': self.contribution_frequency,
-            'age': self.age,
-            'retirement_age': self.retirement_age,
-            'retirement_withdrawal': self.retirement_withdrawal,
-            'retirement_inflation': self.retirement_inflation
+            'retirement_fund_data': self.retirement_fund_data,
         }

@@ -91,7 +91,7 @@ export default function FamilyInfo() {
       });
 
       // If deleting the last member and it's the active tab, shift left
-      if (index === familyInfoData?.familyinfo_data?.length - 1 && activeTab === index) {
+      if (index === familyInfoData?.family_info_data?.length - 1 && activeTab === index) {
         setActiveTab(Math.max(0, index - 1));
       }
       
@@ -99,26 +99,29 @@ export default function FamilyInfo() {
     });
   };
 
-
   return (
     <div>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={activeTab} onChange={handleTabChange} aria-label='Family Info Tabs'>
-            {familyInfoData?.familyinfo_data?.map((member, index) => (
+            {familyInfoData?.family_info_data?.map((member, index) => (
               <Tab
                 key={index}
                 label={member.name}
                 {...tabProperty(0)}
               />
             ))}
-            <Tab label="Add Member" {...tabProperty(familyInfoData?.familyinfo_data?.length || 0)} onClick={() => 
-              updateFamilyInfoData(familyInfoData?.familyinfo_data?.length, {
+            <Tab label="Add Member" {...tabProperty(familyInfoData?.family_info_data?.length || 0)} onClick={() => 
+              updateFamilyInfoData(familyInfoData?.family_info_data?.length, {
+                'id': crypto.randomUUID(),
                 'name': 'New Member',
-                'age': 18
+                'age': 18,
+                'retirement-age': 65,
+                'retirement-withdrawal': 4,
+                'retirement-inflation': 2,
               })}/>
           </Tabs>
       </Box>
-      {familyInfoData?.familyinfo_data?.map((member, index) => (
+      {familyInfoData?.family_info_data?.map((member, index) => (
         <FamilyTabPanel key={index} value={activeTab} index={index}>
           <div>
             <form onSubmit={(e) => handleSubmit(e, index)}>
@@ -136,8 +139,17 @@ export default function FamilyInfo() {
                   variant="standard"
                   required
                   type="number"
-                  slotProps={{ htmlInput: { min: 0, max: 100 } }}
+                  slotProps={{ htmlInput: { min: 0, max: 150 } }}
                   value={getFormData(index)['age'] || member['age']}
+                  onChange={handleChange(index)}/>
+                <TextField
+                  label="Retirement Age"
+                  name="retirement-age"
+                  variant="standard"
+                  required
+                  type="number"
+                  slotProps={{ htmlInput: { min: 0, max: 150 } }}
+                  value={getFormData(index)['retirement-age'] || member['retirement-age']}
                   onChange={handleChange(index)}/>
               </Stack>
               <p/>

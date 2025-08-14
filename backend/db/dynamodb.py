@@ -20,7 +20,6 @@ AWS_SESSION_TOKEN = os.environ.get('AWS_SESSION_TOKEN')
 USERS_TABLE = 'users'
 FAMILY_INFOS_TABLE = 'family_info'
 RETIREMENT_FUNDS_TABLE = 'retirement_funds'
-PORTFOLIOS_TABLE = 'portfolios' # remove after
 
 # Initialize DynamoDB client
 def db_get_dynamodb_client():
@@ -98,25 +97,15 @@ def db_create_tables_if_not_exist():
             BillingMode='PAY_PER_REQUEST'
         )
 
-    # Create retirement fund table if it doesn't exist. secondary index for user_id
+    # Create retirement fund table if it doesn't exist
     if RETIREMENT_FUNDS_TABLE not in existing_tables:
         dynamodb.create_table(
             TableName=RETIREMENT_FUNDS_TABLE,
             KeySchema=[
-                {'AttributeName': 'portfolio_id', 'KeyType': 'HASH'}
+                {'AttributeName': 'retirement_fund_info_id', 'KeyType': 'HASH'}
             ],
             AttributeDefinitions=[
-                {'AttributeName': 'portfolio_id', 'AttributeType': 'S'},
-                {'AttributeName': 'user_id', 'AttributeType': 'S'}
-            ],
-            GlobalSecondaryIndexes=[
-                {
-                    'IndexName': 'UserIdIndex',
-                    'KeySchema': [
-                        {'AttributeName': 'user_id', 'KeyType': 'HASH'},
-                    ],
-                    'Projection': {'ProjectionType': 'KEYS_ONLY'}
-                }
+                {'AttributeName': 'retirement_fund_info_id', 'AttributeType': 'S'}
             ],
             BillingMode='PAY_PER_REQUEST'
         )
@@ -207,5 +196,74 @@ def db_save_family_info(user_id, family_info_data):
     }
     
     family_table.put_item(Item=family_item)
+    
+    return True
+
+def db_get_retirement_fund_info(user_id):
+    """
+    Get retirement fund information for a user
+    Args:
+        user_id (str): User ID
+    Returns:
+        dict: Retirement fund information data or None if not found
+    """
+    dynamodb = db_get_dynamodb_client()
+    
+    # Get retirement_fund_info_id from users table
+    users_table = dynamodb.Table(USERS_TABLE)
+    user_response = users_table.get_item(Key={'user_id': user_id})
+    user_item = user_response.get('Item')
+    
+    if not user_item or 'retirement_fund_info_id' not in user_item:
+        return None
+    
+    # Get retirement fund info using retirement_fund_info_id
+    retirement_funds_table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
+    response = retirement_funds_table.get_item(Key={'retirement_fund_info_id': user_item['retirement_fund_info_id']})
+    return response.get('Item')
+
+def db_save_retirement_fund_info(user_id, retirement_fund_info_data):
+    """
+    Save retirement fund information for a user
+    Args:
+        user_id (str): User ID
+        retirement_fund_info_data (dict): Retirement fund information data
+    Returns:
+        bool: True if saved successfully, False otherwise
+    """
+    dynamodb = db_get_dynamodb_client()
+    
+    # Get existing retirement_fund_info_id from user
+    users_table = dynamodb.Table(USERS_TABLE)
+    user_response = users_table.get_item(Key={'user_id': user_id})
+    user_item = user_response.get('Item', {})
+    
+    retirement_fund_info_id = user_item.get('retirement_fund_info_id')
+    if not retirement_fund_info_id:
+        retirement_fund_info_id = str(uuid.uuid4())
+        # Update user with new retirement_fund_info_id
+        users_table.update_item(
+            Key={'user_id': user_id},
+            UpdateExpression='SET retirement_fund_info_id = :fid',
+            ExpressionAttributeValues={':fid': retirement_fund_info_id}
+        )
+    
+    # Convert all floats to Decimals for DynamoDB
+    retirement_fund_info_data = convert_floats_to_decimals(retirement_fund_info_data)
+    
+    # Save/update retirement fund info
+    retirement_funds_table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
+    
+    # Check if record exists to preserve created_at
+    existing = retirement_funds_table.get_item(Key={'retirement_fund_info_id': retirement_fund_info_id}).get('Item')
+    
+    retirement_fund_item = {
+        'retirement_fund_info_id': retirement_fund_info_id,
+        'created_at': existing.get('created_at') if existing else datetime.now().isoformat(),
+        'updated_at': datetime.now().isoformat(),
+        **retirement_fund_info_data
+    }
+    
+    retirement_funds_table.put_item(Item=retirement_fund_item)
     
     return True

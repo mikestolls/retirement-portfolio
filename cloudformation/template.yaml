@@ -25,10 +25,10 @@ Resources:
       TableName: retirement_portfolios
       BillingMode: PAY_PER_REQUEST
       KeySchema:
-        - AttributeName: portfolio_id
+        - AttributeName: retirement_fund_id
           KeyType: HASH
       AttributeDefinitions:
-        - AttributeName: portfolio_id
+        - AttributeName: retirement_fund_id
           AttributeType: S
         - AttributeName: user_id
           AttributeType: S

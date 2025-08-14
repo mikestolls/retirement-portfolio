@@ -56,11 +56,12 @@ function tabProperty(index) {
 
 export default function RetirementFundsInfo() {
   // Use the shared context
-  const { updateRetirementFundInfoData, fetchRetirementFundInfoData, retirementFundInfoData, loading, error } = useRetirement();
+  const { updateRetirementFundInfoData, fetchRetirementFundInfoData, retirementFundInfoData, fetchFamilyInfoData, familyInfoData, loading, error } = useRetirement();
 
   // fetch on mount from backend
   useEffect(() => { 
-    fetchRetirementFundInfoData(); 
+    fetchRetirementFundInfoData();
+    fetchFamilyInfoData();
   }, []);
 
   // handling tab changes
@@ -111,7 +112,7 @@ export default function RetirementFundsInfo() {
       });
 
       // If deleting the last member and it's the active tab, shift left
-      if (index === retirementFundInfoData?.retirementfund_data?.length - 1 && activeTab === index) {
+      if (index === retirementFundInfoData?.retirement_fund_data?.length - 1 && activeTab === index) {
         setActiveTab(Math.max(0, index - 1));
       }
       
@@ -123,27 +124,24 @@ export default function RetirementFundsInfo() {
     <div>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={activeTab} onChange={handleTabChange} aria-label='Retirement Fund Tabs'>
-            {retirementFundInfoData?.retirementfund_data?.map((member, index) => (
+            {retirementFundInfoData?.retirement_fund_data?.map((member, index) => (
               <Tab
                 key={index}
                 label={member.name}
                 {...tabProperty(0)}
               />
             ))}
-            <Tab label="Add Fund" {...tabProperty(retirementFundInfoData?.retirementfund_data?.length || 0)} onClick={() => 
-              updateRetirementFundInfoData(retirementFundInfoData?.retirementfund_data?.length, { 
+            <Tab label="Add Fund" {...tabProperty(retirementFundInfoData?.retirement_fund_data?.length || 0)} onClick={() => 
+              updateRetirementFundInfoData(retirementFundInfoData?.retirement_fund_data?.length, { 
                 'name': 'Fund',
+                'family-member-id': familyInfoData?.family_info_data?.[0]?.id || '',
                 'initial-investment': 1000,
                 'regular-contribution': 10,
-                'contribution-frequency': 12,
-                'age': 18,
-                'retirement-age': 65,
-                'retirement-withdrawal': 4,
-                'retirement-inflation': 2,
+                'contribution-frequency': 12
               })}/>
           </Tabs>
       </Box>
-      {retirementFundInfoData?.retirementfund_data?.map((fund, index) => (
+      {retirementFundInfoData?.retirement_fund_data?.map((fund, index) => (
         <RetirementFundsTabPanel key={index} value={activeTab} index={index}>
           <div>
             <form onSubmit={(e) => handleSubmit(e, index)}>
@@ -155,6 +153,24 @@ export default function RetirementFundsInfo() {
                 required
                 value={getFormData(index)['name'] || fund['name']}
                 onChange={handleChange(index)}/>
+              <TextField 
+                label="Family Member"
+                name="family-member-id"
+                select
+                variant="standard"
+                align="left"
+                required
+                value={getFormData(index)['family-member-id'] || fund['family-member-id'] || ''}
+                onChange={handleChange(index)}>
+                {familyInfoData?.family_info_data?.map((member, memberIndex) => {
+                  const memberId = member.id
+                  return (
+                    <MenuItem key={memberId} value={memberId}>
+                        {member.name}
+                    </MenuItem>
+                  );
+                })}
+              </TextField>
               <TextField 
                 label="Initial Investment" 
                 name="initial-investment"
@@ -188,33 +204,6 @@ export default function RetirementFundsInfo() {
                     </MenuItem>
                 ))}
               </TextField>
-              <TextField
-                label="Retirement Age"
-                name="retirement-age"
-                variant="standard"
-                required
-                type="number"
-                slotProps={{ htmlInput: { min: 0, max: 100 } }}
-                value={getFormData(index)['retirement-age'] || fund['retirement-age']}
-                onChange={handleChange(index)}/>
-              <TextField
-                label="Retirement Withdrawal %"
-                name="retirement-withdrawal"
-                variant="standard"
-                required
-                type="number"
-                slotProps={{ htmlInput: { min: 0, max: 10, step: 0.1 } }}
-                value={getFormData(index)['retirement-withdrawal'] || fund['retirement-withdrawal']}
-                onChange={handleChange(index)}/>
-              <TextField
-                label="Retirement Inflation %"
-                name="retirement-inflation"
-                variant="standard"
-                required
-                type="number"
-                slotProps={{ htmlInput: { min: 0, max: 10, step: 0.1 } }}
-                value={getFormData(index)['retirement-inflation'] || fund['retirement-inflation']}
-                onChange={handleChange(index)}/>
             </Stack>
             <p/>
             <Stack direction="row" spacing={2}>

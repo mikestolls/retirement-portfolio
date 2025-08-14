@@ -3,7 +3,7 @@
 class FamilyInfoData:
     # Model for family info parameters
     def __init__(self, data):
-        self.familyinfo_data = data.get('familyinfo_data', {})
+        self.family_info_data = data.get('family_info_data', {})
     
     def validate(self):
         """
@@ -13,7 +13,7 @@ class FamilyInfoData:
             tuple: (is_valid, error_message)
         """
         # need to validate the list of family members
-        for member in self.familyinfo_data:
+        for member in self.family_info_data:
             name = member.get('name', '')
             age = int(member.get('age', 0))
 
@@ -33,5 +33,5 @@ class FamilyInfoData:
             dict: Dictionary representation of the model
         """
         return {
-            'familyinfo_data': self.familyinfo_data,
+            'family_info_data': self.family_info_data,
         }

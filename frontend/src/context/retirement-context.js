@@ -9,23 +9,23 @@ export const RetirementProvider = ({ children }) => {
   const user_id = 'test_user'; // Replace with actual user ID logic
   
   // defaulting family info data
-  const [familyInfoData, setFamilyInfoData] = useState({ familyinfo_data: [
+  const [familyInfoData, setFamilyInfoData] = useState({ family_info_data: [
     {
-      name: 'Stolz',
-      age: 39,
+      'id': crypto.randomUUID(),
+      'name': 'Stolz',
+      'age': 39,
+      'retirement-age': 65,
     }
   ] });
 
   // defaulting retirement data
-  const [retirementFundInfoData, setRetirementFundInfoData] = useState({ retirementfund_data: [
+  const [retirementFundInfoData, setRetirementFundInfoData] = useState({ retirement_fund_data: [
     {
       'name': 'Fund',
+      'family-member-id': '',
       'initial-investment': 1000,
       'regular-contribution': 10,
       'contribution-frequency': 12,
-      'retirement-age': 65,
-      'retirement-withdrawal': 4,
-      'retirement-inflation': 2,
     }
   ] });
 
@@ -39,7 +39,7 @@ export const RetirementProvider = ({ children }) => {
         if (response.ok) {
           const data = await response.json();
 
-          setFamilyInfoData({ familyinfo_data: data.familyinfo_data });
+          setFamilyInfoData({ family_info_data: data.family_info_data });
           return;
         }
       }
@@ -58,16 +58,16 @@ export const RetirementProvider = ({ children }) => {
     try {      
       const updatedData = {
         ...familyInfoData,
-        familyinfo_data: updatedMember === null
+        family_info_data: updatedMember === null
           ? // Delete member at memberIndex
-            (familyInfoData?.familyinfo_data || []).filter((_, index) => index !== memberIndex)
-          : memberIndex < (familyInfoData?.familyinfo_data?.length || 0)
+            (familyInfoData?.family_info_data || []).filter((_, index) => index !== memberIndex)
+          : memberIndex < (familyInfoData?.family_info_data?.length || 0)
             ? // Update existing member
-              (familyInfoData?.familyinfo_data || []).map((member, index) => 
+              (familyInfoData?.family_info_data || []).map((member, index) => 
                 index === memberIndex ? { ...member, ...updatedMember } : member
               )
             : // Add new member
-              [...(familyInfoData?.familyinfo_data || []), updatedMember]
+              [...(familyInfoData?.family_info_data || []), updatedMember]
       };
 
       // Try to sync with backend
@@ -104,6 +104,7 @@ export const RetirementProvider = ({ children }) => {
         const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_retirement_fund_data/${user_id}`);
         if (response.ok) {
           const data = await response.json();
+
           setRetirementFundInfoData(data);
           return;
         }
@@ -116,23 +117,23 @@ export const RetirementProvider = ({ children }) => {
     }
   };
 
-  const updateRetirementFundInfoData  = async (fundIndex, updatedFund) => {
+  const updateRetirementFundInfoData = async (fundIndex, updatedFund) => {
     setLoading(true);
     setError(null);
 
     try {      
       const updatedData = {
         ...retirementFundInfoData,
-        retirementfund_data: updatedFund === null
+        retirement_fund_data: updatedFund === null
           ? // Delete fund at fundIndex
-            (retirementFundInfoData?.retirementfund_data || []).filter((_, index) => index !== fundIndex)
-          : fundIndex < (retirementFundInfoData?.retirementfund_data?.length || 0)
+            (retirementFundInfoData?.retirement_fund_data || []).filter((_, index) => index !== fundIndex)
+          : fundIndex < (retirementFundInfoData?.retirement_fund_data?.length || 0)
             ? // Update existing fund
-              (retirementFundInfoData?.retirementfund_data || []).map((fund, index) => 
+              (retirementFundInfoData?.retirement_fund_data || []).map((fund, index) => 
                 index === fundIndex ? { ...fund, ...updatedFund } : fund
               )
             : // Add new fund
-              [...(retirementFundInfoData?.retirementfund_data || []), updatedFund]
+              [...(retirementFundInfoData?.retirement_fund_data || []), updatedFund]
       };
 
       // Try to sync with backend
@@ -166,9 +167,9 @@ export const RetirementProvider = ({ children }) => {
       familyInfoData,
       loading, 
       error,
-      updateRetirementFundInfoData ,
       updateFamilyInfoData,
       fetchFamilyInfoData,
+      updateRetirementFundInfoData,
       fetchRetirementFundInfoData
     }}>
       {children}
