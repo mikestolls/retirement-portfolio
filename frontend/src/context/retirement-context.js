@@ -5,54 +5,87 @@ const RetirementContext = createContext();
 export const RetirementProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
-  const [retirementData, setRetirementData] = useState({ retirement_data: [] });
-  const [familyInfoData, setFamilyInfoData] = useState({ familyinfo_data: [
-    { name: 'Stoolz', age: 39 },
-  ]
-  });
 
-  const fetchRetirementData = async () => {
+  const user_id = 'test_user'; // Replace with actual user ID logic
+  
+  // defaulting family info data
+  const [familyInfoData, setFamilyInfoData] = useState({ family_info_data: [
+    {
+      'id': crypto.randomUUID(),
+      'name': 'Stolz',
+      'age': 39,
+      'retirement-age': 65,
+    }
+  ] });
+
+  // defaulting retirement data
+  const [retirementFundInfoData, setRetirementFundInfoData] = useState({ retirement_fund_data: [
+    {
+      'name': 'Fund',
+      'family-member-id': '',
+      'initial-investment': 1000,
+      'regular-contribution': 10,
+      'contribution-frequency': 12,
+    }
+  ] });
+
+  const fetchFamilyInfoData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Fetch data from the backend API
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_retirement_data`);
+      if (process.env.REACT_APP_BACKEND_API_URL) {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_family_info/${user_id}`);
+        if (response.ok) {
+          const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch retirement data');
+          setFamilyInfoData({ family_info_data: data.family_info_data });
+          return;
+        }
       }
-
-      const data = await response.json();
-      setRetirementData(data);
+      // Fallback to offline data - keep existing data
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
-
-  const updateRetirementData = async (formData) => {
+  
+  const updateFamilyInfoData = async (memberIndex, updatedMember) => {
     setLoading(true);
     setError(null);
 
-    try {
-      // Send updated data to the backend API
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_input`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update data');
+    try {      
+      const updatedData = {
+        ...familyInfoData,
+        family_info_data: updatedMember === null
+          ? // Delete member at memberIndex
+            (familyInfoData?.family_info_data || []).filter((_, index) => index !== memberIndex)
+          : memberIndex < (familyInfoData?.family_info_data?.length || 0)
+            ? // Update existing member
+              (familyInfoData?.family_info_data || []).map((member, index) => 
+                index === memberIndex ? { ...member, ...updatedMember } : member
+              )
+            : // Add new member
+              [...(familyInfoData?.family_info_data || []), updatedMember]
+      };
+
+      // Try to sync with backend
+      if (process.env.REACT_APP_BACKEND_API_URL) {
+        try {
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_family_info/${user_id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+          });
+          if (!response.ok) throw new Error('Backend sync failed');
+        } catch (backendError) {
+          console.warn('Backend sync failed, continuing offline:', backendError);
+        }
       }
       
-      await fetchRetirementData();
+      // Update local state regardless of backend status
+      setFamilyInfoData(updatedData);
       return true;
     } catch (err) {
       setError(err.message);
@@ -61,14 +94,22 @@ export const RetirementProvider = ({ children }) => {
       setLoading(false);
     }
   };
-
-  const fetchFamilyInfoData = async () => {
+  
+  const fetchRetirementFundInfoData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // For now, set mock data with proper structure
-      setFamilyInfoData({ familyinfo_data: [FamilyMemberInfo] });
+      if (process.env.REACT_APP_BACKEND_API_URL) {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_retirement_fund_data/${user_id}`);
+        if (response.ok) {
+          const data = await response.json();
+
+          setRetirementFundInfoData(data);
+          return;
+        }
+      }
+      // Fallback to offline data - keep existing data
     } catch (err) {
       setError(err.message);
     } finally {
@@ -76,25 +117,41 @@ export const RetirementProvider = ({ children }) => {
     }
   };
 
-  const updateFamilyInfoData = async (member, isDelete = false) => {
+  const updateRetirementFundInfoData = async (fundIndex, updatedFund) => {
     setLoading(true);
     setError(null);
 
-    try {
-      if (isDelete) {
-        // Remove member by index
-        setFamilyInfoData(prevData => ({
-          ...prevData,
-          familyinfo_data: (prevData?.familyinfo_data || []).filter((_, index) => index !== member)
-        }));
-      } else {
-        // Add new member to existing list
-        setFamilyInfoData(prevData => ({
-          ...prevData,
-          familyinfo_data: [...(prevData?.familyinfo_data || []), member]
-        }));
+    try {      
+      const updatedData = {
+        ...retirementFundInfoData,
+        retirement_fund_data: updatedFund === null
+          ? // Delete fund at fundIndex
+            (retirementFundInfoData?.retirement_fund_data || []).filter((_, index) => index !== fundIndex)
+          : fundIndex < (retirementFundInfoData?.retirement_fund_data?.length || 0)
+            ? // Update existing fund
+              (retirementFundInfoData?.retirement_fund_data || []).map((fund, index) => 
+                index === fundIndex ? { ...fund, ...updatedFund } : fund
+              )
+            : // Add new fund
+              [...(retirementFundInfoData?.retirement_fund_data || []), updatedFund]
+      };
+
+      // Try to sync with backend
+      if (process.env.REACT_APP_BACKEND_API_URL) {
+        try {
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_fund_data/${user_id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+          });
+          if (!response.ok) throw new Error('Backend sync failed');
+        } catch (backendError) {
+          console.warn('Backend sync failed, continuing offline:', backendError);
+        }
       }
       
+      // Update local state regardless of backend status
+      setRetirementFundInfoData(updatedData);
       return true;
     } catch (err) {
       setError(err.message);
@@ -106,14 +163,14 @@ export const RetirementProvider = ({ children }) => {
 
   return (
     <RetirementContext.Provider value={{ 
-      retirementData, 
+      retirementFundInfoData, 
       familyInfoData,
       loading, 
       error,
-      fetchRetirementData,
-      updateRetirementData,
-      fetchFamilyInfoData,
       updateFamilyInfoData,
+      fetchFamilyInfoData,
+      updateRetirementFundInfoData,
+      fetchRetirementFundInfoData
     }}>
       {children}
     </RetirementContext.Provider>

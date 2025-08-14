@@ -20,8 +20,8 @@ import { Tooltip } from '@mui/material';
 import Avatar from '@mui/material/Avatar';
 
 // Routes
-import InputData from './input-data.js';
 import FamilyInfo from './family-info.js';
+import RetirementFundsInfo from './retirement-funds-info.js';
 
 // Icons
 import MenuIcon from '@mui/icons-material/Menu';
@@ -112,8 +112,14 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'drawer
   
 const drawerWidth = 240;
 const drawerOptions = [
-  [{ text: 'Family Info', icon: <HouseIcon />, path: '/family_info'}, { text: 'Retirement Funds', icon: <SavingsIcon />, path:'/retirement_funds' }, { text: 'Retirement Strategy', icon: <ElderlyIcon />, path: '/retirement_strategy' }], 
-  [{ text: 'Settings', icon: <SettingsIcon />, path: '/settings' }]
+  [
+    { text: 'Family Info', icon: <HouseIcon />, path: '/family_info'},
+    { text: 'Retirement Funds', icon: <SavingsIcon />, path:'/retirement_funds' },
+    { text: 'Retirement Strategy', icon: <ElderlyIcon />, path: '/retirement_strategy' }
+  ], 
+  [
+    { text: 'Settings', icon: <SettingsIcon />, path: '/settings' }
+  ]
 ];
 const userOptions = ['Profile', 'Account', 'Logout'];
 
@@ -267,9 +273,10 @@ export default function MainDashboard() {
         <Routes>
           <Route path="/" element={<Navigate to="/family_info" replace />} />
           <Route path="/family_info" element={<FamilyInfo />} />
-          <Route path="/retirement_funds" element={<InputData />} />
-          <Route path="/retirement_strategy" element={<InputData />} />
-          <Route path="/settings" element={<InputData />} />
+          <Route path="/retirement_funds" element={<RetirementFundsInfo />} />
+          
+          {/* <Route path="/retirement_strategy" element={<InputData />} />
+          <Route path="/settings" element={<InputData />} /> */}
         </Routes>
       </Box>
     </Box>

@@ -34,7 +34,7 @@ Retirement portfolio web app running React frontend and Flask backend with Dynam
 - **Frontend API URL**: Set `REACT_APP_BACKEND_API_URL=http://localhost:5000/api` for browser access
 
 ### DynamoDB Notes
-- Table uses `portfolio_id` as primary key
+- Table uses `retirement_fund_id` as primary key
 - Global Secondary Index on `user_id` with `KEYS_ONLY` projection for efficient queries
 - Timestamps (`created_at`, `updated_at`) are managed in application code
 

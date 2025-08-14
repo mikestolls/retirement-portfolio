@@ -12,7 +12,7 @@
                 "AWS_SECRET_ACCESS_KEY": "dummy",
                 "AWS_SESSION_TOKEN": "dummy",
                 "AWS_DEFAULT_REGION": "us-east-1",
-                "DYNAMODB_ENDPOINT": "http://localhost:8000"
+                "DYNAMODB_ENDPOINT_URL": "http://localhost:8000"
             },
             "args": [
                 "run",
