@@ -1,79 +1,95 @@
 # Retirement calculator service - contains business logic for retirement calculations
 from decimal import Decimal
+from datetime import datetime
 
-def calculate_retirement_projection(input_data):
+def calculate_retirement_projection(retirement_fund_info, family_info):
     """
-    Calculate retirement projection based on input parameters
+    Calculate retirement projection based on retirement fund info and family info.
     
     Args:
-        input_data (dict): Dictionary containing retirement input parameters
-        
+        retirement_fund_info (dict): Dictionary containing retirement fund data
+        family_info (dict): Dictionary containing family information data
+
     Returns:
         dict: Retirement projection data by year
     """
-    age = int(input_data['age'])
-    retirement_age = int(input_data['retirement_age'])
-    death_age = 90  # Assumption
+    for fund in retirement_fund_info.get('retirement_fund_data', []):   
+        # get family member data from family_info
+        family_member_id = fund['family-member-id']
+        family_member = next((member for member in family_info.get('family_info_data', []) if member['id'] == family_member_id), None)
+
+        if not family_member:
+            raise ValueError(f"Family member with ID {family_member_id} not found in family info")
+
+        age = int(family_member['age'])
+        retirement_age = int(family_member['retirement-age'])
+        death_age = 90  # Assumption
     
-    # Convert numeric inputs to Decimal for precise financial calculations
-    initial_investment = int(input_data['initial_investment'])
-    regular_contribution = int(input_data['regular_contribution'])
-    contribution_frequency = int(input_data['contribution_frequency'])
-    annual_contribution = regular_contribution * contribution_frequency
+        # Convert numeric inputs to Decimal for precise financial calculations
+        initial_investment = int(fund['initial-investment'])
+        regular_contribution = int(fund['regular-contribution'])
+        contribution_frequency = int(fund['contribution-frequency'])
+        annual_contribution = regular_contribution * contribution_frequency
     
-    # Investment return assumptions
-    annual_return_rate = 0.07 # 7% average annual return
-    inflation_rate = float(input_data['retirement_inflation']) / 100.0
-    withdrawal_rate = float(input_data['retirement_withdrawal']) / 100.0
-    
-    retirement_data = []
-    current_amount = initial_investment
-    
-    # Pre-retirement phase: accumulation
-    for current_age in range(age, retirement_age + 1):
-        begin_amount = current_amount
-        contribution = annual_contribution
+        # Investment return assumptions
+        annual_return_rate = 0.07 # 7% average annual return
+        inflation_rate = 0.03 # 3% average inflation rate
+        withdrawal_rate = 0.04 # 4% safe withdrawal rate
         
-        # Calculate growth (simplified)
-        growth = (begin_amount + contribution / 2) * annual_return_rate
+        retirement_data = []
+        current_amount = initial_investment
+        year = datetime.now().year
+
+        # Pre-retirement phase: accumulation
+        for current_age in range(age, retirement_age + 1):
+            begin_amount = current_amount
+            contribution = annual_contribution
+            
+            # Calculate growth (simplified)
+            growth = (begin_amount + contribution / 2) * annual_return_rate
+            
+            # Calculate end amount
+            end_amount = begin_amount + contribution + growth
+            
+            retirement_data.append({
+                "year": year,
+                "age": current_age,
+                "begin_amount": float(round(begin_amount, 2)),
+                "contribution": float(round(contribution, 2)),
+                "growth": float(round(growth, 2)),
+                "end_amount": float(round(end_amount, 2)),
+                "withdrawal": 0
+            })
+            
+            current_amount = end_amount
+            year = year + 1
         
-        # Calculate end amount
-        end_amount = begin_amount + contribution + growth
+        # Post-retirement phase: distribution
+        for current_age in range(retirement_age + 1, death_age + 1):
+            begin_amount = current_amount
+            contribution = 0
+            
+            # Calculate withdrawal
+            withdrawal = begin_amount * withdrawal_rate
+            
+            # Calculate growth (after withdrawal)
+            growth = (begin_amount - withdrawal / 2) * annual_return_rate
+            
+            # Calculate end amount
+            end_amount = begin_amount - withdrawal + growth
+            
+            retirement_data.append({
+                "year": year,
+                "age": current_age,
+                "begin_amount": float(round(begin_amount, 2)),
+                "contribution": 0,
+                "growth": float(round(growth, 2)),
+                "end_amount": float(round(end_amount, 2)),
+                "withdrawal": float(round(withdrawal, 2))
+            })
+            
+            current_amount = end_amount
+            year = year + 1
         
-        retirement_data.append({
-            "age": current_age,
-            "begin_amount": float(round(begin_amount, 2)),
-            "contribution": float(round(contribution, 2)),
-            "growth": float(round(growth, 2)),
-            "end_amount": float(round(end_amount, 2)),
-            "withdrawal": 0
-        })
+        fund['retirement_projection'] = retirement_data
         
-        current_amount = end_amount
-    
-    # Post-retirement phase: distribution
-    for current_age in range(retirement_age + 1, death_age + 1):
-        begin_amount = current_amount
-        contribution = 0
-        
-        # Calculate withdrawal
-        withdrawal = begin_amount * withdrawal_rate
-        
-        # Calculate growth (after withdrawal)
-        growth = (begin_amount - withdrawal / 2) * annual_return_rate
-        
-        # Calculate end amount
-        end_amount = begin_amount - withdrawal + growth
-        
-        retirement_data.append({
-            "age": current_age,
-            "begin_amount": float(round(begin_amount, 2)),
-            "contribution": 0,
-            "growth": float(round(growth, 2)),
-            "end_amount": float(round(end_amount, 2)),
-            "withdrawal": float(round(withdrawal, 2))
-        })
-        
-        current_amount = end_amount
-    
-    return {"retirement_data": retirement_data}

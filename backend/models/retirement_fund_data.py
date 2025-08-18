@@ -44,5 +44,5 @@ class RetirementFundData:
             dict: Dictionary representation of the model
         """
         return {
-            'retirement_fund_data': self.retirement_fund_data,
+            "retirement_fund_data": self.retirement_fund_data
         }

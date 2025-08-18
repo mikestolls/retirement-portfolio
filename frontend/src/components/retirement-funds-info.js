@@ -214,6 +214,30 @@ export default function RetirementFundsInfo() {
                   {loading ? 'Deleting...' : 'Delete'}
               </Button>
             </Stack>
+            <Stack spacing={2} sx={{ mt: 2 }}>
+              <table border={1}>
+                <thead>
+                  <tr>
+                    <th>Year</th>
+                    <th>Age</th>                
+                    <th>Contributions</th>    
+                    <th>Growth</th>
+                    <th>End Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fund.retirement_projection && fund.retirement_projection.map((yearData, yearIndex) => (
+                    <tr key={yearIndex}>
+                      <td>{yearData.year}</td> {/* Display year */}
+                      <td>{yearData.age}</td> {/* Display age */}
+                      <td>{yearData.contribution}</td> {/* Display contributions */}
+                      <td>{yearData.growth}</td> {/* Display growth */}
+                      <td>{yearData.end_amount}</td> {/* Display end balance */}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Stack>
             </form>
           </div>
         </RetirementFundsTabPanel>
