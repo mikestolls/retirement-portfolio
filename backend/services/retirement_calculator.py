@@ -31,7 +31,6 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
         initial_investment = int(fund['initial-investment'])
         regular_contribution = int(fund['regular-contribution'])
         contribution_frequency = int(fund['contribution-frequency'])
-        annual_contribution = regular_contribution * contribution_frequency
     
         # Investment return assumptions
         annual_return_rate = 0.07 # 7% average annual return
@@ -40,56 +39,41 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
         current_amount = initial_investment
         year = datetime.now().year
 
-        # Pre-retirement phase: accumulation
-        for current_age in range(age, retirement_age + 1):
+        # Calculate retirement projection for each year
+        for current_age in range(age, life_expectancy + 1):
             begin_amount = current_amount
-            contribution = annual_contribution
-            
-            # Calculate growth (simplified)
-            growth = (begin_amount + contribution / 2) * annual_return_rate
-            
-            # Calculate end amount
-            end_amount = begin_amount + contribution + growth
+
+            if current_age >= retirement_age:   
+                # in retirement phase           
+                withdrawal = begin_amount * retirement_withdrawal
+                contribution = 0
+            else:
+                # in accumulation phase
+                withdrawal = 0
+                contribution = regular_contribution * contribution_frequency
+
+            # Calculate growth (compounded)
+            inc_return_rate = annual_return_rate / contribution_frequency
+            inc_withdrawal = withdrawal / contribution_frequency
+            inc_contribution = contribution / contribution_frequency
+            for i in range(contribution_frequency):
+                current_amount = (current_amount + inc_contribution - inc_withdrawal) * (1 + inc_return_rate)
+
+            # Calculate growth
+            growth = current_amount - begin_amount - contribution + withdrawal
             
             retirement_data.append({
                 "year": year,
                 "age": current_age,
+                "annual_return_rate": annual_return_rate,
                 "begin_amount": float(round(begin_amount, 2)),
                 "contribution": float(round(contribution, 2)),
+                "withdrawal": float(round(withdrawal, 2)),
                 "growth": float(round(growth, 2)),
-                "end_amount": float(round(end_amount, 2)),
-                "withdrawal": 0
+                "end_amount": float(round(current_amount, 2))
             })
             
-            current_amount = end_amount
-            year = year + 1
-        
-        # Post-retirement phase: distribution
-        for current_age in range(retirement_age + 1, life_expectancy + 1):
-            begin_amount = current_amount
-            contribution = 0
-            
-            # Calculate withdrawal
-            withdrawal = begin_amount * retirement_withdrawal
-            retirement_withdrawal = retirement_withdrawal * (1 + retirement_inflation) # Adjust for inflation
-            
-            # Calculate growth (after withdrawal)
-            growth = (begin_amount - withdrawal / 2) * annual_return_rate
-            
-            # Calculate end amount
-            end_amount = begin_amount - withdrawal + growth
-            
-            retirement_data.append({
-                "year": year,
-                "age": current_age,
-                "begin_amount": float(round(begin_amount, 2)),
-                "contribution": 0,
-                "growth": float(round(growth, 2)),
-                "end_amount": float(round(end_amount, 2)),
-                "withdrawal": float(round(withdrawal, 2))
-            })
-            
-            current_amount = end_amount
+            withdrawal *= (1 + retirement_inflation) # Adjust for inflation
             year = year + 1
         
         fund['retirement_projection'] = retirement_data

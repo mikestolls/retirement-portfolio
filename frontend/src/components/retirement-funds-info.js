@@ -235,6 +235,7 @@ export default function RetirementFundsInfo() {
                     <TableRow>                      
                       <TableCell align='right'>Year</TableCell>
                       <TableCell align='right'>Age</TableCell>     
+                      <TableCell align='right'>Annual Return Rate</TableCell>     
                       <TableCell align='right'>Begin Amount</TableCell>           
                       <TableCell align='right'>Contributions</TableCell>    
                       <TableCell align='right'>Growth</TableCell>
@@ -247,11 +248,12 @@ export default function RetirementFundsInfo() {
                       <TableRow key={yearIndex}>
                         <TableCell align='right'>{yearData.year}</TableCell>
                         <TableCell align='right'>{yearData.age}</TableCell>
-                        <TableCell align='right'>{yearData.begin_amount}</TableCell>
-                        <TableCell align='right'>{yearData.contribution}</TableCell>
-                        <TableCell align='right'>{yearData.growth}</TableCell>
-                        <TableCell align='right'>{yearData.withdrawal}</TableCell>
-                        <TableCell align='right'>{yearData.end_amount}</TableCell>
+                        <TableCell align='right'>{(yearData.annual_return_rate * 100).toFixed(2)}%</TableCell>
+                        <TableCell align='right'>${yearData.begin_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell align='right'>${yearData.contribution.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell align='right'>${yearData.growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell align='right'>${yearData.withdrawal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell align='right'>${yearData.end_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
