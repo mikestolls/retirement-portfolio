@@ -22,8 +22,10 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
             raise ValueError(f"Family member with ID {family_member_id} not found in family info")
 
         age = int(family_member['age'])
+        life_expectancy = int(family_member['life-expectancy'])
         retirement_age = int(family_member['retirement-age'])
-        death_age = 90  # Assumption
+        retirement_withdrawal = float(family_member['retirement-withdrawal']) * 0.01
+        retirement_inflation = float(family_member['retirement-inflation']) * 0.01
     
         # Convert numeric inputs to Decimal for precise financial calculations
         initial_investment = int(fund['initial-investment'])
@@ -33,8 +35,6 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
     
         # Investment return assumptions
         annual_return_rate = 0.07 # 7% average annual return
-        inflation_rate = 0.03 # 3% average inflation rate
-        withdrawal_rate = 0.04 # 4% safe withdrawal rate
         
         retirement_data = []
         current_amount = initial_investment
@@ -65,12 +65,13 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
             year = year + 1
         
         # Post-retirement phase: distribution
-        for current_age in range(retirement_age + 1, death_age + 1):
+        for current_age in range(retirement_age + 1, life_expectancy + 1):
             begin_amount = current_amount
             contribution = 0
             
             # Calculate withdrawal
-            withdrawal = begin_amount * withdrawal_rate
+            withdrawal = begin_amount * retirement_withdrawal
+            retirement_withdrawal = retirement_withdrawal * (1 + retirement_inflation) # Adjust for inflation
             
             # Calculate growth (after withdrawal)
             growth = (begin_amount - withdrawal / 2) * annual_return_rate

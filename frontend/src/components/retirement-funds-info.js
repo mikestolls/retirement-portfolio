@@ -83,8 +83,11 @@ export default function RetirementFundsInfo() {
     event.preventDefault();
     
     // Update the specific member in the context
-    await updateRetirementFundInfoData(index, formStates[index]);
-    setFormData({}); // Clear form after successful update
+    const success = await updateRetirementFundInfoData(index, formStates[index]);
+    if (success) {
+      setFormData({}); // Clear form after successful update
+      await fetchRetirementFundInfoData(); // Refresh data with new projections
+    }
   }
   
   const handleChange = (index) => (event) => {
@@ -231,10 +234,12 @@ export default function RetirementFundsInfo() {
                   <TableHead>
                     <TableRow>                      
                       <TableCell align='right'>Year</TableCell>
-                      <TableCell align='right'>Age</TableCell>                
+                      <TableCell align='right'>Age</TableCell>     
+                      <TableCell align='right'>Begin Amount</TableCell>           
                       <TableCell align='right'>Contributions</TableCell>    
                       <TableCell align='right'>Growth</TableCell>
-                      <TableCell align='right'>End Balance</TableCell>
+                      <TableCell align='right'>Withdrawal</TableCell>
+                      <TableCell align='right'>End Amount</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -242,8 +247,10 @@ export default function RetirementFundsInfo() {
                       <TableRow key={yearIndex}>
                         <TableCell align='right'>{yearData.year}</TableCell>
                         <TableCell align='right'>{yearData.age}</TableCell>
+                        <TableCell align='right'>{yearData.begin_amount}</TableCell>
                         <TableCell align='right'>{yearData.contribution}</TableCell>
                         <TableCell align='right'>{yearData.growth}</TableCell>
+                        <TableCell align='right'>{yearData.withdrawal}</TableCell>
                         <TableCell align='right'>{yearData.end_amount}</TableCell>
                       </TableRow>
                     ))}

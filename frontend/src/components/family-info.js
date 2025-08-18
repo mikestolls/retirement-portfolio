@@ -115,6 +115,7 @@ export default function FamilyInfo() {
                 'id': crypto.randomUUID(),
                 'name': 'New Member',
                 'age': 18,
+                'life-expectancy': 90,
                 'retirement-age': 65,
                 'retirement-withdrawal': 4,
                 'retirement-inflation': 2,
@@ -151,6 +152,33 @@ export default function FamilyInfo() {
                     type="number"
                     slotProps={{ htmlInput: { min: 0, max: 150 } }}
                     value={getFormData(index)['retirement-age'] || member['retirement-age']}
+                    onChange={handleChange(index)}/>
+                  <TextField
+                    label="Life Expectancy"
+                    name="life-expectancy"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 150 } }}
+                    value={getFormData(index)['life-expectancy'] || member['life-expectancy']}
+                    onChange={handleChange(index)}/>
+                  <TextField
+                    label="Retirement Withdrawal (%)"
+                    name="retirement-withdrawal"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 20, step: 0.1 } }}
+                    value={getFormData(index)['retirement-withdrawal'] || member['retirement-withdrawal']}
+                    onChange={handleChange(index)}/>
+                  <TextField
+                    label="Retirement Inflation (%)"
+                    name="retirement-inflation"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 20, step: 0.1 } }}
+                    value={getFormData(index)['retirement-inflation'] || member['retirement-inflation']}
                     onChange={handleChange(index)}/>
                 </Stack>
                 <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
