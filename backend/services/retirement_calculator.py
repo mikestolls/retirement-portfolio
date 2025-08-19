@@ -1,6 +1,13 @@
 # Retirement calculator service - contains business logic for retirement calculations
 from decimal import Decimal
 from datetime import datetime
+        
+def get_return_rate_for_age(age, return_rate_params):
+    for param in return_rate_params:
+        if param['fromAge'] <= age <= param['toAge']:
+            return float(param['returnRate']) * 0.01
+        
+    return 0.07  # Default 7% if no matching range
 
 def calculate_retirement_projection(retirement_fund_info, family_info):
     """
@@ -32,8 +39,8 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
         regular_contribution = int(fund['regular-contribution'])
         contribution_frequency = int(fund['contribution-frequency'])
     
-        # Investment return assumptions
-        annual_return_rate = 0.07 # 7% average annual return
+        # Get return rate parameters from fund data
+        return_rate_params = fund.get('return-rate-params', [])
         
         retirement_data = []
         current_amount = initial_investment
@@ -42,6 +49,7 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
         # Calculate retirement projection for each year
         for current_age in range(age, life_expectancy + 1):
             begin_amount = current_amount
+            annual_return_rate = get_return_rate_for_age(current_age, return_rate_params)
 
             if current_age >= retirement_age:   
                 # in retirement phase           

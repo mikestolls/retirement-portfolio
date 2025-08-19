@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useEffect } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
-import { Box, Tabs, Tab, Button, Stack, Divider, TextField, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper, Typography } from '@mui/material';
+import { Box, Tabs, Tab, Button, Stack, Divider, TextField, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper, Typography, Drawer, IconButton } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
+import TuneIcon from '@mui/icons-material/Tune';
+import CloseIcon from '@mui/icons-material/Close';
 import PropTypes from 'prop-types';
 
 import { BarChart } from '@mui/x-charts/BarChart';
@@ -79,11 +81,25 @@ export default function RetirementFundsInfo() {
     setFormStates(prev => ({ ...prev, [index]: data }));
   };
 
+  // Drawer state
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [returnRateParams, setReturnRateParams] = useState({});
+  
+  const getReturnRateParams = (index) => returnRateParams[index] || [];
+  const setReturnRateParamsForFund = (fundIndex, params) => {
+    setReturnRateParams(prev => ({ ...prev, [fundIndex]: params }));
+  };
+
   async function handleSubmit(event, index) {
     event.preventDefault();
     
-    // Update the specific member in the context
-    const success = await updateRetirementFundInfoData(index, formStates[index]);
+    // Include return rate parameters in the update
+    const updateData = {
+      ...formStates[index],
+      'return-rate-params': getReturnRateParams(index)
+    };
+    
+    const success = await updateRetirementFundInfoData(index, updateData);
     if (success) {
       setFormData({}); // Clear form after successful update
       await fetchRetirementFundInfoData(); // Refresh data with new projections
@@ -142,7 +158,8 @@ export default function RetirementFundsInfo() {
                 'family-member-id': familyInfoData?.family_info_data?.[0]?.id || '',
                 'initial-investment': 1000,
                 'regular-contribution': 10,
-                'contribution-frequency': 12
+                'contribution-frequency': 12,
+                'return-rate-params': []
               })}/>
           </Tabs>
       </Box>
@@ -225,6 +242,9 @@ export default function RetirementFundsInfo() {
                   <Button variant="contained" disabled={loading} onClick={() => deleteFund(index)}>
                       {loading ? 'Deleting...' : 'Delete'}
                   </Button>
+                  <Button variant="outlined" onClick={() => setDrawerOpen(index)} startIcon={<TuneIcon />}>
+                      Return Rates
+                  </Button>
                 </Stack>
               </Paper>
             </form>
@@ -278,6 +298,83 @@ export default function RetirementFundsInfo() {
           </div>
         </RetirementFundsTabPanel>
       ))}
+      
+      <Drawer
+        anchor="right"
+        open={drawerOpen !== false}
+        onClose={() => setDrawerOpen(false)}
+        sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">Return Rate Parameters</Typography>
+          <IconButton onClick={() => setDrawerOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        
+        {drawerOpen !== false && getReturnRateParams(drawerOpen).map((param, paramIndex) => (
+          <Paper key={paramIndex} elevation={1} sx={{ p: 2, mb: 2 }}>
+            <Stack spacing={2}>
+              <TextField
+                label="From Age"
+                type="number"
+                size="small"
+                value={param.fromAge || ''}
+                onChange={(e) => {
+                  const params = [...getReturnRateParams(drawerOpen)];
+                  params[paramIndex] = { ...params[paramIndex], fromAge: parseInt(e.target.value) };
+                  setReturnRateParamsForFund(drawerOpen, params);
+                }}
+              />
+              <TextField
+                label="To Age"
+                type="number"
+                size="small"
+                value={param.toAge || ''}
+                onChange={(e) => {
+                  const params = [...getReturnRateParams(drawerOpen)];
+                  params[paramIndex] = { ...params[paramIndex], toAge: parseInt(e.target.value) };
+                  setReturnRateParamsForFund(drawerOpen, params);
+                }}
+              />
+              <TextField
+                label="Return Rate (%)"
+                type="number"
+                size="small"
+                slotProps={{ htmlInput: { step: 0.1 } }}
+                value={param.returnRate || ''}
+                onChange={(e) => {
+                  const params = [...getReturnRateParams(drawerOpen)];
+                  params[paramIndex] = { ...params[paramIndex], returnRate: parseFloat(e.target.value) };
+                  setReturnRateParamsForFund(drawerOpen, params);
+                }}
+              />
+              <Button 
+                variant="outlined" 
+                size="small"
+                onClick={() => {
+                  const params = getReturnRateParams(drawerOpen).filter((_, i) => i !== paramIndex);
+                  setReturnRateParamsForFund(drawerOpen, params);
+                }}
+              >
+                Remove
+              </Button>
+            </Stack>
+          </Paper>
+        ))}
+        
+        <Button 
+          variant="contained" 
+          onClick={() => {
+            if (drawerOpen !== false) {
+              const params = [...getReturnRateParams(drawerOpen), { fromAge: 25, toAge: 65, returnRate: 7.0 }];
+              setReturnRateParamsForFund(drawerOpen, params);
+            }
+          }}
+        >
+          Add Return Rate Range
+        </Button>
+      </Drawer>
     </div>
   );
 }
