@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useEffect } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
-import { Box, Tabs, Tab, Button, Stack, TextField } from '@mui/material';
+import { Box, Tabs, Tab, Button, Stack, Paper, TextField } from '@mui/material';
 import PropTypes from 'prop-types';
 
 function FamilyTabPanel(props) {
@@ -115,6 +115,7 @@ export default function FamilyInfo() {
                 'id': crypto.randomUUID(),
                 'name': 'New Member',
                 'age': 18,
+                'life-expectancy': 90,
                 'retirement-age': 65,
                 'retirement-withdrawal': 4,
                 'retirement-inflation': 2,
@@ -125,42 +126,70 @@ export default function FamilyInfo() {
         <FamilyTabPanel key={index} value={activeTab} index={index}>
           <div>
             <form onSubmit={(e) => handleSubmit(e, index)}>
-              <Stack spacing={2}>
-                <TextField 
-                  label="Name" 
-                  name="name"
-                  variant="standard"
-                  required
-                  value={getFormData(index)['name'] || member['name']}
-                  onChange={handleChange(index)}/>
-                <TextField
-                  label="Age"
-                  name="age"
-                  variant="standard"
-                  required
-                  type="number"
-                  slotProps={{ htmlInput: { min: 0, max: 150 } }}
-                  value={getFormData(index)['age'] || member['age']}
-                  onChange={handleChange(index)}/>
-                <TextField
-                  label="Retirement Age"
-                  name="retirement-age"
-                  variant="standard"
-                  required
-                  type="number"
-                  slotProps={{ htmlInput: { min: 0, max: 150 } }}
-                  value={getFormData(index)['retirement-age'] || member['retirement-age']}
-                  onChange={handleChange(index)}/>
-              </Stack>
-              <p/>
-              <Stack direction="row" spacing={2}>
-                <Button type="submit" variant="contained" disabled={loading}>
-                    {loading ? 'Updating...' : 'Update'}
-                </Button>
-                <Button variant="contained" disabled={loading} onClick={() => deleteMember(index)}>
-                    {loading ? 'Deleting...' : 'Delete'}
-                </Button>
-              </Stack>
+              <Paper elevation={2} sx={{ p: 1, backgroundColor: '#f5f5f5' }}>
+                <Stack spacing={1}>
+                  <TextField 
+                    label="Name" 
+                    name="name"
+                    variant="standard"
+                    required
+                    value={getFormData(index)['name'] || member['name']}
+                    onChange={handleChange(index)}/>
+                  <TextField
+                    label="Age"
+                    name="age"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 150 } }}
+                    value={getFormData(index)['age'] || member['age']}
+                    onChange={handleChange(index)}/>
+                  <TextField
+                    label="Retirement Age"
+                    name="retirement-age"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 150 } }}
+                    value={getFormData(index)['retirement-age'] || member['retirement-age']}
+                    onChange={handleChange(index)}/>
+                  <TextField
+                    label="Life Expectancy"
+                    name="life-expectancy"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 150 } }}
+                    value={getFormData(index)['life-expectancy'] || member['life-expectancy']}
+                    onChange={handleChange(index)}/>
+                  <TextField
+                    label="Retirement Withdrawal (%)"
+                    name="retirement-withdrawal"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 20, step: 0.1 } }}
+                    value={getFormData(index)['retirement-withdrawal'] || member['retirement-withdrawal']}
+                    onChange={handleChange(index)}/>
+                  <TextField
+                    label="Retirement Inflation (%)"
+                    name="retirement-inflation"
+                    variant="standard"
+                    required
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0, max: 20, step: 0.1 } }}
+                    value={getFormData(index)['retirement-inflation'] || member['retirement-inflation']}
+                    onChange={handleChange(index)}/>
+                </Stack>
+                <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                  <Button type="submit" variant="contained" disabled={loading}>
+                      {loading ? 'Updating...' : 'Update'}
+                  </Button>
+                  <Button variant="contained" disabled={loading} onClick={() => deleteMember(index)}>
+                      {loading ? 'Deleting...' : 'Delete'}
+                  </Button>
+                </Stack>
+              </Paper>
             </form>
           </div>
         </FamilyTabPanel>
