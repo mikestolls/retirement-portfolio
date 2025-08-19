@@ -85,9 +85,22 @@ export default function RetirementFundsInfo() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [returnRateParams, setReturnRateParams] = useState({});
   
-  const getReturnRateParams = (index) => returnRateParams[index] || [];
+  const getReturnRateParams = (index) => {
+    const params = returnRateParams[index] || fund?.['return-rate-params'] || [];
+    return params;
+  };
   const setReturnRateParamsForFund = (fundIndex, params) => {
     setReturnRateParams(prev => ({ ...prev, [fundIndex]: params }));
+  };
+  
+  // Initialize return rate params when drawer opens
+  const handleDrawerOpen = (fundIndex) => {
+    const fund = retirementFundInfoData?.retirement_fund_data?.[fundIndex];
+    if (fund && !returnRateParams[fundIndex]) {
+      const existingParams = fund['return-rate-params'] || [];
+      setReturnRateParamsForFund(fundIndex, existingParams);
+    }
+    setDrawerOpen(fundIndex);
   };
 
   async function handleSubmit(event, index) {
@@ -242,7 +255,7 @@ export default function RetirementFundsInfo() {
                   <Button variant="contained" disabled={loading} onClick={() => deleteFund(index)}>
                       {loading ? 'Deleting...' : 'Delete'}
                   </Button>
-                  <Button variant="outlined" onClick={() => setDrawerOpen(index)} startIcon={<TuneIcon />}>
+                  <Button variant="outlined" onClick={() => handleDrawerOpen(index)} startIcon={<TuneIcon />}>
                       Return Rates
                   </Button>
                 </Stack>
@@ -314,11 +327,14 @@ export default function RetirementFundsInfo() {
         
         {drawerOpen !== false && getReturnRateParams(drawerOpen).map((param, paramIndex) => (
           <Paper key={paramIndex} elevation={1} sx={{ p: 2, mb: 2 }}>
-            <Stack spacing={2}>
+            <Stack spacing={1} direction={'row'} alignItems="center">
               <TextField
                 label="From Age"
                 type="number"
                 size="small"
+                variant="standard"
+                sx={{ width: 100 }}
+                slotProps={{ htmlInput: { min: 0, max: 150 } }}
                 value={param.fromAge || ''}
                 onChange={(e) => {
                   const params = [...getReturnRateParams(drawerOpen)];
@@ -330,6 +346,9 @@ export default function RetirementFundsInfo() {
                 label="To Age"
                 type="number"
                 size="small"
+                variant="standard"
+                sx={{ width: 100 }}
+                slotProps={{ htmlInput: { min: 0, max: 150 } }}
                 value={param.toAge || ''}
                 onChange={(e) => {
                   const params = [...getReturnRateParams(drawerOpen)];
@@ -341,7 +360,9 @@ export default function RetirementFundsInfo() {
                 label="Return Rate (%)"
                 type="number"
                 size="small"
-                slotProps={{ htmlInput: { step: 0.1 } }}
+                variant="standard"
+                sx={{ width: 120 }}
+                slotProps={{ htmlInput: { step: 0.1, min: 0, max: 100 } }}
                 value={param.returnRate || ''}
                 onChange={(e) => {
                   const params = [...getReturnRateParams(drawerOpen)];
@@ -349,17 +370,17 @@ export default function RetirementFundsInfo() {
                   setReturnRateParamsForFund(drawerOpen, params);
                 }}
               />
-              <Button 
-                variant="outlined" 
-                size="small"
-                onClick={() => {
-                  const params = getReturnRateParams(drawerOpen).filter((_, i) => i !== paramIndex);
-                  setReturnRateParamsForFund(drawerOpen, params);
-                }}
-              >
-                Remove
-              </Button>
             </Stack>
+            <Button sx={{ mt: 2 }}
+              variant="contained" 
+              size="small"
+              onClick={() => {
+                const params = getReturnRateParams(drawerOpen).filter((_, i) => i !== paramIndex);
+                setReturnRateParamsForFund(drawerOpen, params);
+              }}
+            >
+              Remove
+            </Button>
           </Paper>
         ))}
         
