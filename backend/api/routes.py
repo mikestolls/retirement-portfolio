@@ -86,13 +86,17 @@ def get_retirement_fund_data(user_id):
                 "status": "error"
             }), 400
             
-        # Get specific portfolio
+        # Get retirement fund info and family info
         retirement_fund_info = db_get_retirement_fund_info(user_id)
         if not retirement_fund_info:
             return jsonify({"message": "Retirement fund info not found", "status": "error"}), 404
+            
+        family_info = db_get_family_info(user_id)
+        if not family_info:
+            return jsonify({"message": "Family info not found", "status": "error"}), 404
                         
-        # Calculate retirement projection
-        # retirement_data = calculate_retirement_projection(portfolio['input_data'])
+        # Calculate retirement projection with both datasets
+        calculate_retirement_projection(retirement_fund_info, family_info)
 
         return jsonify(retirement_fund_info), 200
     except Exception as e:
@@ -131,6 +135,11 @@ def update_retirement_fund_data(user_id):
         
         # Get validated input data
         validated_input = retirement_fund_info_data.to_dict()
+
+        # remove the retirement_projection key if it exists. wont be saved to db
+        for fund in validated_input['retirement_fund_data']:
+            if 'retirement_projection' in fund:
+                del fund['retirement_projection']
         
         saved_id = db_save_retirement_fund_info(user_id, validated_input)
         
