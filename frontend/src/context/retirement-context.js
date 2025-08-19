@@ -1,13 +1,43 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 
 const RetirementContext = createContext();
 
 export const RetirementProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const initRef = useRef(false);
 
   const user_id = 'test_user'; // Replace with actual user ID logic
   
+  useEffect(() => {
+    if (initRef.current) return; // Prevent duplicate runs
+    initRef.current = true;
+
+    const initializeDefaultData = async () => {
+      if (process.env.REACT_APP_BACKEND_API_URL) {
+        try {
+          // Save default family info
+          await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_family_info/${user_id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(familyInfoData)
+          });
+
+          // Save default retirement fund info
+          await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_fund_data/${user_id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(retirementFundInfoData)
+          });
+        } catch (error) {
+          console.warn('Failed to initialize default data:', error);
+        }
+      }
+    };
+
+    initializeDefaultData();
+  }, []); // Run once on mount
+
   // defaulting family info data
   const [familyInfoData, setFamilyInfoData] = useState({ family_info_data: [
     {
@@ -130,7 +160,7 @@ export const RetirementProvider = ({ children }) => {
           : fundIndex < (retirementFundInfoData?.retirement_fund_data?.length || 0)
             ? // Update existing fund
               (retirementFundInfoData?.retirement_fund_data || []).map((fund, index) => 
-                index === fundIndex ? { ...fund, ...updatedFund } : fund
+                index === fundIndex ? { ...fund, ...updatedFund } : fund 
               )
             : // Add new fund
               [...(retirementFundInfoData?.retirement_fund_data || []), updatedFund]

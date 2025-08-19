@@ -21,10 +21,7 @@ class RetirementFundData:
 
             if name is not None and len(name) < 1:
                 return False, "Name must be at least 1 character long"
-            
-            if family_member_id is None or len(family_member_id) < 1:
-                return False, "Family member ID must be provided"
-                                    
+                                                
             if initial_investment < 0:
                 return False, "Initial investment must be non-negative"
             
