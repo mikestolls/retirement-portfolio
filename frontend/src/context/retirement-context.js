@@ -46,8 +46,6 @@ export const RetirementProvider = ({ children }) => {
       'age': 39,
       'life-expectancy': 90,
       'retirement-age': 65,
-      'retirement-withdrawal': 4,
-      'retirement-inflation': 2,
     }
   ] });
 

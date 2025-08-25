@@ -2,37 +2,12 @@ import React, { useState } from 'react';
 import { useEffect } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
-import { Box, Tabs, Tab, Button, Stack, Paper, TextField } from '@mui/material';
-import PropTypes from 'prop-types';
+import { Box, Tabs, Tab, Button, Stack, Paper, TextField, Card, CardContent, LinearProgress, Divider, Drawer, IconButton, Typography } from '@mui/material';
 
-function FamilyTabPanel(props) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`tabpanel-${index}`}
-      aria-labelledby={`tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
-
-FamilyTabPanel.propTypes = {
-  children: PropTypes.node,
-  index: PropTypes.number.isRequired,
-  value: PropTypes.number.isRequired,
-};
-
-function tabProperty(index) {
-  return {
-    id: `tab-${index}`,
-    'aria-controls': `tabpanel-${index}`,
-  };
-}
+// icons
+import PersonIcon from '@mui/icons-material/Person';
+import CloseIcon from '@mui/icons-material/Close';
+import AddIcon from '@mui/icons-material/Add';
 
 export default function FamilyInfo() {
   // Use the shared context
@@ -43,10 +18,30 @@ export default function FamilyInfo() {
     fetchFamilyInfoData(); 
   }, []);
 
-  // handling tab changes
-  const [activeTab, setActiveTab] = React.useState(0);
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
+  // handling card click to edit a member
+  const [selectedMember, setSelectedMember] = useState(null);
+  const handleCardClick = (index) => {
+    setEditingMember(index);
+    setDrawerOpen(true);
+  };
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
+
+  const handleDrawerClose = async () => {
+    // Only update if there are changes in formStates for this member
+    if (editingMember !== null && formStates[editingMember] && Object.keys(formStates[editingMember]).length > 0) {
+      await updateFamilyInfoData(editingMember, formStates[editingMember]);
+      // Clear the form state after successful update
+      setFormStates(prev => {
+        const newStates = { ...prev };
+        delete newStates[editingMember];
+        return newStates;
+      });
+    }
+
+    setDrawerOpen(false);
+    setEditingMember(null);
   };
 
   // Form state management
@@ -89,111 +84,197 @@ export default function FamilyInfo() {
         }
         // Skip the deleted index
       });
-
-      // If deleting the last member and it's the active tab, shift left
-      if (index === familyInfoData?.family_info_data?.length - 1 && activeTab === index) {
-        setActiveTab(Math.max(0, index - 1));
-      }
       
       return newStates;
     });
   };
 
+  const handleAddMember = () => {
+    updateFamilyInfoData(familyInfoData?.family_info_data?.length || 0, {
+      'id': crypto.randomUUID(),
+      'name': 'New Member',
+      'age': 18,
+      'life-expectancy': 90,
+      'retirement-age': 65,
+    });
+  };
+
+  const renderFamilyCards = () => {
+    if (loading || error) return null;
+    
+    const memberCards = familyInfoData?.family_info_data?.length ? 
+      familyInfoData.family_info_data.map((member, index) => (
+        <Card 
+          className="rounded-2xl shadow-md" 
+          sx={{ 
+            mb: 2, 
+            width: 300,
+            minWidth: 300, // Prevent shrinking
+            cursor: 'pointer',
+            '&:hover': {
+              backgroundColor: '#d4d4d4ff',
+              transform: 'translateY(-2px)',
+              boxShadow: 3
+            },
+            transition: 'all 0.2s ease-in-out'
+          }} 
+          key={index}
+          onClick={() => handleCardClick(index)}
+        >
+          <CardContent className="p-4">
+            <Stack direction="row" spacing={1} alignItems="center">
+              <PersonIcon/>
+              <h3 className="text-sm">{member['name']}</h3>
+            </Stack>
+            <Stack direction={"column"} spacing={0.5} alignItems="left" className="mb-2">
+              <p className="text-sm">Age: {member['age']} | Retirement Age: {member['retirement-age']}</p>
+              <p className="text-sm">Life Expectancy: {member['life-expectancy']}</p>
+              <p className="text-sm">Balance: </p>
+            </Stack>
+            <LinearProgress variant="determinate" value={50} className="mt-2" />
+          </CardContent>
+        </Card>
+      )) : [];
+
+    // Add Member card
+    const addMemberCard = (
+      <Card 
+        className="rounded-2xl shadow-md" 
+        sx={{ 
+          mb: 2, 
+          width: 300,
+          minWidth: 300,
+          cursor: 'pointer',
+          border: '2px dashed #ccc',
+          backgroundColor: '#f9f9f9',
+          '&:hover': {
+            backgroundColor: '#e8f5e8',
+            borderColor: '#4caf50',
+            transform: 'translateY(-2px)',
+            boxShadow: 3
+          },
+          transition: 'all 0.2s ease-in-out'
+        }} 
+        key="add-member"
+        onClick={handleAddMember}
+      >
+        <CardContent className="p-4">
+          <Stack direction="column" spacing={2} alignItems="center" justifyContent="center" sx={{ minHeight: 120 }}>
+            <AddIcon sx={{ fontSize: 40, color: '#666' }} />
+            <Typography variant="h6" color="textSecondary">
+              Add Member
+            </Typography>
+          </Stack>
+        </CardContent>
+      </Card>
+    );
+
+    return [...memberCards, addMemberCard];
+  };
+
   return (
     <div>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={activeTab} onChange={handleTabChange} aria-label='Family Info Tabs'>
-            {familyInfoData?.family_info_data?.map((member, index) => (
-              <Tab
-                key={index}
-                label={member.name}
-                {...tabProperty(0)}
-              />
-            ))}
-            <Tab label="Add Member" {...tabProperty(familyInfoData?.family_info_data?.length || 0)} onClick={() => 
-              updateFamilyInfoData(familyInfoData?.family_info_data?.length, {
-                'id': crypto.randomUUID(),
-                'name': 'New Member',
-                'age': 18,
-                'life-expectancy': 90,
-                'retirement-age': 65,
-                'retirement-withdrawal': 4,
-                'retirement-inflation': 2,
-              })}/>
-          </Tabs>
+      <h2>Family Information</h2>
+      {loading && <p>Loading...</p>}
+      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+      {!loading && !error && familyInfoData?.family_info_data?.length === 0 && (
+        <Card sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
+          <p>No family members found. Please add a member.</p>
+        </Card>
+      )}
+      
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          overflowX: 'auto',
+          gap: 2, 
+          pb: 1,
+          '&::-webkit-scrollbar': {
+            height: 8,
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: '#f1f1f1',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: '#888',
+            borderRadius: 4,
+          }
+        }}
+      >
+        {renderFamilyCards()}
       </Box>
-      {familyInfoData?.family_info_data?.map((member, index) => (
-        <FamilyTabPanel key={index} value={activeTab} index={index}>
-          <div>
-            <form onSubmit={(e) => handleSubmit(e, index)}>
-              <Paper elevation={2} sx={{ p: 1, backgroundColor: '#f5f5f5' }}>
-                <Stack spacing={1}>
-                  <TextField 
-                    label="Name" 
-                    name="name"
-                    variant="standard"
-                    required
-                    value={getFormData(index)['name'] || member['name']}
-                    onChange={handleChange(index)}/>
-                  <TextField
-                    label="Age"
-                    name="age"
-                    variant="standard"
-                    required
-                    type="number"
-                    slotProps={{ htmlInput: { min: 0, max: 150 } }}
-                    value={getFormData(index)['age'] || member['age']}
-                    onChange={handleChange(index)}/>
-                  <TextField
-                    label="Retirement Age"
-                    name="retirement-age"
-                    variant="standard"
-                    required
-                    type="number"
-                    slotProps={{ htmlInput: { min: 0, max: 150 } }}
-                    value={getFormData(index)['retirement-age'] || member['retirement-age']}
-                    onChange={handleChange(index)}/>
-                  <TextField
-                    label="Life Expectancy"
-                    name="life-expectancy"
-                    variant="standard"
-                    required
-                    type="number"
-                    slotProps={{ htmlInput: { min: 0, max: 150 } }}
-                    value={getFormData(index)['life-expectancy'] || member['life-expectancy']}
-                    onChange={handleChange(index)}/>
-                  <TextField
-                    label="Retirement Withdrawal (%)"
-                    name="retirement-withdrawal"
-                    variant="standard"
-                    required
-                    type="number"
-                    slotProps={{ htmlInput: { min: 0, max: 20, step: 0.1 } }}
-                    value={getFormData(index)['retirement-withdrawal'] || member['retirement-withdrawal']}
-                    onChange={handleChange(index)}/>
-                  <TextField
-                    label="Retirement Inflation (%)"
-                    name="retirement-inflation"
-                    variant="standard"
-                    required
-                    type="number"
-                    slotProps={{ htmlInput: { min: 0, max: 20, step: 0.1 } }}
-                    value={getFormData(index)['retirement-inflation'] || member['retirement-inflation']}
-                    onChange={handleChange(index)}/>
-                </Stack>
-                <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                  <Button type="submit" variant="contained" disabled={loading}>
-                      {loading ? 'Updating...' : 'Update'}
-                  </Button>
-                  <Button variant="contained" disabled={loading} onClick={() => deleteMember(index)}>
-                      {loading ? 'Deleting...' : 'Delete'}
-                  </Button>
-                </Stack>
-              </Paper>
-            </form>
-          </div>
-        </FamilyTabPanel>
-      ))}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={handleDrawerClose}
+        disableEnforceFocus
+        disableAutoFocus
+      >
+        <Box sx={{ width: 400, p: 3 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="h6">Edit Family Member</Typography>
+            <IconButton onClick={handleDrawerClose}>
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+          
+          {editingMember !== null && familyInfoData?.family_info_data?.[editingMember] && (
+            <Stack spacing={2}>
+              <TextField 
+                label="Name" 
+                name="name"
+                variant="outlined"
+                fullWidth
+                value={getFormData(editingMember)['name'] || familyInfoData.family_info_data[editingMember]['name']}
+                onChange={handleChange(editingMember)}
+              />
+              <TextField
+                label="Age"
+                name="age"
+                variant="outlined"
+                fullWidth
+                type="number"
+                slotProps={{ htmlInput: { min: 0, max: 120 } }}
+                value={getFormData(editingMember)['age'] || familyInfoData.family_info_data[editingMember]['age']}
+                onChange={handleChange(editingMember)}
+              />
+              <TextField
+                label="Retirement Age"
+                name="retirement-age"
+                variant="outlined"
+                fullWidth
+                type="number"
+                slotProps={{ htmlInput: { min: 50, max: 80 } }}
+                value={getFormData(editingMember)['retirement-age'] || familyInfoData.family_info_data[editingMember]['retirement-age']}
+                onChange={handleChange(editingMember)}
+              />
+              <TextField
+                label="Life Expectancy"
+                name="life-expectancy"
+                variant="outlined"
+                fullWidth
+                type="number"
+                slotProps={{ htmlInput: { min: 60, max: 120 } }}
+                value={getFormData(editingMember)['life-expectancy'] || familyInfoData.family_info_data[editingMember]['life-expectancy']}
+                onChange={handleChange(editingMember)}
+              />
+              <Button 
+                variant="outlined" 
+                color="error" 
+                disabled={loading}
+                fullWidth
+                sx={{ mt: 2 }}
+                onClick={() => {
+                  deleteMember(editingMember);
+                  setDrawerOpen(false);
+                }}
+              >
+                {loading ? 'Deleting...' : 'Delete Member'}
+              </Button>
+            </Stack>
+          )}
+        </Box>
+      </Drawer>
     </div>
   );
 }

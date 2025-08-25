@@ -31,8 +31,6 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
         age = int(family_member['age'])
         life_expectancy = int(family_member['life-expectancy'])
         retirement_age = int(family_member['retirement-age'])
-        retirement_withdrawal = float(family_member['retirement-withdrawal']) * 0.01
-        retirement_inflation = float(family_member['retirement-inflation']) * 0.01
     
         # Convert numeric inputs to Decimal for precise financial calculations
         initial_investment = int(fund['initial-investment'])
@@ -47,25 +45,18 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
         year = datetime.now().year
 
         # Calculate retirement projection for each year
-        for current_age in range(age, life_expectancy + 1):
+        for current_age in range(age, retirement_age + 1):
             begin_amount = current_amount
             annual_return_rate = get_return_rate_for_age(current_age, return_rate_params)
-
-            if current_age >= retirement_age:   
-                # in retirement phase           
-                withdrawal = begin_amount * retirement_withdrawal
-                contribution = 0
-            else:
-                # in accumulation phase
-                withdrawal = 0
-                contribution = regular_contribution * contribution_frequency
+            
+            # in accumulation phase
+            contribution = regular_contribution * contribution_frequency
 
             # Calculate growth (compounded)
             inc_return_rate = annual_return_rate / contribution_frequency
-            inc_withdrawal = withdrawal / contribution_frequency
             inc_contribution = contribution / contribution_frequency
             for i in range(contribution_frequency):
-                current_amount = (current_amount + inc_contribution - inc_withdrawal) * (1 + inc_return_rate)
+                current_amount = (current_amount + inc_contribution) * (1 + inc_return_rate)
 
             # Calculate growth
             growth = current_amount - begin_amount - contribution + withdrawal
@@ -76,12 +67,10 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
                 "annual_return_rate": annual_return_rate,
                 "begin_amount": float(round(begin_amount, 2)),
                 "contribution": float(round(contribution, 2)),
-                "withdrawal": float(round(withdrawal, 2)),
                 "growth": float(round(growth, 2)),
                 "end_amount": float(round(current_amount, 2))
             })
             
-            withdrawal *= (1 + retirement_inflation) # Adjust for inflation
             year = year + 1
         
         fund['retirement_projection'] = retirement_data
