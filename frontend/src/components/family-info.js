@@ -100,7 +100,7 @@ export default function FamilyInfo() {
   };
 
   const renderFamilyCards = () => {
-    if (loading || error) return null;
+    if (error) return null;
     
     const memberCards = familyInfoData?.family_info_data?.length ? 
       familyInfoData.family_info_data.map((member, index) => (
@@ -175,7 +175,6 @@ export default function FamilyInfo() {
   return (
     <div>
       <h2>Family Information</h2>
-      {loading && <p>Loading...</p>}
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
       {!loading && !error && familyInfoData?.family_info_data?.length === 0 && (
         <Card sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
