@@ -149,8 +149,8 @@ export default function FamilyInfo() {
           backgroundColor: '#f9f9f9',
           '&:hover': {
             backgroundColor: '#e8f5e8',
-            borderColor: '#4caf50',
-            transform: 'translateY(-2px)',
+            border: '2px dashed #4caf50',
+            transform: 'translateY(0px)',
             boxShadow: 3
           },
           transition: 'all 0.2s ease-in-out'

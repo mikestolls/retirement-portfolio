@@ -26,10 +26,10 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
         family_member = next((member for member in family_info.get('family_info_data', []) if member['id'] == family_member_id), None)
 
         if not family_member:
-            raise ValueError(f"Family member with ID {family_member_id} not found in family info")
+            fund['retirement_projection'] = []
+            continue
 
         age = int(family_member['age'])
-        life_expectancy = int(family_member['life-expectancy'])
         retirement_age = int(family_member['retirement-age'])
     
         # Convert numeric inputs to Decimal for precise financial calculations
@@ -59,7 +59,7 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
                 current_amount = (current_amount + inc_contribution) * (1 + inc_return_rate)
 
             # Calculate growth
-            growth = current_amount - begin_amount - contribution + withdrawal
+            growth = current_amount - begin_amount - contribution
             
             retirement_data.append({
                 "year": year,

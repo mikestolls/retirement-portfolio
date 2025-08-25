@@ -68,6 +68,20 @@ export default function RetirementFundsInfo() {
     fetchFamilyInfoData();
   }, []);
 
+  // Validate family member IDs when data loads
+  useEffect(() => {
+    if (retirementFundInfoData?.retirement_fund_data && familyInfoData?.family_info_data) {
+      retirementFundInfoData.retirement_fund_data.forEach((fund, index) => {
+        const selectedId = fund['family-member-id'];
+        const memberExists = familyInfoData.family_info_data.some(member => member.id === selectedId);
+        if (!memberExists && familyInfoData.family_info_data.length > 0) {
+          const defaultId = familyInfoData.family_info_data[0].id;
+          setFormData(index, { ...getFormData(index), 'family-member-id': defaultId });
+        }
+      });
+    }
+  }, [retirementFundInfoData, familyInfoData]);
+
   // handling tab changes
   const [activeTab, setActiveTab] = React.useState(0);
   const handleTabChange = (event, newValue) => {
@@ -86,6 +100,7 @@ export default function RetirementFundsInfo() {
   const [returnRateParams, setReturnRateParams] = useState({});
   
   const getReturnRateParams = (index) => {
+    const fund = retirementFundInfoData?.retirement_fund_data?.[index];
     const params = returnRateParams[index] || fund?.['return-rate-params'] || [];
     return params;
   };
@@ -198,7 +213,11 @@ export default function RetirementFundsInfo() {
                     variant="standard"
                     align="left"
                     required
-                    value={getFormData(index)['family-member-id'] || fund['family-member-id'] || ''}
+                    value={(() => {
+                      const selectedId = getFormData(index)['family-member-id'] || fund['family-member-id'] || '';
+                      const memberExists = familyInfoData?.family_info_data?.some(member => member.id === selectedId);
+                      return memberExists ? selectedId : (familyInfoData?.family_info_data?.[0]?.id || '');
+                    })()}
                     onChange={handleChange(index)}>
                     {familyInfoData?.family_info_data?.map((member, memberIndex) => {
                       const memberId = member.id
@@ -272,7 +291,6 @@ export default function RetirementFundsInfo() {
                       <TableCell align='right'>Begin Amount</TableCell>           
                       <TableCell align='right'>Contributions</TableCell>    
                       <TableCell align='right'>Growth</TableCell>
-                      <TableCell align='right'>Withdrawal</TableCell>
                       <TableCell align='right'>End Amount</TableCell>
                     </TableRow>
                   </TableHead>
@@ -285,7 +303,6 @@ export default function RetirementFundsInfo() {
                         <TableCell align='right'>${yearData.begin_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell align='right'>${yearData.contribution.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell align='right'>${yearData.growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                        <TableCell align='right'>${yearData.withdrawal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell align='right'>${yearData.end_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     ))}
