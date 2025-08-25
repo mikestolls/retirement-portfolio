@@ -29,7 +29,9 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
             fund['retirement_projection'] = []
             continue
 
-        age = int(family_member['age'])
+        # Calculate age from date of birth
+        dob = datetime.strptime(family_member['date-of-birth'], '%Y-%m-%d')
+        age = (datetime.now() - dob).days // 365
         retirement_age = int(family_member['retirement-age'])
     
         # Convert numeric inputs to Decimal for precise financial calculations

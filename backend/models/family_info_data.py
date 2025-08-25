@@ -15,21 +15,21 @@ class FamilyInfoData:
         # need to validate the list of family members
         for member in self.family_info_data:
             name = member.get('name', '')
-            age = int(member.get('age', 0))
+            date_of_birth = member.get('date-of-birth', '')
             life_expectancy = int(member.get('life-expectancy', 0))
             retirement_age = int(member.get('retirement-age', 0))
             
             if name is not None and len(name) < 1:
                 return False, "Name must be at least 1 character long"
                     
-            if age < 0 or age > 150:
-                return False, "Age must be between 0 and 150"
+            if not date_of_birth:
+                return False, "Date of birth is required"
             
-            if life_expectancy < 0 or life_expectancy > 150:
-                return False, "Life expectancy must be between 0 and 150"
+            if life_expectancy < 50 or life_expectancy > 120:
+                return False, "Life expectancy must be between 50 and 120"
             
-            if retirement_age < 0 or retirement_age > 150:
-                return False, "Retirement age must be between 0 and 150"
+            if retirement_age < 50 or retirement_age > 80:
+                return False, "Retirement age must be between 50 and 80"
                             
         return True, ""
     

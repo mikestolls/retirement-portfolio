@@ -63,7 +63,7 @@ export default function FamilyInfo() {
     const { name, value } = event.target;
     setFormData(index, {
       ...getFormData(index),
-      [name]: name === 'age' ? parseInt(value) || 0 : value
+      [name]: ['retirement-age', 'life-expectancy'].includes(name) ? parseInt(value) || 0 : value
     });
   };
 
@@ -93,7 +93,7 @@ export default function FamilyInfo() {
     updateFamilyInfoData(familyInfoData?.family_info_data?.length || 0, {
       'id': crypto.randomUUID(),
       'name': 'New Member',
-      'age': 18,
+      'date-of-birth': '2000-01-01',
       'life-expectancy': 90,
       'retirement-age': 65,
     });
@@ -127,7 +127,7 @@ export default function FamilyInfo() {
               <h3 className="text-sm">{member['name']}</h3>
             </Stack>
             <Stack direction={"column"} spacing={0.5} alignItems="left" className="mb-2">
-              <p className="text-sm">Age: {member['age']} | Retirement Age: {member['retirement-age']}</p>
+              <p className="text-sm">Age: {Math.floor((new Date() - new Date(member['date-of-birth'])) / (365.25 * 24 * 60 * 60 * 1000))} | Retirement Age: {member['retirement-age']}</p>
               <p className="text-sm">Life Expectancy: {member['life-expectancy']}</p>
               <p className="text-sm">Balance: </p>
             </Stack>
@@ -228,13 +228,13 @@ export default function FamilyInfo() {
                 onChange={handleChange(editingMember)}
               />
               <TextField
-                label="Age"
-                name="age"
+                label="Date of Birth"
+                name="date-of-birth"
                 variant="outlined"
                 fullWidth
-                type="number"
-                slotProps={{ htmlInput: { min: 0, max: 120 } }}
-                value={getFormData(editingMember)['age'] || familyInfoData.family_info_data[editingMember]['age']}
+                type="date"
+                slotProps={{ htmlInput: { max: new Date().toISOString().split('T')[0] } }}
+                value={getFormData(editingMember)['date-of-birth'] || familyInfoData.family_info_data[editingMember]['date-of-birth']}
                 onChange={handleChange(editingMember)}
               />
               <TextField
