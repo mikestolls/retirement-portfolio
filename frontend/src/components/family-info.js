@@ -173,7 +173,7 @@ export default function FamilyInfo() {
 
   return (
     <div style={{ width: '100%', overflow: 'hidden' }}>
-      <h2>Family Information</h2>
+      <h2>Family Info</h2>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
       
       <Box 
