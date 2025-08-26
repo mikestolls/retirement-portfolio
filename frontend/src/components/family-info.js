@@ -20,14 +20,15 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 export default function FamilyInfo() {
   // Use the shared context
-  const { updateFamilyInfoData, fetchFamilyInfoData, familyInfoData, householdProjection, loading, error } = useRetirement();
+  const { updateFamilyInfoData, fetchFamilyInfoData, fetchRetirementFundInfoData, familyInfoData, householdProjection, loading, error } = useRetirement();
 
   // Fund visibility state
   const [visibleFunds, setVisibleFunds] = useState({});
 
   // fetch on mount from backend
   useEffect(() => { 
-    fetchFamilyInfoData(); 
+    fetchFamilyInfoData();
+    fetchRetirementFundInfoData();
   }, []);
 
   // handling card click to edit a member
@@ -182,7 +183,6 @@ export default function FamilyInfo() {
 
   return (
     <div style={{ width: '100%', overflow: 'hidden' }}>
-      <h2>Family Info</h2>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
 
       <Box
@@ -277,15 +277,18 @@ export default function FamilyInfo() {
                 label: householdProjection.legendMap[fundKey] || fundKey,
                 area: true,
                 stack: 'funds',
-                color: `hsl(${index * 60}, 70%, 60%)`
+                curve: 'monotoneX',
+                color: `hsl(${index * 60}, 70%, 60%)`,
+                connectNulls: true
               }));
               
               const totalSeries = visibleFunds.total ? [{
                 dataKey: 'total',
                 label: 'Total Household',
                 area: false,
-                curve: 'linear',
-                color: '#000000'
+                curve: 'monotoneX',
+                color: '#000000',
+                connectNulls: true
               }] : [];
               
               return (
@@ -296,7 +299,18 @@ export default function FamilyInfo() {
                     yAxis={[{ label: 'Amount ($)' }]}
                     grid={{ horizontal: true, vertical: true }}
                     series={[...stackedSeries, ...totalSeries]}
-                    height={350}
+                    height={250}
+                    skipAnimation={false}
+                    slotProps={{
+                      popper: {
+                        sx: {
+                          '& .MuiChartsTooltip-root': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            color: 'white'
+                          }
+                        }
+                      }
+                    }}
                   />
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
                     {fundKeys.map((fundKey, index) => (
