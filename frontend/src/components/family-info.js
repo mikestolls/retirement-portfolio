@@ -50,14 +50,6 @@ export default function FamilyInfo() {
   const setFormData = (index, data) => {
     setFormStates(prev => ({ ...prev, [index]: data }));
   };
-
-  async function handleSubmit(event, index) {
-    event.preventDefault();
-    
-    // Update the specific member in the context
-    await updateFamilyInfoData(index, formStates[index]);
-    setFormData({}); // Clear form after successful update
-  }
   
   const handleChange = (index) => (event) => {
     const { name, value } = event.target;
@@ -89,14 +81,17 @@ export default function FamilyInfo() {
     });
   };
 
-  const handleAddMember = () => {
-    updateFamilyInfoData(familyInfoData?.family_info_data?.length || 0, {
+  const handleAddMember = async () => {
+    const newIndex = familyInfoData?.family_info_data?.length || 0;
+    await updateFamilyInfoData(newIndex, {
       'id': crypto.randomUUID(),
       'name': 'New Member',
       'date-of-birth': '2000-01-01',
       'life-expectancy': 90,
       'retirement-age': 65,
     });
+    setEditingMember(newIndex);
+    setDrawerOpen(true);
   };
 
   const renderFamilyCards = () => {
@@ -176,11 +171,6 @@ export default function FamilyInfo() {
     <div>
       <h2>Family Information</h2>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-      {!loading && !error && familyInfoData?.family_info_data?.length === 0 && (
-        <Card sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
-          <p>No family members found. Please add a member.</p>
-        </Card>
-      )}
       
       <Box 
         sx={{ 
@@ -208,6 +198,8 @@ export default function FamilyInfo() {
         onClose={handleDrawerClose}
         disableEnforceFocus
         disableAutoFocus
+        disableRestoreFocus
+        hideBackdrop={false}
       >
         <Box sx={{ width: 400, p: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
