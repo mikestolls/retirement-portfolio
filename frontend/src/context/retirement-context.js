@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef, useMemo } from 'react';
 
 const RetirementContext = createContext();
 
@@ -167,10 +167,41 @@ export const RetirementProvider = ({ children }) => {
     }
   };
 
+  const householdProjection = useMemo(() => {
+    if (!retirementFundInfoData?.retirement_fund_data || !familyInfoData?.family_info_data) return { data: [], legendMap: {} };
+    
+    const yearData = {};
+    const legendMap = {};
+    
+    retirementFundInfoData.retirement_fund_data.forEach((fund, fundIndex) => {
+      if (fund.retirement_projection) {
+        const member = familyInfoData.family_info_data.find(m => m.id === fund['family-member-id']);
+        const fundKey = `fund_${fundIndex}`;
+        const legendName = `${fund.name} (${member?.name || 'Unknown'})`;
+        
+        legendMap[fundKey] = legendName;
+        
+        fund.retirement_projection.forEach(projection => {
+          if (!yearData[projection.year]) {
+            yearData[projection.year] = { year: projection.year, total: 0 };
+          }
+          yearData[projection.year][fundKey] = projection.end_amount;
+          yearData[projection.year].total += projection.end_amount;
+        });
+      }
+    });
+    
+    return {
+      data: Object.values(yearData).sort((a, b) => a.year - b.year),
+      legendMap
+    };
+  }, [retirementFundInfoData, familyInfoData]);
+
   return (
     <RetirementContext.Provider value={{ 
       retirementFundInfoData, 
       familyInfoData,
+      householdProjection,
       loading, 
       error,
       updateFamilyInfoData,

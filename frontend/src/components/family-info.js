@@ -8,6 +8,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 
+import { LineChart } from '@mui/x-charts/LineChart';
+
 // icons
 import PersonIcon from '@mui/icons-material/Person';
 import CloseIcon from '@mui/icons-material/Close';
@@ -18,7 +20,10 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 export default function FamilyInfo() {
   // Use the shared context
-  const { updateFamilyInfoData, fetchFamilyInfoData, familyInfoData, loading, error } = useRetirement();
+  const { updateFamilyInfoData, fetchFamilyInfoData, familyInfoData, householdProjection, loading, error } = useRetirement();
+
+  // Fund visibility state
+  const [visibleFunds, setVisibleFunds] = useState({});
 
   // fetch on mount from backend
   useEffect(() => { 
@@ -247,7 +252,7 @@ export default function FamilyInfo() {
           className="rounded-2xl shadow-md" 
           sx={{ 
             mb: 2, 
-            width: "50%",
+            width: "100%",
             transition: 'all 0.2s ease-in-out'
           }} 
         > 
@@ -255,7 +260,80 @@ export default function FamilyInfo() {
             <Stack direction="row" spacing={1} alignItems="center">
               <TrendingUpIcon/>
               <h3 className="text-sm">Household Projection</h3>
-            </Stack>    
+            </Stack>
+            {householdProjection.data && householdProjection.data.length > 0 && (() => {
+              const fundKeys = Object.keys(householdProjection.data[0] || {}).filter(key => key !== 'year' && key !== 'total');
+              const allKeys = [...fundKeys, 'total'];
+              
+              // Initialize visibility state
+              if (Object.keys(visibleFunds).length === 0) {
+                const initialVisibility = {};
+                allKeys.forEach(key => initialVisibility[key] = true);
+                setVisibleFunds(initialVisibility);
+              }
+              
+              const stackedSeries = fundKeys.filter(fundKey => visibleFunds[fundKey]).map((fundKey, index) => ({
+                dataKey: fundKey,
+                label: householdProjection.legendMap[fundKey] || fundKey,
+                area: true,
+                stack: 'funds',
+                color: `hsl(${index * 60}, 70%, 60%)`
+              }));
+              
+              const totalSeries = visibleFunds.total ? [{
+                dataKey: 'total',
+                label: 'Total Household',
+                area: false,
+                curve: 'linear',
+                color: '#000000'
+              }] : [];
+              
+              return (
+                <div>
+                  <LineChart
+                    dataset={householdProjection.data}
+                    xAxis={[{ label: 'Year', scaleType: 'point', dataKey: 'year', valueFormatter: (value) => value.toString() }]}
+                    yAxis={[{ label: 'Amount ($)' }]}
+                    grid={{ horizontal: true, vertical: true }}
+                    series={[...stackedSeries, ...totalSeries]}
+                    height={350}
+                  />
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+                    {fundKeys.map((fundKey, index) => (
+                      <Button
+                        key={fundKey}
+                        size="small"
+                        variant={visibleFunds[fundKey] ? "contained" : "outlined"}
+                        onClick={() => setVisibleFunds(prev => ({ ...prev, [fundKey]: !prev[fundKey] }))}
+                        sx={{ 
+                          backgroundColor: visibleFunds[fundKey] ? `hsl(${index * 60}, 70%, 60%)` : 'transparent',
+                          '&:hover': {
+                            backgroundColor: visibleFunds[fundKey] ? `hsl(${index * 60}, 70%, 50%)` : `hsl(${index * 60}, 70%, 90%)`
+                          }
+                        }}
+                      >
+                        {householdProjection.legendMap[fundKey] || fundKey}
+                      </Button>
+                    ))}
+                    <Button
+                      key="total"
+                      size="small"
+                      variant={visibleFunds.total ? "contained" : "outlined"}
+                      onClick={() => setVisibleFunds(prev => ({ ...prev, total: !prev.total }))}
+                      sx={{ 
+                        backgroundColor: visibleFunds.total ? '#000000' : 'transparent',
+                        color: visibleFunds.total ? 'white' : 'black',
+                        '&:hover': {
+                          backgroundColor: visibleFunds.total ? '#333333' : '#f0f0f0'
+                        }
+                      }}
+                    >
+                      Total Household
+                    </Button>
+                  </Box>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </Box>
