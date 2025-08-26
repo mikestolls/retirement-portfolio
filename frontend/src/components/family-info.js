@@ -172,7 +172,7 @@ export default function FamilyInfo() {
   };
 
   return (
-    <div>
+    <div style={{ width: '100%', overflow: 'hidden' }}>
       <h2>Family Information</h2>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
       
@@ -183,7 +183,7 @@ export default function FamilyInfo() {
           gap: 2, 
           pb: 1,
           '&::-webkit-scrollbar': {
-            height: 8,
+            height: 12,
           },
           '&::-webkit-scrollbar-track': {
             backgroundColor: '#f1f1f1',

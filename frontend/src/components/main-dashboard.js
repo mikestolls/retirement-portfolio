@@ -268,7 +268,7 @@ export default function MainDashboard() {
         ))}
       </List>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, overflow: 'hidden' }}>
         <DrawerHeader />
         <Routes>
           <Route path="/" element={<Navigate to="/family_info" replace />} />
