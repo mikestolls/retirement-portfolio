@@ -3,6 +3,10 @@ import { useEffect } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
 import { Box, Tabs, Tab, Button, Stack, Paper, TextField, Card, CardContent, LinearProgress, Divider, Drawer, IconButton, Typography } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 
 // icons
 import PersonIcon from '@mui/icons-material/Person';
@@ -219,16 +223,25 @@ export default function FamilyInfo() {
                 value={getFormData(editingMember)['name'] || familyInfoData.family_info_data[editingMember]['name']}
                 onChange={handleChange(editingMember)}
               />
-              <TextField
-                label="Date of Birth"
-                name="date-of-birth"
-                variant="outlined"
-                fullWidth
-                type="date"
-                slotProps={{ htmlInput: { max: new Date().toISOString().split('T')[0] } }}
-                value={getFormData(editingMember)['date-of-birth'] || familyInfoData.family_info_data[editingMember]['date-of-birth']}
-                onChange={handleChange(editingMember)}
-              />
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Date of Birth"
+                  value={dayjs(getFormData(editingMember)['date-of-birth'] || familyInfoData.family_info_data[editingMember]['date-of-birth'])}
+                  onChange={(newValue) => {
+                    setFormData(editingMember, {
+                      ...getFormData(editingMember),
+                      'date-of-birth': newValue ? newValue.format('YYYY-MM-DD') : ''
+                    });
+                  }}
+                  maxDate={dayjs()}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      variant: 'outlined'
+                    }
+                  }}
+                />
+              </LocalizationProvider>
               <TextField
                 label="Retirement Age"
                 name="retirement-age"
