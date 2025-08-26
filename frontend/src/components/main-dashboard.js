@@ -274,9 +274,6 @@ export default function MainDashboard() {
           <Route path="/" element={<Navigate to="/family_info" replace />} />
           <Route path="/family_info" element={<FamilyInfo />} />
           <Route path="/retirement_funds" element={<RetirementFundsInfo />} />
-          
-          {/* <Route path="/retirement_strategy" element={<InputData />} />
-          <Route path="/settings" element={<InputData />} /> */}
         </Routes>
       </Box>
     </Box>

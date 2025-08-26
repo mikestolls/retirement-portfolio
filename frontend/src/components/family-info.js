@@ -12,6 +12,9 @@ import dayjs from 'dayjs';
 import PersonIcon from '@mui/icons-material/Person';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
+import HouseIcon from '@mui/icons-material/House';
+import InsightsIcon from '@mui/icons-material/Insights';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 export default function FamilyInfo() {
   // Use the shared context
@@ -130,6 +133,7 @@ export default function FamilyInfo() {
               <p className="text-sm">Life Expectancy: {member['life-expectancy']}</p>
               <p className="text-sm">Balance: </p>
             </Stack>
+            <h4 className="text-sm">Success Rate</h4>
             <LinearProgress variant="determinate" value={50} className="mt-2" />
           </CardContent>
         </Card>
@@ -175,7 +179,88 @@ export default function FamilyInfo() {
     <div style={{ width: '100%', overflow: 'hidden' }}>
       <h2>Family Info</h2>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-      
+
+      <Box
+        sx={{ 
+          display: 'flex', 
+          overflowX: 'auto',
+          gap: 2, 
+          pb: 1,
+        }}
+      >
+        {/* Household Summary */}
+        <Card
+          className="rounded-2xl shadow-md" 
+          sx={{ 
+            mb: 2, 
+            width: "50%",
+            transition: 'all 0.2s ease-in-out'
+          }} 
+        > 
+          <CardContent className="p-4">
+            <Stack direction="row" spacing={1} alignItems="center">
+              <HouseIcon/>
+              <h3 className="text-sm">Household</h3>
+            </Stack>            
+            <Stack direction={"column"} spacing={0.5} alignItems="left" className="mb-2">
+              <p className="text-sm">Total Asets: </p>
+              <p className="text-sm">Retirement Savings: </p>
+              <p className="text-sm">Average Savings Rate: </p>
+              <p className="text-sm">Average Growth Rate: </p>
+            </Stack>
+            <h4 className="text-sm">Target Achieved</h4>
+            <LinearProgress variant="determinate" value={50} className="mt-2" /> 
+          </CardContent>
+        </Card>
+
+        {/* Insights Summary */}
+        <Card
+          className="rounded-2xl shadow-md" 
+          sx={{ 
+            mb: 2, 
+            width: "50%",
+            transition: 'all 0.2s ease-in-out'
+          }} 
+        > 
+          <CardContent className="p-4">
+            <Stack direction="row" spacing={1} alignItems="center">
+              <InsightsIcon/>
+              <h3 className="text-sm">Insights</h3>
+            </Stack>            
+            <Stack direction={"column"} spacing={0.5} alignItems="left" className="mb-2">
+              <p className="text-sm">You're Awesome!!</p>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Box>
+
+      {/* Household  Projection*/}
+      <Box
+        sx={{ 
+          display: 'flex', 
+          overflowX: 'auto',
+          gap: 2, 
+          pb: 1,
+        }}
+      >
+        <Card
+          className="rounded-2xl shadow-md" 
+          sx={{ 
+            mb: 2, 
+            width: "50%",
+            transition: 'all 0.2s ease-in-out'
+          }} 
+        > 
+          <CardContent className="p-4">
+            <Stack direction="row" spacing={1} alignItems="center">
+              <TrendingUpIcon/>
+              <h3 className="text-sm">Household Projection</h3>
+            </Stack>    
+          </CardContent>
+        </Card>
+      </Box>
+
+      {/* Family Members */}
       <Box 
         sx={{ 
           display: 'flex', 
