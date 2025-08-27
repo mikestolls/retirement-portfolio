@@ -2,6 +2,22 @@ import React, { createContext, useState, useContext, useEffect, useRef, useMemo 
 
 const RetirementContext = createContext();
 
+const DEFAULT_FAMILY_MEMBER = {
+  'id': crypto.randomUUID(),
+  'name': 'Stolz',
+  'date-of-birth': '1986-01-31',
+  'life-expectancy': 90,
+  'retirement-age': 65,
+};
+
+const DEFAULT_RETIREMENT_FUND = {
+  'name': 'Fund',
+  'family-member-id': '',
+  'initial-investment': 1000,
+  'regular-contribution': 10,
+  'contribution-frequency': 12,
+};
+
 export const RetirementProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -9,29 +25,11 @@ export const RetirementProvider = ({ children }) => {
 
   const user_id = 'test_user'; // Replace with actual user ID logic
   
-
-
   // defaulting family info data
-  const [familyInfoData, setFamilyInfoData] = useState({ family_info_data: [
-    {
-      'id': crypto.randomUUID(),
-      'name': 'Stolz',
-      'age': 39,
-      'life-expectancy': 90,
-      'retirement-age': 65,
-    }
-  ] });
+  const [familyInfoData, setFamilyInfoData] = useState({ family_info_data: [DEFAULT_FAMILY_MEMBER] });
 
   // defaulting retirement data
-  const [retirementFundInfoData, setRetirementFundInfoData] = useState({ retirement_fund_data: [
-    {
-      'name': 'Fund',
-      'family-member-id': '',
-      'initial-investment': 1000,
-      'regular-contribution': 10,
-      'contribution-frequency': 12,
-    }
-  ] });
+  const [retirementFundInfoData, setRetirementFundInfoData] = useState({ retirement_fund_data: [DEFAULT_RETIREMENT_FUND] });
 
   const fetchFamilyInfoData = async () => {
     setLoading(true);
@@ -42,10 +40,13 @@ export const RetirementProvider = ({ children }) => {
         const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_family_info/${user_id}`);
         if (response.ok) {
           const data = await response.json();
-          // Only update if we have valid data
           if (data && data.family_info_data) {
             setFamilyInfoData({ family_info_data: data.family_info_data });
           }
+          return;
+        } else if (response.status === 404) {
+          // Create and save default family info for new user
+          await updateFamilyInfoData(0, { ...DEFAULT_FAMILY_MEMBER, 'id': crypto.randomUUID() });
           return;
         }
       }
@@ -110,8 +111,11 @@ export const RetirementProvider = ({ children }) => {
         const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_retirement_fund_data/${user_id}`);
         if (response.ok) {
           const data = await response.json();
-
           setRetirementFundInfoData(data);
+          return;
+        } else if (response.status === 404) {
+          // Create and save default retirement fund info for new user
+          await updateRetirementFundInfoData(0, DEFAULT_RETIREMENT_FUND);
           return;
         }
       }
