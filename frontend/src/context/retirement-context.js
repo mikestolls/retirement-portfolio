@@ -22,6 +22,7 @@ export const RetirementProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const initRef = useRef(false);
+  const fetchingRef = useRef({ family: false, retirement: false });
 
   const user_id = 'test_user'; // Replace with actual user ID logic
   
@@ -32,6 +33,8 @@ export const RetirementProvider = ({ children }) => {
   const [retirementFundInfoData, setRetirementFundInfoData] = useState({ retirement_fund_data: [DEFAULT_RETIREMENT_FUND] });
 
   const fetchFamilyInfoData = async () => {
+    if (fetchingRef.current.family) return;
+    fetchingRef.current.family = true;
     setLoading(true);
     setError(null);
 
@@ -55,6 +58,7 @@ export const RetirementProvider = ({ children }) => {
       setError(err.message);
     } finally {
       setLoading(false);
+      fetchingRef.current.family = false;
     }
   };
   
@@ -103,6 +107,8 @@ export const RetirementProvider = ({ children }) => {
   };
   
   const fetchRetirementFundInfoData = async () => {
+    if (fetchingRef.current.retirement) return;
+    fetchingRef.current.retirement = true;
     setLoading(true);
     setError(null);
 
@@ -124,6 +130,7 @@ export const RetirementProvider = ({ children }) => {
       setError(err.message);
     } finally {
       setLoading(false);
+      fetchingRef.current.retirement = false;
     }
   };
 
