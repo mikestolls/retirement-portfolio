@@ -268,15 +268,12 @@ export default function MainDashboard() {
         ))}
       </List>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, overflow: 'hidden' }}>
         <DrawerHeader />
         <Routes>
           <Route path="/" element={<Navigate to="/family_info" replace />} />
           <Route path="/family_info" element={<FamilyInfo />} />
           <Route path="/retirement_funds" element={<RetirementFundsInfo />} />
-          
-          {/* <Route path="/retirement_strategy" element={<InputData />} />
-          <Route path="/settings" element={<InputData />} /> */}
         </Routes>
       </Box>
     </Box>

@@ -90,7 +90,7 @@ def get_retirement_fund_data(user_id):
         retirement_fund_info = db_get_retirement_fund_info(user_id)
         if not retirement_fund_info:
             return jsonify({"message": "Retirement fund info not found", "status": "error"}), 404
-            
+        
         family_info = db_get_family_info(user_id)
         if not family_info:
             return jsonify({"message": "Family info not found", "status": "error"}), 404

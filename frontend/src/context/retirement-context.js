@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef, useMemo } from 'react';
 
 const RetirementContext = createContext();
 
@@ -9,34 +9,7 @@ export const RetirementProvider = ({ children }) => {
 
   const user_id = 'test_user'; // Replace with actual user ID logic
   
-  useEffect(() => {
-    if (initRef.current) return; // Prevent duplicate runs
-    initRef.current = true;
 
-    const initializeDefaultData = async () => {
-      if (process.env.REACT_APP_BACKEND_API_URL) {
-        try {
-          // Save default family info
-          await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_family_info/${user_id}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(familyInfoData)
-          });
-
-          // Save default retirement fund info
-          await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_fund_data/${user_id}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(retirementFundInfoData)
-          });
-        } catch (error) {
-          console.warn('Failed to initialize default data:', error);
-        }
-      }
-    };
-
-    initializeDefaultData();
-  }, []); // Run once on mount
 
   // defaulting family info data
   const [familyInfoData, setFamilyInfoData] = useState({ family_info_data: [
@@ -46,8 +19,6 @@ export const RetirementProvider = ({ children }) => {
       'age': 39,
       'life-expectancy': 90,
       'retirement-age': 65,
-      'retirement-withdrawal': 4,
-      'retirement-inflation': 2,
     }
   ] });
 
@@ -71,8 +42,10 @@ export const RetirementProvider = ({ children }) => {
         const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_family_info/${user_id}`);
         if (response.ok) {
           const data = await response.json();
-
-          setFamilyInfoData({ family_info_data: data.family_info_data });
+          // Only update if we have valid data
+          if (data && data.family_info_data) {
+            setFamilyInfoData({ family_info_data: data.family_info_data });
+          }
           return;
         }
       }
@@ -194,10 +167,41 @@ export const RetirementProvider = ({ children }) => {
     }
   };
 
+  const householdProjection = useMemo(() => {
+    if (!retirementFundInfoData?.retirement_fund_data || !familyInfoData?.family_info_data) return { data: [], legendMap: {} };
+    
+    const yearData = {};
+    const legendMap = {};
+    
+    retirementFundInfoData.retirement_fund_data.forEach((fund, fundIndex) => {
+      if (fund.retirement_projection) {
+        const member = familyInfoData.family_info_data.find(m => m.id === fund['family-member-id']);
+        const fundKey = `fund_${fundIndex}`;
+        const legendName = `${fund.name} (${member?.name || 'Unknown'})`;
+        
+        legendMap[fundKey] = legendName;
+        
+        fund.retirement_projection.forEach(projection => {
+          if (!yearData[projection.year]) {
+            yearData[projection.year] = { year: projection.year, total: 0 };
+          }
+          yearData[projection.year][fundKey] = projection.end_amount;
+          yearData[projection.year].total += projection.end_amount;
+        });
+      }
+    });
+    
+    return {
+      data: Object.values(yearData).sort((a, b) => a.year - b.year),
+      legendMap
+    };
+  }, [retirementFundInfoData, familyInfoData]);
+
   return (
     <RetirementContext.Provider value={{ 
       retirementFundInfoData, 
       familyInfoData,
+      householdProjection,
       loading, 
       error,
       updateFamilyInfoData,

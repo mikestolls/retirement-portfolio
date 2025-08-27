@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useEffect } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
-import { Box, Tabs, Tab, Button, Stack, Divider, TextField, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper, Typography } from '@mui/material';
+import { Box, Tabs, Tab, Button, Stack, Divider, TextField, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper, Typography, Drawer, IconButton } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
+import TuneIcon from '@mui/icons-material/Tune';
+import CloseIcon from '@mui/icons-material/Close';
 import PropTypes from 'prop-types';
 
 import { BarChart } from '@mui/x-charts/BarChart';
@@ -66,6 +68,20 @@ export default function RetirementFundsInfo() {
     fetchFamilyInfoData();
   }, []);
 
+  // Validate family member IDs when data loads
+  useEffect(() => {
+    if (retirementFundInfoData?.retirement_fund_data && familyInfoData?.family_info_data) {
+      retirementFundInfoData.retirement_fund_data.forEach((fund, index) => {
+        const selectedId = fund['family-member-id'];
+        const memberExists = familyInfoData.family_info_data.some(member => member.id === selectedId);
+        if (!memberExists && familyInfoData.family_info_data.length > 0) {
+          const defaultId = familyInfoData.family_info_data[0].id;
+          setFormData(index, { ...getFormData(index), 'family-member-id': defaultId });
+        }
+      });
+    }
+  }, [retirementFundInfoData, familyInfoData]);
+
   // handling tab changes
   const [activeTab, setActiveTab] = React.useState(0);
   const handleTabChange = (event, newValue) => {
@@ -79,11 +95,39 @@ export default function RetirementFundsInfo() {
     setFormStates(prev => ({ ...prev, [index]: data }));
   };
 
+  // Drawer state
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [returnRateParams, setReturnRateParams] = useState({});
+  
+  const getReturnRateParams = (index) => {
+    const fund = retirementFundInfoData?.retirement_fund_data?.[index];
+    const params = returnRateParams[index] || fund?.['return-rate-params'] || [];
+    return params;
+  };
+  const setReturnRateParamsForFund = (fundIndex, params) => {
+    setReturnRateParams(prev => ({ ...prev, [fundIndex]: params }));
+  };
+  
+  // Initialize return rate params when drawer opens
+  const handleDrawerOpen = (fundIndex) => {
+    const fund = retirementFundInfoData?.retirement_fund_data?.[fundIndex];
+    if (fund && !returnRateParams[fundIndex]) {
+      const existingParams = fund['return-rate-params'] || [];
+      setReturnRateParamsForFund(fundIndex, existingParams);
+    }
+    setDrawerOpen(fundIndex);
+  };
+
   async function handleSubmit(event, index) {
     event.preventDefault();
     
-    // Update the specific member in the context
-    const success = await updateRetirementFundInfoData(index, formStates[index]);
+    // Include return rate parameters in the update
+    const updateData = {
+      ...formStates[index],
+      'return-rate-params': getReturnRateParams(index)
+    };
+    
+    const success = await updateRetirementFundInfoData(index, updateData);
     if (success) {
       setFormData({}); // Clear form after successful update
       await fetchRetirementFundInfoData(); // Refresh data with new projections
@@ -142,7 +186,8 @@ export default function RetirementFundsInfo() {
                 'family-member-id': familyInfoData?.family_info_data?.[0]?.id || '',
                 'initial-investment': 1000,
                 'regular-contribution': 10,
-                'contribution-frequency': 12
+                'contribution-frequency': 12,
+                'return-rate-params': []
               })}/>
           </Tabs>
       </Box>
@@ -168,7 +213,11 @@ export default function RetirementFundsInfo() {
                     variant="standard"
                     align="left"
                     required
-                    value={getFormData(index)['family-member-id'] || fund['family-member-id'] || ''}
+                    value={(() => {
+                      const selectedId = getFormData(index)['family-member-id'] || fund['family-member-id'] || '';
+                      const memberExists = familyInfoData?.family_info_data?.some(member => member.id === selectedId);
+                      return memberExists ? selectedId : (familyInfoData?.family_info_data?.[0]?.id || '');
+                    })()}
                     onChange={handleChange(index)}>
                     {familyInfoData?.family_info_data?.map((member, memberIndex) => {
                       const memberId = member.id
@@ -225,6 +274,9 @@ export default function RetirementFundsInfo() {
                   <Button variant="contained" disabled={loading} onClick={() => deleteFund(index)}>
                       {loading ? 'Deleting...' : 'Delete'}
                   </Button>
+                  <Button variant="outlined" onClick={() => handleDrawerOpen(index)} startIcon={<TuneIcon />}>
+                      Return Rates
+                  </Button>
                 </Stack>
               </Paper>
             </form>
@@ -239,7 +291,6 @@ export default function RetirementFundsInfo() {
                       <TableCell align='right'>Begin Amount</TableCell>           
                       <TableCell align='right'>Contributions</TableCell>    
                       <TableCell align='right'>Growth</TableCell>
-                      <TableCell align='right'>Withdrawal</TableCell>
                       <TableCell align='right'>End Amount</TableCell>
                     </TableRow>
                   </TableHead>
@@ -252,7 +303,6 @@ export default function RetirementFundsInfo() {
                         <TableCell align='right'>${yearData.begin_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell align='right'>${yearData.contribution.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell align='right'>${yearData.growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                        <TableCell align='right'>${yearData.withdrawal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell align='right'>${yearData.end_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     ))}
@@ -278,6 +328,91 @@ export default function RetirementFundsInfo() {
           </div>
         </RetirementFundsTabPanel>
       ))}
+      
+      <Drawer
+        anchor="right"
+        open={drawerOpen !== false}
+        onClose={() => setDrawerOpen(false)}
+        sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">Return Rate Parameters</Typography>
+          <IconButton onClick={() => setDrawerOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        
+        {drawerOpen !== false && getReturnRateParams(drawerOpen).map((param, paramIndex) => (
+          <Paper key={paramIndex} elevation={1} sx={{ p: 2, mb: 2 }}>
+            <Stack spacing={1} direction={'row'} alignItems="center">
+              <TextField
+                label="From Age"
+                type="number"
+                size="small"
+                variant="standard"
+                sx={{ width: 100 }}
+                slotProps={{ htmlInput: { min: 0, max: 150 } }}
+                value={param.fromAge || ''}
+                onChange={(e) => {
+                  const params = [...getReturnRateParams(drawerOpen)];
+                  params[paramIndex] = { ...params[paramIndex], fromAge: parseInt(e.target.value) };
+                  setReturnRateParamsForFund(drawerOpen, params);
+                }}
+              />
+              <TextField
+                label="To Age"
+                type="number"
+                size="small"
+                variant="standard"
+                sx={{ width: 100 }}
+                slotProps={{ htmlInput: { min: 0, max: 150 } }}
+                value={param.toAge || ''}
+                onChange={(e) => {
+                  const params = [...getReturnRateParams(drawerOpen)];
+                  params[paramIndex] = { ...params[paramIndex], toAge: parseInt(e.target.value) };
+                  setReturnRateParamsForFund(drawerOpen, params);
+                }}
+              />
+              <TextField
+                label="Return Rate (%)"
+                type="number"
+                size="small"
+                variant="standard"
+                sx={{ width: 120 }}
+                slotProps={{ htmlInput: { step: 0.1, min: 0, max: 100 } }}
+                value={param.returnRate || ''}
+                onChange={(e) => {
+                  const params = [...getReturnRateParams(drawerOpen)];
+                  params[paramIndex] = { ...params[paramIndex], returnRate: parseFloat(e.target.value) };
+                  setReturnRateParamsForFund(drawerOpen, params);
+                }}
+              />
+            </Stack>
+            <Button sx={{ mt: 2 }}
+              variant="contained" 
+              size="small"
+              onClick={() => {
+                const params = getReturnRateParams(drawerOpen).filter((_, i) => i !== paramIndex);
+                setReturnRateParamsForFund(drawerOpen, params);
+              }}
+            >
+              Remove
+            </Button>
+          </Paper>
+        ))}
+        
+        <Button 
+          variant="contained" 
+          onClick={() => {
+            if (drawerOpen !== false) {
+              const params = [...getReturnRateParams(drawerOpen), { fromAge: 25, toAge: 65, returnRate: 7.0 }];
+              setReturnRateParamsForFund(drawerOpen, params);
+            }
+          }}
+        >
+          Add Return Rate Range
+        </Button>
+      </Drawer>
     </div>
   );
 }
