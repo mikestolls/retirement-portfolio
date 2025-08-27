@@ -70,7 +70,7 @@ def update_family_info(user_id):
         
         return jsonify(saved_id), 200
         
-    except Exception as e:
+    except Exception as e: 
         return jsonify({
             "message": f"An error occurred: {str(e)}",
             "status": "error"
