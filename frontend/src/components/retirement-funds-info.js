@@ -1,418 +1,388 @@
-import React, { useState } from 'react';
-import { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
-import { Box, Tabs, Tab, Button, Stack, Divider, TextField, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper, Typography, Drawer, IconButton } from '@mui/material';
+import { Box, Button, Stack, TextField, Card, CardContent, Typography, Drawer, IconButton, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
 import TuneIcon from '@mui/icons-material/Tune';
 import CloseIcon from '@mui/icons-material/Close';
-import PropTypes from 'prop-types';
+import AddIcon from '@mui/icons-material/Add';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 
 import { BarChart } from '@mui/x-charts/BarChart';
 
 const contribution_frequencies = [
-  {
-    value: 12,
-    label: 'Monthly',
-  },
-  {
-    value: 24,
-    label: 'Bi-Monthly',
-  },
-  {
-    value: 52,
-    label: 'Weekly',
-  },
-  {
-    value: 26,
-    label: 'Bi-Weekly',
-  }
+  { value: 12, label: 'Monthly' },
+  { value: 24, label: 'Bi-Monthly' },
+  { value: 52, label: 'Weekly' },
+  { value: 26, label: 'Bi-Weekly' }
 ];
 
-function RetirementFundsTabPanel(props) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`tabpanel-${index}`}
-      aria-labelledby={`tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
-
-RetirementFundsTabPanel.propTypes = {
-  children: PropTypes.node,
-  index: PropTypes.number.isRequired,
-  value: PropTypes.number.isRequired,
-};
-
-function tabProperty(index) {
-  return {
-    id: `tab-${index}`,
-    'aria-controls': `tabpanel-${index}`,
-  };
-}
-
 export default function RetirementFundsInfo() {
-  // Use the shared context
   const { updateRetirementFundInfoData, fetchRetirementFundInfoData, retirementFundInfoData, fetchFamilyInfoData, familyInfoData, loading, error } = useRetirement();
 
-  // fetch on mount from backend
-  useEffect(() => { 
+  useEffect(() => {
     fetchRetirementFundInfoData();
     fetchFamilyInfoData();
   }, []);
 
-  // Validate family member IDs when data loads
-  useEffect(() => {
-    if (retirementFundInfoData?.retirement_fund_data && familyInfoData?.family_info_data) {
-      retirementFundInfoData.retirement_fund_data.forEach((fund, index) => {
-        const selectedId = fund['family-member-id'];
-        const memberExists = familyInfoData.family_info_data.some(member => member.id === selectedId);
-        if (!memberExists && familyInfoData.family_info_data.length > 0) {
-          const defaultId = familyInfoData.family_info_data[0].id;
-          setFormData(index, { ...getFormData(index), 'family-member-id': defaultId });
-        }
-      });
-    }
-  }, [retirementFundInfoData, familyInfoData]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingFund, setEditingFund] = useState(null);
 
-  // handling tab changes
-  const [activeTab, setActiveTab] = React.useState(0);
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-  };
-
-  // Form state management
   const [formStates, setFormStates] = useState({});
   const getFormData = (index) => formStates[index] || {};
   const setFormData = (index, data) => {
     setFormStates(prev => ({ ...prev, [index]: data }));
   };
 
-  // Drawer state
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [returnRateParams, setReturnRateParams] = useState({});
-  
-  const getReturnRateParams = (index) => {
-    const fund = retirementFundInfoData?.retirement_fund_data?.[index];
-    const params = returnRateParams[index] || fund?.['return-rate-params'] || [];
-    return params;
-  };
-  const setReturnRateParamsForFund = (fundIndex, params) => {
-    setReturnRateParams(prev => ({ ...prev, [fundIndex]: params }));
-  };
-  
-  // Initialize return rate params when drawer opens
-  const handleDrawerOpen = (fundIndex) => {
-    const fund = retirementFundInfoData?.retirement_fund_data?.[fundIndex];
-    if (fund && !returnRateParams[fundIndex]) {
-      const existingParams = fund['return-rate-params'] || [];
-      setReturnRateParamsForFund(fundIndex, existingParams);
-    }
-    setDrawerOpen(fundIndex);
+  const handleCardClick = (index) => {
+    setEditingFund(index);
+    setDrawerOpen(true);
   };
 
-  async function handleSubmit(event, index) {
-    event.preventDefault();
-    
-    // Include return rate parameters in the update
-    const updateData = {
-      ...formStates[index],
-      'return-rate-params': getReturnRateParams(index)
-    };
-    
-    const success = await updateRetirementFundInfoData(index, updateData);
-    if (success) {
-      setFormData({}); // Clear form after successful update
-      await fetchRetirementFundInfoData(); // Refresh data with new projections
+  const handleDrawerClose = async () => {
+    if (editingFund !== null && formStates[editingFund] && Object.keys(formStates[editingFund]).length > 0) {
+      await updateRetirementFundInfoData(editingFund, formStates[editingFund]);
+      setFormStates(prev => {
+        const newStates = { ...prev };
+        delete newStates[editingFund];
+        return newStates;
+      });
     }
-  }
-  
+    setDrawerOpen(false);
+    setEditingFund(null);
+  };
+
   const handleChange = (index) => (event) => {
     const { name, value } = event.target;
     setFormData(index, {
       ...getFormData(index),
-      [name]: value
+      [name]: ['initial-investment', 'regular-contribution', 'contribution-frequency'].includes(name) 
+        ? (name === 'contribution-frequency' ? parseInt(value) : parseFloat(value) || 0) 
+        : value
     });
   };
 
+
   const deleteFund = async (index) => {
-    await updateRetirementFundInfoData(index, null); // Delete member
-    
-    // Clean up form states - remove deleted index and shift remaining
+    await updateRetirementFundInfoData(index, null);
     setFormStates(prev => {
       const newStates = {};
       Object.keys(prev).forEach(key => {
         const keyIndex = parseInt(key);
         if (keyIndex < index) {
-          // Keep states before deleted index
           newStates[keyIndex] = prev[key];
         } else if (keyIndex > index) {
-          // Shift states after deleted index down by 1
           newStates[keyIndex - 1] = prev[key];
         }
-        // Skip the deleted index
       });
-
-      // If deleting the last member and it's the active tab, shift left
-      if (index === retirementFundInfoData?.retirement_fund_data?.length - 1 && activeTab === index) {
-        setActiveTab(Math.max(0, index - 1));
-      }
-      
       return newStates;
     });
   };
 
+  const handleAddFund = async () => {
+    const newIndex = retirementFundInfoData?.retirement_fund_data?.length || 0;
+    await updateRetirementFundInfoData(newIndex, {
+      'name': 'New Fund',
+      'family-member-id': familyInfoData?.family_info_data?.[0]?.id || '',
+      'initial-investment': 1000,
+      'regular-contribution': 10,
+      'contribution-frequency': 12
+    });
+    setEditingFund(newIndex);
+    setDrawerOpen(true);
+  };
+
+  const renderFundCards = () => {
+    if (error) return null;
+    
+    const fundCards = retirementFundInfoData?.retirement_fund_data?.length ? 
+      retirementFundInfoData.retirement_fund_data.map((fund, index) => {
+        const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family-member-id']);
+        const latestProjection = fund.retirement_projection?.[fund.retirement_projection.length - 1];
+        
+        return (
+          <Card 
+            className="rounded-2xl shadow-md" 
+            sx={{ 
+              mb: 2, 
+              width: 300,
+              minWidth: 300,
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: '#d4d4d4ff',
+                transform: 'translateY(-2px)',
+                boxShadow: 3
+              },
+              transition: 'all 0.2s ease-in-out'
+            }} 
+            key={index}
+            onClick={() => {
+              setSelectedFund(index);
+              handleCardClick(index);
+            }}
+          >
+            <CardContent className="p-4">
+              <Stack direction="row" spacing={1} alignItems="center">
+                <AccountBalanceIcon/>
+                <h3 className="text-sm">{fund.name}</h3>
+              </Stack>
+              <Stack direction="column" spacing={0.5} alignItems="left" className="mb-2">
+                <p className="text-sm">Owner: {member?.name || 'Unknown'}</p>
+                <p className="text-sm">Initial: ${fund['initial-investment']?.toLocaleString()}</p>
+                <p className="text-sm">Monthly: ${fund['regular-contribution']}</p>
+                {latestProjection && (
+                  <p className="text-sm">Final Balance: ${latestProjection.end_amount?.toLocaleString()}</p>
+                )}
+              </Stack>
+            </CardContent>
+          </Card>
+        );
+      }) : [];
+
+    const addFundCard = (
+      <Card 
+        className="rounded-2xl shadow-md" 
+        sx={{ 
+          mb: 2, 
+          width: 300,
+          minWidth: 300,
+          cursor: 'pointer',
+          border: '2px dashed #ccc',
+          backgroundColor: '#f9f9f9',
+          '&:hover': {
+            backgroundColor: '#e8f5e8',
+            border: '2px dashed #4caf50',
+            transform: 'translateY(0px)',
+            boxShadow: 3
+          },
+          transition: 'all 0.2s ease-in-out'
+        }} 
+        key="add-fund"
+        onClick={handleAddFund}
+      >
+        <CardContent className="p-4">
+          <Stack direction="column" spacing={2} alignItems="center" justifyContent="center" sx={{ minHeight: 120 }}>
+            <AddIcon sx={{ fontSize: 40, color: '#666' }} />
+            <Typography variant="h6" color="textSecondary">
+              Add Fund
+            </Typography>
+          </Stack>
+        </CardContent>
+      </Card>
+    );
+
+    return [...fundCards, addFundCard];
+  };
+
+  const [selectedFund, setSelectedFund] = useState(0);
+
   return (
-    <div>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={activeTab} onChange={handleTabChange} aria-label='Retirement Fund Tabs'>
-            {retirementFundInfoData?.retirement_fund_data?.map((member, index) => (
-              <Tab
-                key={index}
-                label={member.name}
-                {...tabProperty(0)}
-              />
-            ))}
-            <Tab label="Add Fund" {...tabProperty(retirementFundInfoData?.retirement_fund_data?.length || 0)} onClick={() => 
-              updateRetirementFundInfoData(retirementFundInfoData?.retirement_fund_data?.length, { 
-                'name': 'Fund',
-                'family-member-id': familyInfoData?.family_info_data?.[0]?.id || '',
-                'initial-investment': 1000,
-                'regular-contribution': 10,
-                'contribution-frequency': 12,
-                'return-rate-params': []
-              })}/>
-          </Tabs>
+    <div style={{ width: '100%', overflow: 'hidden' }}>
+      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+
+      {/* Funds */}
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          overflowX: 'auto',
+          gap: 2, 
+          pb: 1,
+          '&::-webkit-scrollbar': {
+            height: 12,
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: '#f1f1f1',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: '#888',
+            borderRadius: 4,
+          }
+        }}
+      >
+        {renderFundCards()}
       </Box>
-      {retirementFundInfoData?.retirement_fund_data?.map((fund, index) => (
-        <RetirementFundsTabPanel key={index} value={activeTab} index={index}>
-          <div>
-            <form onSubmit={(e) => handleSubmit(e, index)}>
-              <Paper elevation={2} sx={{ p: 1, backgroundColor: '#f5f5f5' }}>
-                <Stack direction="row" spacing={1}>
-                  <TextField 
-                    sx={{ minWidth: 150 }}
-                    label="Name" 
-                    name="name"
-                    variant="standard"
-                    required
-                    value={getFormData(index)['name'] || fund['name']}
-                    onChange={handleChange(index)}/>
-                  <TextField 
-                    sx={{ minWidth: 150 }}
-                    label="Family Member"
-                    name="family-member-id"
-                    select
-                    variant="standard"
-                    align="left"
-                    required
-                    value={(() => {
-                      const selectedId = getFormData(index)['family-member-id'] || fund['family-member-id'] || '';
-                      const memberExists = familyInfoData?.family_info_data?.some(member => member.id === selectedId);
-                      return memberExists ? selectedId : (familyInfoData?.family_info_data?.[0]?.id || '');
-                    })()}
-                    onChange={handleChange(index)}>
-                    {familyInfoData?.family_info_data?.map((member, memberIndex) => {
-                      const memberId = member.id
-                      return (
-                        <MenuItem key={memberId} value={memberId}>
-                            {member.name}
-                        </MenuItem>
-                      );
-                    })}
-                  </TextField>
-                </Stack>    
-                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                  <TextField 
-                    sx={{ minWidth: 150 }}
-                    label="Initial Investment" 
-                    name="initial-investment"
-                    variant="standard"
-                    required
-                    type="number"
-                    slotProps={{ htmlInput: { min: 0, step: 1 } }}
-                    value={getFormData(index)['initial-investment'] || fund['initial-investment']}
-                    onChange={handleChange(index)}/>
-                  <TextField
-                    sx={{ minWidth: 150 }}
-                    label="Regular Contribution"
-                    name="regular-contribution"
-                    variant="standard"
-                    required
-                    type="number"
-                    slotProps={{ htmlInput: { min: 0, step: 1 } }}
-                    value={getFormData(index)['regular-contribution'] || fund['regular-contribution']}
-                    onChange={handleChange(index)}/>
-                  <TextField 
-                    sx={{ minWidth: 150 }}
-                    label="Frequency"
-                    name="contribution-frequency"
-                    select
-                    variant="standard"
-                    align="left"
-                    required
-                    value={getFormData(index)['contribution-frequency'] || fund['contribution-frequency'] || 12}
-                    onChange={handleChange(index)}>
-                    {contribution_frequencies.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                        </MenuItem>
-                    ))}
-                  </TextField>
-                </Stack>
-                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                  <Button type="submit" variant="contained" disabled={loading}>
-                      {loading ? 'Updating...' : 'Update'}
-                  </Button>
-                  <Button variant="contained" disabled={loading} onClick={() => deleteFund(index)}>
-                      {loading ? 'Deleting...' : 'Delete'}
-                  </Button>
-                  <Button variant="outlined" onClick={() => handleDrawerOpen(index)} startIcon={<TuneIcon />}>
-                      Return Rates
-                  </Button>
-                </Stack>
-              </Paper>
-            </form>
-            <Paper elevation={2} sx={{ mt: 2, p: 1, backgroundColor: '#f5f5f5' }}>
-              <TableContainer component={'div'} sx={{ maxHeight: 200 }}>
-                <Table stickyHeader sx={{ minWidth: 650 }} size='small' aria-label="retirement projection table" >
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={handleDrawerClose}
+        disableEnforceFocus
+        disableAutoFocus
+        disableRestoreFocus
+        hideBackdrop={false}
+      >
+        <Box sx={{ width: 400, p: 3 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="h6">Edit Retirement Fund</Typography>
+            <IconButton onClick={handleDrawerClose}>
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+          {editingFund !== null && retirementFundInfoData?.retirement_fund_data?.[editingFund] && (
+            <Stack spacing={2}>
+              <TextField 
+                label="Name" 
+                name="name"
+                variant="outlined"
+                fullWidth
+                value={getFormData(editingFund)['name'] || retirementFundInfoData.retirement_fund_data[editingFund]['name']}
+                onChange={handleChange(editingFund)}
+              />
+              <TextField 
+                label="Family Member"
+                name="family-member-id"
+                select
+                variant="outlined"
+                fullWidth
+                value={getFormData(editingFund)['family-member-id'] || retirementFundInfoData.retirement_fund_data[editingFund]['family-member-id']}
+                onChange={handleChange(editingFund)}
+              >
+                {familyInfoData?.family_info_data?.map((member) => (
+                  <MenuItem key={member.id} value={member.id}>
+                    {member.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label="Initial Investment"
+                name="initial-investment"
+                variant="outlined"
+                fullWidth
+                type="number"
+                slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                value={getFormData(editingFund)['initial-investment'] || retirementFundInfoData.retirement_fund_data[editingFund]['initial-investment']}
+                onChange={handleChange(editingFund)}
+              />
+              <TextField
+                label="Regular Contribution"
+                name="regular-contribution"
+                variant="outlined"
+                fullWidth
+                type="number"
+                slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                value={getFormData(editingFund)['regular-contribution'] || retirementFundInfoData.retirement_fund_data[editingFund]['regular-contribution']}
+                onChange={handleChange(editingFund)}
+              />
+              <TextField
+                label="Contribution Frequency"
+                name="contribution-frequency"
+                select
+                variant="outlined"
+                fullWidth
+                value={getFormData(editingFund)['contribution-frequency'] || retirementFundInfoData.retirement_fund_data[editingFund]['contribution-frequency']}
+                onChange={handleChange(editingFund)}
+              >
+                {contribution_frequencies.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Button 
+                variant="outlined" 
+                color="error" 
+                disabled={loading}
+                fullWidth
+                sx={{ mt: 2 }}
+                onClick={() => {
+                  deleteFund(editingFund);
+                  setDrawerOpen(false);
+                }}
+              >
+                {loading ? 'Deleting...' : 'Delete Fund'}
+              </Button>
+            </Stack>
+          )}
+        </Box>
+      </Drawer>
+
+      {/* Fund Projection Chart */}
+        <Box
+          sx={{ 
+            display: 'flex', 
+            overflowX: 'auto',
+            gap: 2, 
+            pb: 1,
+          }}
+        >
+        <Card
+          className="rounded-2xl shadow-md" 
+          sx={{ 
+            mb: 2, 
+            width: "100%",
+            transition: 'all 0.2s ease-in-out'
+          }} 
+        > 
+          <CardContent className="p-4">
+            <Typography variant="h6" sx={{ mb: 2 }}>Fund Projection - {retirementFundInfoData.retirement_fund_data[selectedFund].name}</Typography>
+            {retirementFundInfoData.retirement_fund_data[selectedFund].retirement_projection && (
+              <BarChart
+                hideLegend={true}
+                dataset={retirementFundInfoData.retirement_fund_data[selectedFund].retirement_projection}
+                xAxis={[{ label: 'Year', scaleType: 'band', dataKey: 'year', valueFormatter: (value) => value.toString(), tickPlacement: 'middle' }]}
+                yAxis={[{ label: 'Amount ($)', dataKey: 'end_amount' }]}
+                grid={{ horizontal: true }}
+                series={[
+                  { dataKey: 'end_amount', label: 'Year End Balance', color: '#778be7ff' },
+                ]}
+                height={300}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </Box>
+
+      {/* Year by Year Table */}
+      {retirementFundInfoData?.retirement_fund_data?.[selectedFund] && (
+        <Box
+          sx={{ 
+            display: 'flex', 
+            overflowX: 'auto',
+            gap: 2, 
+            pb: 1,
+          }}
+        >
+          <Card
+            className="rounded-2xl shadow-md" 
+            sx={{ 
+              mb: 2, 
+              width: "100%",
+              transition: 'all 0.2s ease-in-out'
+            }} 
+          > 
+            <CardContent className="p-4">
+              <Typography variant="h6" sx={{ mb: 2 }}>Year by Year Projection - {retirementFundInfoData.retirement_fund_data[selectedFund].name}</Typography>
+              <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+                <Table stickyHeader size="small">
                   <TableHead>
-                    <TableRow>                      
-                      <TableCell align='right'>Year</TableCell>
-                      <TableCell align='right'>Age</TableCell>     
-                      <TableCell align='right'>Annual Return Rate</TableCell>     
-                      <TableCell align='right'>Begin Amount</TableCell>           
-                      <TableCell align='right'>Contributions</TableCell>    
-                      <TableCell align='right'>Growth</TableCell>
-                      <TableCell align='right'>End Amount</TableCell>
+                    <TableRow>
+                      <TableCell align="right">Year</TableCell>
+                      <TableCell align="right">Age</TableCell>
+                      <TableCell align="right">Return Rate</TableCell>
+                      <TableCell align="right">Begin Amount</TableCell>
+                      <TableCell align="right">Contributions</TableCell>
+                      <TableCell align="right">Growth</TableCell>
+                      <TableCell align="right">End Amount</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {fund.retirement_projection && fund.retirement_projection.map((yearData, yearIndex) => (
+                    {retirementFundInfoData.retirement_fund_data[selectedFund].retirement_projection?.map((yearData, yearIndex) => (
                       <TableRow key={yearIndex}>
-                        <TableCell align='right'>{yearData.year}</TableCell>
-                        <TableCell align='right'>{yearData.age}</TableCell>
-                        <TableCell align='right'>{(yearData.annual_return_rate * 100).toFixed(2)}%</TableCell>
-                        <TableCell align='right'>${yearData.begin_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                        <TableCell align='right'>${yearData.contribution.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                        <TableCell align='right'>${yearData.growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                        <TableCell align='right'>${yearData.end_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell align="right">{yearData.year}</TableCell>
+                        <TableCell align="right">{yearData.age}</TableCell>
+                        <TableCell align="right">{(yearData.annual_return_rate * 100).toFixed(2)}%</TableCell>
+                        <TableCell align="right">${yearData.begin_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell align="right">${yearData.contribution.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell align="right">${yearData.growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell align="right">${yearData.end_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
-            </Paper>
-            <Paper elevation={2} sx={{ mt: 2, p: 1, minHeight: 300, backgroundColor: '#f5f5f5' }}>
-              {fund.retirement_projection && (
-                <BarChart
-                  hideLegend={true}
-                  dataset={fund.retirement_projection}
-                  xAxis={[{ label: 'Year', scaleType: 'band', dataKey: 'year', valueFormatter: (value) => value.toString() , tickPlacement: 'middle' }]}
-                  yAxis={[{ label: 'Amount ($)', dataKey: 'end_amount' }]}
-                  grid={{ horizontal: true }}
-                  series={[
-                    { dataKey: 'end_amount', label: 'Year End Balance', color: '#778be7ff' },
-                  ]}
-                  height={300}
-                />
-              )}
-            </Paper>
-          </div>
-        </RetirementFundsTabPanel>
-      ))}
-      
-      <Drawer
-        anchor="right"
-        open={drawerOpen !== false}
-        onClose={() => setDrawerOpen(false)}
-        sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
-      >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">Return Rate Parameters</Typography>
-          <IconButton onClick={() => setDrawerOpen(false)}>
-            <CloseIcon />
-          </IconButton>
+            </CardContent>
+          </Card>
         </Box>
-        
-        {drawerOpen !== false && getReturnRateParams(drawerOpen).map((param, paramIndex) => (
-          <Paper key={paramIndex} elevation={1} sx={{ p: 2, mb: 2 }}>
-            <Stack spacing={1} direction={'row'} alignItems="center">
-              <TextField
-                label="From Age"
-                type="number"
-                size="small"
-                variant="standard"
-                sx={{ width: 100 }}
-                slotProps={{ htmlInput: { min: 0, max: 150 } }}
-                value={param.fromAge || ''}
-                onChange={(e) => {
-                  const params = [...getReturnRateParams(drawerOpen)];
-                  params[paramIndex] = { ...params[paramIndex], fromAge: parseInt(e.target.value) };
-                  setReturnRateParamsForFund(drawerOpen, params);
-                }}
-              />
-              <TextField
-                label="To Age"
-                type="number"
-                size="small"
-                variant="standard"
-                sx={{ width: 100 }}
-                slotProps={{ htmlInput: { min: 0, max: 150 } }}
-                value={param.toAge || ''}
-                onChange={(e) => {
-                  const params = [...getReturnRateParams(drawerOpen)];
-                  params[paramIndex] = { ...params[paramIndex], toAge: parseInt(e.target.value) };
-                  setReturnRateParamsForFund(drawerOpen, params);
-                }}
-              />
-              <TextField
-                label="Return Rate (%)"
-                type="number"
-                size="small"
-                variant="standard"
-                sx={{ width: 120 }}
-                slotProps={{ htmlInput: { step: 0.1, min: 0, max: 100 } }}
-                value={param.returnRate || ''}
-                onChange={(e) => {
-                  const params = [...getReturnRateParams(drawerOpen)];
-                  params[paramIndex] = { ...params[paramIndex], returnRate: parseFloat(e.target.value) };
-                  setReturnRateParamsForFund(drawerOpen, params);
-                }}
-              />
-            </Stack>
-            <Button sx={{ mt: 2 }}
-              variant="contained" 
-              size="small"
-              onClick={() => {
-                const params = getReturnRateParams(drawerOpen).filter((_, i) => i !== paramIndex);
-                setReturnRateParamsForFund(drawerOpen, params);
-              }}
-            >
-              Remove
-            </Button>
-          </Paper>
-        ))}
-        
-        <Button 
-          variant="contained" 
-          onClick={() => {
-            if (drawerOpen !== false) {
-              const params = [...getReturnRateParams(drawerOpen), { fromAge: 25, toAge: 65, returnRate: 7.0 }];
-              setReturnRateParamsForFund(drawerOpen, params);
-            }
-          }}
-        >
-          Add Return Rate Range
-        </Button>
-      </Drawer>
+      )}
     </div>
   );
 }
