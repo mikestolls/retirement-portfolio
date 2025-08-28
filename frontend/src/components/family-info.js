@@ -7,7 +7,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 
-import { LineChart } from '@mui/x-charts/LineChart';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts';
 
 // icons
 import PersonIcon from '@mui/icons-material/Person';
@@ -302,38 +302,56 @@ export default function FamilyInfo() {
               
               return (
                 <div>
-                  <LineChart
-                    dataset={householdProjection.data}
-                    xAxis={[{ label: 'Year', scaleType: 'point', dataKey: 'year', valueFormatter: (value) => value.toString() }]}
-                    yAxis={[{ label: 'Amount ($)' }]}
-                    grid={{ horizontal: true, vertical: true }}
-                    series={[...stackedSeries, ...totalSeries]}
-                    height={250}
-                    skipAnimation={false}
-                    slotProps={{
-                      popper: {
-                        sx: {
-                          '& .MuiChartsTooltip-root': {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            color: 'white'
-                          }
-                        }
-                      }
-                    }}
-                  />
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1, mb: 2 }}>
-                    {retirementMarkers.map((marker, index) => (
-                      <Typography key={index} variant="caption" sx={{ 
-                        backgroundColor: '#f0f0f0', 
-                        px: 1, 
-                        py: 0.5, 
-                        borderRadius: 1,
-                        fontSize: '0.7rem'
-                      }}>
-                        {marker.name} retires: {marker.year}
-                      </Typography>
-                    ))}
-                  </Box>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <AreaChart data={householdProjection.data} margin={{ top: 40, right: 30, left: 35, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="year" interval={0} angle={-45} textAnchor="end" tick={{ fontSize: 12 }} />
+                      <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} tick={{ fontSize: 12 }} />
+                      <Tooltip formatter={(value, name) => [`$${value.toLocaleString()}`, name]} />
+                      <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                      
+                      {fundKeys.filter(fundKey => visibleFunds[fundKey]).map((fundKey, index) => (
+                        <Area
+                          key={fundKey}
+                          type="monotone"
+                          dataKey={fundKey}
+                          stackId="1"
+                          stroke={`hsl(${index * 60}, 70%, 60%)`}
+                          fill={`hsl(${index * 60}, 70%, 60%)`}
+                          name={householdProjection.legendMap[fundKey] || fundKey}
+                        />
+                      ))}
+                      
+                      {visibleFunds.total && (
+                        <Line
+                          type="monotone"
+                          dataKey="total"
+                          stroke="#000000"
+                          strokeWidth={2}
+                          dot={false}
+                          name="Total Household"
+                        />
+                      )}
+                      
+                      {retirementMarkers.map((marker, index) => (
+                        <ReferenceLine
+                          key={`retirement-${index}`}
+                          x={marker.year}
+                          stroke="#ff6b6b"
+                          strokeDasharray="5 5"
+                          label={{ 
+                            value: marker.name, 
+                            position: "insideTopRight", 
+                            offset: -5,
+                            angle: 0,
+                            fontStyle: 'italic',
+                            fill: '#ff6b6b',
+                            fontSize: '12'
+                          }}
+                        />
+                      ))}
+                    </AreaChart>
+                  </ResponsiveContainer>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
                     {fundKeys.map((fundKey, index) => (
                       <Button

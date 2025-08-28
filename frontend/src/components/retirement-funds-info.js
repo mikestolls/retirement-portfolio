@@ -9,7 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import EditIcon from '@mui/icons-material/Edit';
 
-import { BarChart } from '@mui/x-charts/BarChart';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const contribution_frequencies = [
   { value: 12, label: 'Monthly' },
@@ -498,17 +498,23 @@ export default function RetirementFundsInfo() {
               const filteredData = fund.retirement_projection.filter(data => data.year <= retirementYear);
               
               return (
-                <BarChart
-                  hideLegend={true}
-                  dataset={filteredData}
-                  xAxis={[{ label: 'Year', scaleType: 'band', dataKey: 'year', valueFormatter: (value) => value.toString(), tickPlacement: 'middle' }]}
-                  yAxis={[{ label: 'Amount ($)', dataKey: 'end_amount' }]}
-                  grid={{ horizontal: true }}
-                  series={[
-                    { dataKey: 'end_amount', label: 'Year End Balance', color: '#778be7ff' },
-                  ]}
-                  height={300}
-                />
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={filteredData} margin={{ top: 40, right: 30, left: 35, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" interval={0} angle={-45} textAnchor="end" tick={{ fontSize: 12 }} />
+                    <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      formatter={(value) => [`$${value.toLocaleString()}`, 'Year End Balance']}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload[0]) {
+                          return `Year: ${label} - Age: ${payload[0].payload.age}`;
+                        }
+                        return `Year: ${label}`;
+                      }}
+                    />
+                    <Bar dataKey="end_amount" fill="#778be7ff" />
+                  </BarChart>
+                </ResponsiveContainer>
               );
             })()}
           </CardContent>
