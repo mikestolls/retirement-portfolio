@@ -54,6 +54,8 @@ export const RetirementProvider = ({ children }) => {
           await updateFamilyInfoData(0, memberWithId);
           // Update retirement fund to use the new family member ID
           await updateRetirementFundInfoData(0, { 'family-member-id': newId });
+          // Refresh retirement fund data to recalculate projections
+          await fetchRetirementFundInfoData();
           return;
         }
       }
