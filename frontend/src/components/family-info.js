@@ -40,15 +40,16 @@ export default function FamilyInfo() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
 
-  const handleDrawerClose = async () => {
+  const handleDrawerClose = () => {
     // Only update if there are changes in formStates for this member
     if (editingMember !== null && formStates[editingMember] && Object.keys(formStates[editingMember]).length > 0) {
-      await updateFamilyInfoData(editingMember, formStates[editingMember]);
-      // Clear the form state after successful update
-      setFormStates(prev => {
-        const newStates = { ...prev };
-        delete newStates[editingMember];
-        return newStates;
+      updateFamilyInfoData(editingMember, formStates[editingMember]).then(() => {
+        // Clear the form state after successful update
+        setFormStates(prev => {
+          const newStates = { ...prev };
+          delete newStates[editingMember];
+          return newStates;
+        });
       });
     }
 

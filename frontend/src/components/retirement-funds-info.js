@@ -30,6 +30,7 @@ export default function RetirementFundsInfo() {
   const [editingFund, setEditingFund] = useState(null);
   const [returnRateDrawerOpen, setReturnRateDrawerOpen] = useState(false);
   const [returnRateParams, setReturnRateParams] = useState({});
+  const [originalReturnRateParams, setOriginalReturnRateParams] = useState({});
 
   const getReturnRateParams = (index) => {
     const fund = retirementFundInfoData?.retirement_fund_data?.[index];
@@ -51,18 +52,19 @@ export default function RetirementFundsInfo() {
     setDrawerOpen(true);
   };
 
-  const handleDrawerClose = async () => {
+  const handleDrawerClose = () => {
     if (editingFund !== null && formStates[editingFund] && Object.keys(formStates[editingFund]).length > 0) {
       const updateData = {
         ...formStates[editingFund],
         'return-rate-params': getReturnRateParams(editingFund)
       };
-      await updateRetirementFundInfoData(editingFund, updateData);
-      await fetchRetirementFundInfoData(); // Recalculate projections
-      setFormStates(prev => {
-        const newStates = { ...prev };
-        delete newStates[editingFund];
-        return newStates;
+      updateRetirementFundInfoData(editingFund, updateData).then(() => {
+        fetchRetirementFundInfoData(); // Recalculate projections
+        setFormStates(prev => {
+          const newStates = { ...prev };
+          delete newStates[editingFund];
+          return newStates;
+        });
       });
     }
     setDrawerOpen(false);
@@ -312,9 +314,10 @@ export default function RetirementFundsInfo() {
                 sx={{ mt: 2 }}
                 onClick={() => {
                   const fund = retirementFundInfoData?.retirement_fund_data?.[editingFund];
-                  if (fund && !returnRateParams[editingFund]) {
+                  if (fund) {
                     const existingParams = fund['return-rate-params'] || [];
                     setReturnRateParamsForFund(editingFund, existingParams);
+                    setOriginalReturnRateParams(prev => ({ ...prev, [editingFund]: JSON.parse(JSON.stringify(existingParams)) }));
                   }
                   setReturnRateDrawerOpen(true);
                 }}
@@ -342,12 +345,44 @@ export default function RetirementFundsInfo() {
       <Drawer
         anchor="right"
         open={returnRateDrawerOpen}
-        onClose={() => setReturnRateDrawerOpen(false)}
+        onClose={() => {
+          if (editingFund !== null) {
+            const currentParams = getReturnRateParams(editingFund);
+            const originalParams = originalReturnRateParams[editingFund] || [];
+            
+            // Only save if parameters have changed
+            if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
+              const updateData = {
+                'return-rate-params': currentParams
+              };
+              updateRetirementFundInfoData(editingFund, updateData).then(() => {
+                fetchRetirementFundInfoData();
+              });
+            }
+          }
+          setReturnRateDrawerOpen(false);
+        }}
         sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Return Rate Parameters</Typography>
-          <IconButton onClick={() => setReturnRateDrawerOpen(false)}>
+          <IconButton onClick={() => {
+            if (editingFund !== null) {
+              const currentParams = getReturnRateParams(editingFund);
+              const originalParams = originalReturnRateParams[editingFund] || [];
+              
+              // Only save if parameters have changed
+              if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
+                const updateData = {
+                  'return-rate-params': currentParams
+                };
+                updateRetirementFundInfoData(editingFund, updateData).then(() => {
+                  fetchRetirementFundInfoData();
+                });
+              }
+            }
+            setReturnRateDrawerOpen(false);
+          }}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -423,24 +458,7 @@ export default function RetirementFundsInfo() {
           Add Return Rate Range
         </Button>
         
-        <Button 
-          variant="contained" 
-          color="primary"
-          fullWidth
-          sx={{ mt: 2 }}
-          onClick={async () => {
-            if (editingFund !== null) {
-              const updateData = {
-                'return-rate-params': getReturnRateParams(editingFund)
-              };
-              await updateRetirementFundInfoData(editingFund, updateData);
-              await fetchRetirementFundInfoData();
-              setReturnRateDrawerOpen(false);
-            }
-          }}
-        >
-          Save Return Rates
-        </Button>
+
       </Drawer>
 
       {/* Fund Projection Chart */}
