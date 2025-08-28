@@ -330,6 +330,7 @@ export default function FamilyInfo() {
                           strokeWidth={2}
                           dot={false}
                           name="Total Household"
+                          animationEasing='ease'
                         />
                       )}
                       

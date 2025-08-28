@@ -512,7 +512,11 @@ export default function RetirementFundsInfo() {
                         return `Year: ${label}`;
                       }}
                     />
-                    <Bar dataKey="end_amount" fill="#778be7ff" />
+                    <Bar 
+                      dataKey="end_amount"
+                      fill="#778be7ff" 
+                      animationEasing='ease'
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               );
