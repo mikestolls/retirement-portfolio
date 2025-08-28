@@ -18,6 +18,14 @@ class RetirementFundData:
             initial_investment = float(fund.get('initial-investment', 0))
             regular_contribution = float(fund.get('regular-contribution', 0))
             contribution_frequency = int(fund.get('contribution-frequency', 0))
+            
+            # Convert return rate params to ensure numeric types
+            return_rate_params = fund.get('return-rate-params', [])
+            if return_rate_params:
+                for param in return_rate_params:
+                    param['fromAge'] = int(param.get('fromAge', 0))
+                    param['toAge'] = int(param.get('toAge', 0))
+                    param['returnRate'] = float(param.get('returnRate', 0.0))
 
             if name is not None and len(name) < 1:
                 return False, "Name must be at least 1 character long"
