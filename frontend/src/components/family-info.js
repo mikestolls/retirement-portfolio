@@ -95,17 +95,18 @@ export default function FamilyInfo() {
     });
   };
 
-  const handleAddMember = async () => {
+  const handleAddMember = () => {
     const newIndex = familyInfoData?.family_info_data?.length || 0;
-    await updateFamilyInfoData(newIndex, {
+    setEditingMember(newIndex);
+    setDrawerOpen(true);
+    
+    updateFamilyInfoData(newIndex, {
       'id': crypto.randomUUID(),
       'name': 'New Member',
       'date-of-birth': '2000-01-01',
       'life-expectancy': 90,
       'retirement-age': 65,
     });
-    setEditingMember(newIndex);
-    setDrawerOpen(true);
   };
 
   const renderFamilyCards = () => {

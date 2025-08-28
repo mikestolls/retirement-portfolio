@@ -96,21 +96,27 @@ export default function RetirementFundsInfo() {
       });
       return newStates;
     });
+    // Reset selectedFund if it's the deleted fund or beyond
+    if (selectedFund >= index) {
+      setSelectedFund(Math.max(0, selectedFund - 1));
+    }
   };
 
-  const handleAddFund = async () => {
+  const handleAddFund = () => {
     const newIndex = retirementFundInfoData?.retirement_fund_data?.length || 0;
-    await updateRetirementFundInfoData(newIndex, {
+    setSelectedFund(newIndex);
+    setEditingFund(newIndex);
+    setDrawerOpen(true);
+    
+    updateRetirementFundInfoData(newIndex, {
       'name': 'New Fund',
       'family-member-id': familyInfoData?.family_info_data?.[0]?.id || '',
       'initial-investment': 1000,
       'regular-contribution': 10,
       'contribution-frequency': 12
+    }).then(() => {
+      fetchRetirementFundInfoData(); // Refresh to get projections
     });
-    await fetchRetirementFundInfoData(); // Refresh to get projections
-    setSelectedFund(newIndex);
-    setEditingFund(newIndex);
-    setDrawerOpen(true);
   };
 
   const renderFundCards = () => {
@@ -479,8 +485,8 @@ export default function RetirementFundsInfo() {
           }} 
         > 
           <CardContent className="p-4">
-            <Typography variant="h6" sx={{ mb: 2 }}>Fund Projection - {retirementFundInfoData.retirement_fund_data[selectedFund].name}</Typography>
-            {retirementFundInfoData.retirement_fund_data[selectedFund].retirement_projection && (
+            <Typography variant="h6" sx={{ mb: 2 }}>Fund Projection - {retirementFundInfoData.retirement_fund_data[selectedFund]?.name || 'Loading...'}</Typography>
+            {retirementFundInfoData.retirement_fund_data[selectedFund]?.retirement_projection && (
               <BarChart
                 hideLegend={true}
                 dataset={retirementFundInfoData.retirement_fund_data[selectedFund].retirement_projection}
@@ -516,7 +522,7 @@ export default function RetirementFundsInfo() {
             }} 
           > 
             <CardContent className="p-4">
-              <Typography variant="h6" sx={{ mb: 2 }}>Year by Year Projection - {retirementFundInfoData.retirement_fund_data[selectedFund].name}</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>Year by Year Projection - {retirementFundInfoData.retirement_fund_data[selectedFund]?.name || 'Loading...'}</Typography>
               <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
                 <Table stickyHeader size="small">
                   <TableHead>
