@@ -44,6 +44,7 @@ export default function FamilyInfo() {
     // Only update if there are changes in formStates for this member
     if (editingMember !== null && formStates[editingMember] && Object.keys(formStates[editingMember]).length > 0) {
       updateFamilyInfoData(editingMember, formStates[editingMember]).then(() => {
+        fetchRetirementFundInfoData(); // Refresh projections
         // Clear the form state after successful update
         setFormStates(prev => {
           const newStates = { ...prev };
