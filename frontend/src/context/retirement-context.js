@@ -3,7 +3,7 @@ import React, { createContext, useState, useContext, useEffect, useRef, useMemo 
 const RetirementContext = createContext();
 
 const DEFAULT_FAMILY_MEMBER = {
-  'id': crypto.randomUUID(),
+  'id': '',
   'name': 'Stolz',
   'date-of-birth': '1986-01-31',
   'life-expectancy': 90,
@@ -49,7 +49,11 @@ export const RetirementProvider = ({ children }) => {
           return;
         } else if (response.status === 404) {
           // Create and save default family info for new user
-          await updateFamilyInfoData(0, { ...DEFAULT_FAMILY_MEMBER, 'id': crypto.randomUUID() });
+          const newId = crypto.randomUUID();
+          const memberWithId = { ...DEFAULT_FAMILY_MEMBER, 'id': newId };
+          await updateFamilyInfoData(0, memberWithId);
+          // Update retirement fund to use the new family member ID
+          await updateRetirementFundInfoData(0, { 'family-member-id': newId });
           return;
         }
       }
