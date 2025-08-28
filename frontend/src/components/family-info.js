@@ -274,6 +274,13 @@ export default function FamilyInfo() {
                 setVisibleFunds(initialVisibility);
               }
               
+              // Calculate retirement years for markers
+              const retirementMarkers = familyInfoData?.family_info_data?.map(member => {
+                const currentAge = Math.floor((new Date() - new Date(member['date-of-birth'])) / (365.25 * 24 * 60 * 60 * 1000));
+                const retirementYear = new Date().getFullYear() + (member['retirement-age'] - currentAge);
+                return { name: member.name, year: retirementYear };
+              }) || [];
+              
               const stackedSeries = fundKeys.filter(fundKey => visibleFunds[fundKey]).map((fundKey, index) => ({
                 dataKey: fundKey,
                 label: householdProjection.legendMap[fundKey] || fundKey,
@@ -314,6 +321,19 @@ export default function FamilyInfo() {
                       }
                     }}
                   />
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1, mb: 2 }}>
+                    {retirementMarkers.map((marker, index) => (
+                      <Typography key={index} variant="caption" sx={{ 
+                        backgroundColor: '#f0f0f0', 
+                        px: 1, 
+                        py: 0.5, 
+                        borderRadius: 1,
+                        fontSize: '0.7rem'
+                      }}>
+                        {marker.name} retires: {marker.year}
+                      </Typography>
+                    ))}
+                  </Box>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
                     {fundKeys.map((fundKey, index) => (
                       <Button

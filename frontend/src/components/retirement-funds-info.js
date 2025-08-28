@@ -486,19 +486,31 @@ export default function RetirementFundsInfo() {
         > 
           <CardContent className="p-4">
             <Typography variant="h6" sx={{ mb: 2 }}>Fund Projection - {retirementFundInfoData.retirement_fund_data[selectedFund]?.name || 'Loading...'}</Typography>
-            {retirementFundInfoData.retirement_fund_data[selectedFund]?.retirement_projection && (
-              <BarChart
-                hideLegend={true}
-                dataset={retirementFundInfoData.retirement_fund_data[selectedFund].retirement_projection}
-                xAxis={[{ label: 'Year', scaleType: 'band', dataKey: 'year', valueFormatter: (value) => value.toString(), tickPlacement: 'middle' }]}
-                yAxis={[{ label: 'Amount ($)', dataKey: 'end_amount' }]}
-                grid={{ horizontal: true }}
-                series={[
-                  { dataKey: 'end_amount', label: 'Year End Balance', color: '#778be7ff' },
-                ]}
-                height={300}
-              />
-            )}
+            {retirementFundInfoData.retirement_fund_data[selectedFund]?.retirement_projection && (() => {
+              const fund = retirementFundInfoData.retirement_fund_data[selectedFund];
+              const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family-member-id']);
+              
+              if (!member) return null;
+              
+              const currentAge = Math.floor((new Date() - new Date(member['date-of-birth'])) / (365.25 * 24 * 60 * 60 * 1000));
+              const retirementYear = new Date().getFullYear() + (member['retirement-age'] - currentAge);
+              
+              const filteredData = fund.retirement_projection.filter(data => data.year <= retirementYear);
+              
+              return (
+                <BarChart
+                  hideLegend={true}
+                  dataset={filteredData}
+                  xAxis={[{ label: 'Year', scaleType: 'band', dataKey: 'year', valueFormatter: (value) => value.toString(), tickPlacement: 'middle' }]}
+                  yAxis={[{ label: 'Amount ($)', dataKey: 'end_amount' }]}
+                  grid={{ horizontal: true }}
+                  series={[
+                    { dataKey: 'end_amount', label: 'Year End Balance', color: '#778be7ff' },
+                  ]}
+                  height={300}
+                />
+              );
+            })()}
           </CardContent>
         </Card>
       </Box>
@@ -537,17 +549,27 @@ export default function RetirementFundsInfo() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {retirementFundInfoData.retirement_fund_data[selectedFund].retirement_projection?.map((yearData, yearIndex) => (
-                      <TableRow key={yearIndex}>
-                        <TableCell align="right">{yearData.year}</TableCell>
-                        <TableCell align="right">{yearData.age}</TableCell>
-                        <TableCell align="right">{(yearData.annual_return_rate * 100).toFixed(2)}%</TableCell>
-                        <TableCell align="right">${yearData.begin_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                        <TableCell align="right">${yearData.contribution.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                        <TableCell align="right">${yearData.growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                        <TableCell align="right">${yearData.end_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                      </TableRow>
-                    ))}
+                    {(() => {
+                      const fund = retirementFundInfoData.retirement_fund_data[selectedFund];
+                      const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family-member-id']);
+                      
+                      if (!member) return null;
+                      
+                      const currentAge = Math.floor((new Date() - new Date(member['date-of-birth'])) / (365.25 * 24 * 60 * 60 * 1000));
+                      const retirementYear = new Date().getFullYear() + (member['retirement-age'] - currentAge);
+                      
+                      return fund.retirement_projection?.filter(data => data.year <= retirementYear).map((yearData, yearIndex) => (
+                        <TableRow key={yearIndex}>
+                          <TableCell align="right">{yearData.year}</TableCell>
+                          <TableCell align="right">{yearData.age}</TableCell>
+                          <TableCell align="right">{(yearData.annual_return_rate * 100).toFixed(2)}%</TableCell>
+                          <TableCell align="right">${yearData.begin_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell align="right">${yearData.contribution.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell align="right">${yearData.growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell align="right">${yearData.end_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        </TableRow>
+                      ));
+                    })()}
                   </TableBody>
                 </Table>
               </TableContainer>
