@@ -18,41 +18,6 @@
             }
         },
         {
-            "label": "Start Flask",
-            "type": "shell",
-            "command": "python",
-            "isBackground": true,
-            "args": [
-                "-m",
-                "flask",
-                "run",
-                "--host=0.0.0.0",
-                "--port=5000",
-                "--reload"
-            ],
-            "problemMatcher": {
-                "pattern": {
-                    "regexp": "^$"
-                },
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": "\\* Running on",
-                    "endsPattern": "\\* Debugger PIN"
-                }
-            },
-            "options": {
-                "env": {
-                    "FLASK_APP": "backend/app.py",
-                    "FLASK_DEBUG": "1",
-                    "AWS_ACCESS_KEY_ID": "dummy",
-                    "AWS_SECRET_ACCESS_KEY": "dummy",
-                    "AWS_SESSION_TOKEN": "dummy",
-                    "AWS_DEFAULT_REGION": "us-east-1",
-                    "DYNAMODB_ENDPOINT_URL": "http://localhost:8000"
-                }
-            }
-        },
-        {
             "label": "Start React",
             "isBackground": true,
             "type": "shell",
@@ -73,11 +38,6 @@
             "options": {
                 "cwd": "${workspaceFolder}/frontend"
             }
-        },
-        {
-            "label": "Start DynamoDB Local, Flask and React",
-            "dependsOn": ["Start DynamoDB Local", "Start Flask", "Start React"],
-            "dependsOrder": "sequence"
         },
         {
             "label": "Start DynamoDB Local and React",

@@ -1,9 +1,12 @@
 import json
-from db.dynamodb import db_get_family_info
+from db.dynamodb import db_get_family_info, db_create_tables_if_not_exist
 
 def lambda_handler(event, context):
     """Get family info for a user"""
     try:
+        # Ensure tables exist
+        db_create_tables_if_not_exist()
+        
         # Get user_id from path parameters
         user_id = event['pathParameters']['user_id']
         

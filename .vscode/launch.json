@@ -1,38 +1,21 @@
 {
-     "configurations": [
+    "version": "0.2.0",
+    "configurations": [
         {
-            "name": "Python Debugger - Flask",
-            "type": "debugpy",
+            "name": "Debug Lambda Function",
+            "type": "python",
             "request": "launch",
-            "module": "flask",
+            "program": "${workspaceFolder}/backend/tests/debug_lambda.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/backend",
             "env": {
-                "FLASK_APP": "backend/app.py",
-                "FLASK_DEBUG": "1",
+                "PYTHONPATH": "${workspaceFolder}/backend/layers/shared/python",
                 "AWS_ACCESS_KEY_ID": "dummy",
                 "AWS_SECRET_ACCESS_KEY": "dummy",
-                "AWS_SESSION_TOKEN": "dummy",
                 "AWS_DEFAULT_REGION": "us-east-1",
                 "DYNAMODB_ENDPOINT_URL": "http://localhost:8000"
             },
-            "args": [
-                "run",
-                "--host=0.0.0.0",
-                "--port=5000",
-                "--reload"
-            ],
-            "jinja": true,
-            "autoStartBrowser": false,
-            "preLaunchTask": "Start DynamoDB Local and React",
-            "postDebugTask": "Terminate All Tasks"
-        },
-        {
-            "name": "React Debugger - Chrome",
-            "type": "chrome",
-            "request": "launch",
-            "url": "http://localhost:3000",
-            "webRoot": "${workspaceFolder}/frontend",
-            "preLaunchTask": "Start DynamoDB Local, Flask and React",
-            "postDebugTask": "Terminate All Tasks"
+            "preLaunchTask": "Start DynamoDB Local"
         }
     ]
 }

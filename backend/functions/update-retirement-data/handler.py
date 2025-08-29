@@ -1,10 +1,13 @@
 import json
-from db.dynamodb import db_save_retirement_fund_info
+from db.dynamodb import db_save_retirement_fund_info, db_create_tables_if_not_exist
 from models.retirement_fund_data import RetirementFundData
 
 def lambda_handler(event, context):
     """Update retirement fund data for a user"""
     try:
+        # Ensure tables exist
+        db_create_tables_if_not_exist()
+        
         # Get user_id from path parameters
         user_id = event['pathParameters']['user_id']
         
