@@ -20,17 +20,14 @@ services:
       - backend
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: public.ecr.aws/sam/build-python3.9:latest
     ports:
       - "5000:5000"
     volumes:
-      - ./backend:/app
+      - ./backend:/var/task
+    working_dir: /var/task
+    command: sam local start-api --host 0.0.0.0 --port 5000 --docker-network retirement-portfolio_backend_network
     environment:
-      - FLASK_ENV=development
-      - FLASK_APP=app.py
-      - FLASK_DEBUG=1
       - AWS_ACCESS_KEY_ID=dummy
       - AWS_SECRET_ACCESS_KEY=dummy
       - AWS_DEFAULT_REGION=us-east-1
