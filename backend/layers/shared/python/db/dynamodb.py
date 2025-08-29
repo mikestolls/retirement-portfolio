@@ -25,15 +25,16 @@ RETIREMENT_FUNDS_TABLE = 'retirement_funds'
 def db_get_dynamodb_client():
     """Get DynamoDB client based on environment"""
     try:        
-        if DYNAMODB_ENDPOINT:  # Local development
-            # For DynamoDB Local, we need to use dummy credentials
+        # Check if we're running locally (DynamoDB Local)
+        endpoint_url = os.environ.get('DYNAMODB_ENDPOINT_URL')
+        if endpoint_url:
+            print(f"Connecting to DynamoDB Local at: {endpoint_url}")
             return boto3.resource(
                 'dynamodb',
-                endpoint_url=str(DYNAMODB_ENDPOINT),
-                region_name=str(AWS_REGION),
-                aws_access_key_id=str(AWS_ACCESS_KEY_ID),
-                aws_secret_access_key=str(AWS_SECRET_ACCESS_KEY),
-                aws_session_token=str(AWS_SESSION_TOKEN) if AWS_SESSION_TOKEN else None
+                endpoint_url=endpoint_url,
+                region_name='us-east-1',
+                aws_access_key_id='dummy',
+                aws_secret_access_key='dummy'
             )
         else:  # AWS environment
             return boto3.resource('dynamodb', region_name=AWS_REGION)

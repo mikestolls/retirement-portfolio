@@ -1,9 +1,10 @@
+version = 0.1
+
 [default]
 [default.local_start_api]
 [default.local_start_api.parameters]
 port = 5000
 host = "0.0.0.0"
-docker_network = "retirement-portfolio_default"
 
 [default.build]
 [default.build.parameters]

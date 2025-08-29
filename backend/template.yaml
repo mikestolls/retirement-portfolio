@@ -7,7 +7,7 @@ Globals:
     Timeout: 30
     Environment:
       Variables:
-        DYNAMODB_ENDPOINT_URL: !If [IsLocal, "http://dynamodb-local:8000", !Ref "AWS::NoValue"]
+        DYNAMODB_ENDPOINT_URL: !If [IsLocal, "http://localhost:8000", !Ref "AWS::NoValue"]
         AWS_DEFAULT_REGION: !Ref "AWS::Region"
         USERS_TABLE: !Ref UsersTable
         FAMILY_INFO_TABLE: !Ref FamilyInfoTable
@@ -30,6 +30,18 @@ Resources:
         - python3.9
 
   # Lambda Functions
+  OptionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/options/
+      Handler: handler.lambda_handler
+      Events:
+        OptionsApi:
+          Type: Api
+          Properties:
+            Path: /api/{proxy+}
+            Method: options
+
   HealthFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -41,6 +53,10 @@ Resources:
           Properties:
             Path: /api/health
             Method: get
+            Cors:
+              AllowMethods: "'GET,POST,OPTIONS'"
+              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              AllowOrigin: "'*'"
 
   GetFamilyInfoFunction:
     Type: AWS::Serverless::Function
@@ -58,6 +74,10 @@ Resources:
           Properties:
             Path: /api/get_family_info/{user_id}
             Method: get
+            Cors:
+              AllowMethods: "'GET,POST,OPTIONS'"
+              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              AllowOrigin: "'*'"
 
   UpdateFamilyInfoFunction:
     Type: AWS::Serverless::Function
@@ -75,6 +95,10 @@ Resources:
           Properties:
             Path: /api/update_family_info/{user_id}
             Method: post
+            Cors:
+              AllowMethods: "'GET,POST,OPTIONS'"
+              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              AllowOrigin: "'*'"
 
   GetRetirementDataFunction:
     Type: AWS::Serverless::Function
@@ -94,6 +118,10 @@ Resources:
           Properties:
             Path: /api/get_retirement_fund_data/{user_id}
             Method: get
+            Cors:
+              AllowMethods: "'GET,POST,OPTIONS'"
+              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              AllowOrigin: "'*'"
 
   UpdateRetirementDataFunction:
     Type: AWS::Serverless::Function
@@ -111,6 +139,10 @@ Resources:
           Properties:
             Path: /api/update_retirement_fund_data/{user_id}
             Method: post
+            Cors:
+              AllowMethods: "'GET,POST,OPTIONS'"
+              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              AllowOrigin: "'*'"
 
   # DynamoDB Tables
   UsersTable:

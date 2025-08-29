@@ -1,9 +1,14 @@
 import json
+import logging
 from db.dynamodb import db_get_retirement_fund_info, db_get_family_info, db_create_tables_if_not_exist
 from services.retirement_calculator import calculate_retirement_projection
 
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
 def lambda_handler(event, context):
-    """Get retirement fund data for a user"""
+    """Get retirement fund data for a user"""    
     try:
         # Ensure tables exist
         db_create_tables_if_not_exist()
@@ -37,7 +42,6 @@ def lambda_handler(event, context):
         
         # Calculate retirement projection with both datasets
         calculate_retirement_projection(retirement_fund_info, family_info)
-        
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
@@ -45,6 +49,7 @@ def lambda_handler(event, context):
         }
         
     except Exception as e:
+        logger.error(f"Error processing retirement data: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},

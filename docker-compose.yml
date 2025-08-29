@@ -13,46 +13,15 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - REACT_APP_BACKEND_API_URL=http://localhost:5000/api
-    networks:
-      - frontend_network
-      - backend_network
-    depends_on:
-      - backend
-
-  backend:
-    image: public.ecr.aws/sam/build-python3.9:latest
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./backend:/var/task
-    working_dir: /var/task
-    command: sam local start-api --host 0.0.0.0 --port 5000 --docker-network retirement-portfolio_backend_network
-    environment:
-      - AWS_ACCESS_KEY_ID=dummy
-      - AWS_SECRET_ACCESS_KEY=dummy
-      - AWS_DEFAULT_REGION=us-east-1
-      - DYNAMODB_ENDPOINT_URL=http://dynamodb-local:8000
-    networks:
-      - backend_network
-    depends_on:
-      - dynamodb-local
 
   dynamodb-local:
     image: amazon/dynamodb-local:latest
     ports:
       - "8000:8000"
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data/"
-    networks:
-      - backend_network
     volumes:
       - dynamodb-data:/home/dynamodblocal/data
     user: root
 
 volumes:
   dynamodb-data:
-
-networks:
-  frontend_network:
-    driver: bridge
-  backend_network:
-    driver: bridge

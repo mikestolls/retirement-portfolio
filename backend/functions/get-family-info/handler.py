@@ -1,5 +1,10 @@
 import json
+import logging
 from db.dynamodb import db_get_family_info, db_create_tables_if_not_exist
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
     """Get family info for a user"""
@@ -33,6 +38,7 @@ def lambda_handler(event, context):
         }
         
     except Exception as e:
+        logger.error(f"Error processing family info data: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},

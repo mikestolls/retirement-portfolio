@@ -1,6 +1,11 @@
 import json
+import logging
 from db.dynamodb import db_save_retirement_fund_info, db_create_tables_if_not_exist
 from models.retirement_fund_data import RetirementFundData
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
     """Update retirement fund data for a user"""
@@ -56,6 +61,7 @@ def lambda_handler(event, context):
         }
         
     except Exception as e:
+        logger.error(f"Error updating retirement data: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
