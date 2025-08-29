@@ -2,20 +2,104 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Lambda Function",
+            "name": "Python: Local Debug Server",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/backend/tests/debug_lambda.py",
+            "program": "${workspaceFolder}/backend/dev_server.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/backend",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}/backend/layers/shared/python",
-                "AWS_ACCESS_KEY_ID": "dummy",
-                "AWS_SECRET_ACCESS_KEY": "dummy",
-                "AWS_DEFAULT_REGION": "us-east-1",
-                "DYNAMODB_ENDPOINT_URL": "http://localhost:8000"
+                "DYNAMODB_ENDPOINT_URL": "http://localhost:8000",
+                "AWS_DEFAULT_REGION": "us-east-1"
+            }
+        },
+        {
+            "name": "SAM Local API",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend",
+            "console": "integratedTerminal",
+            "windows": {
+                "command": "sam",
+                "args": [
+                    "local",
+                    "start-api",
+                    "--template-file",
+                    "template.yaml",
+                    "--env-vars",
+                    "env.json",
+                    "--port",
+                    "5000",
+                    "--host",
+                    "0.0.0.0"
+                ]
             },
-            "preLaunchTask": "Start DynamoDB Local"
+            "linux": {
+                "command": "sam",
+                "args": [
+                    "local",
+                    "start-api",
+                    "--template-file",
+                    "template.yaml",
+                    "--env-vars",
+                    "env.json",
+                    "--port",
+                    "5000",
+                    "--host",
+                    "0.0.0.0"
+                ]
+            },
+            "osx": {
+                "command": "sam",
+                "args": [
+                    "local",
+                    "start-api",
+                    "--template-file",
+                    "template.yaml",
+                    "--env-vars",
+                    "env.json",
+                    "--port",
+                    "5000",
+                    "--host",
+                    "0.0.0.0"
+                ]
+            },
+            "cwd": "${workspaceFolder}/backend",
+            "env": {
+                "AWS_DEFAULT_REGION": "us-east-1"
+            }
+        },
+        {
+            "name": "SAM Build & Start API",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend",
+            "console": "integratedTerminal",
+            "windows": {
+                "command": "cmd",
+                "args": [
+                    "/c",
+                    "sam build && sam local start-api --template-file template.yaml --env-vars env.json --port 5000 --host 0.0.0.0"
+                ]
+            },
+            "linux": {
+                "command": "bash",
+                "args": [
+                    "-c",
+                    "sam build && sam local start-api --template-file template.yaml --env-vars env.json --port 5000 --host 0.0.0.0"
+                ]
+            },
+            "osx": {
+                "command": "bash",
+                "args": [
+                    "-c",
+                    "sam build && sam local start-api --template-file template.yaml --env-vars env.json --port 5000 --host 0.0.0.0"
+                ]
+            },
+            "cwd": "${workspaceFolder}/backend",
+            "env": {
+                "AWS_DEFAULT_REGION": "us-east-1"
+            }
         }
     ]
 }
