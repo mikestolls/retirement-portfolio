@@ -14,7 +14,25 @@
             }
         },
         {
-            "name": "SAM Local API",
+            "name": "Debug React App",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}/frontend/src",
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/*"
+            }
+        },
+        {
+            "name": "Attach to React (Chrome)",
+            "type": "chrome",
+            "request": "attach",
+            "port": 9222,
+            "webRoot": "${workspaceFolder}/frontend/src",
+            "url": "http://localhost:3000"
+        },
+        {
+            "name": "SAM Start Local API",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/backend",
@@ -70,7 +88,7 @@
             }
         },
         {
-            "name": "SAM Build & Start API",
+            "name": "SAM Build & Start Local API",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/backend",
@@ -100,6 +118,16 @@
             "env": {
                 "AWS_DEFAULT_REGION": "us-east-1"
             }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Debug Full Stack",
+            "configurations": [
+                "Python: Local Debug Server",
+                "Debug React App"
+            ],
+            "stopAll": true
         }
     ]
 }
