@@ -41,3 +41,6 @@ yarn-error.log
 .docker/
 venv
 *.log
+
+# SAM
+.aws-sam/
