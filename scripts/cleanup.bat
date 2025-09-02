@@ -34,7 +34,16 @@ if %errorlevel% neq 0 (
     echo ✅ Infrastructure stack deleted
 )
 
-REM Step 4: Clean up SAM artifacts buckets (optional)
+REM Step 4: Delete CloudWatch log groups
+echo 📊 Deleting CloudWatch log groups...
+for /f "tokens=*" %%i in ('aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/%STACK_NAME%" --query "logGroups[].logGroupName" --output text --profile retirement-portfolio 2^>nul') do (
+    for %%j in (%%i) do (
+        echo Deleting log group: %%j
+        aws logs delete-log-group --log-group-name "%%j" --profile retirement-portfolio
+    )
+)
+
+REM Step 5: Clean up SAM artifacts buckets (optional)
 echo 🧹 Cleaning up SAM artifacts buckets...
 for /f "tokens=*" %%i in ('aws s3 ls --profile retirement-portfolio ^| findstr "%STACK_NAME%-sam-artifacts"') do (
     set BUCKET_LINE=%%i
