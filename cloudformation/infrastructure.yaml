@@ -1,303 +1,58 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Retirement Portfolio - Fargate Backend + S3/CloudFront Frontend'
+Description: 'Retirement Portfolio - Lambda Backend + S3/CloudFront Frontend'
 
 Parameters:
   Environment:
     Type: String
     Default: prod
     AllowedValues: [dev, staging, prod]
-  
-  BackendImageURI:
-    Type: String
-    Description: ECR URI for backend Docker image
-  
-  DomainName:
-    Type: String
-    Default: ''
-    Description: Optional custom domain name
 
 Resources:
-  # VPC and Networking
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsHostnames: true
-      EnableDnsSupport: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-vpc
-
-  PublicSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select [0, !GetAZs '']
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-public-1
-
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select [1, !GetAZs '']
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-public-2
-
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-    Properties:
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-igw
-
-  AttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
-
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-public-rt
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: AttachGateway
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  PublicSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet1
-      RouteTableId: !Ref PublicRouteTable
-
-  PublicSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet2
-      RouteTableId: !Ref PublicRouteTable
-
-  # DynamoDB Tables
-  RetirementFundTable:
+  # DynamoDB Tables (matching your Lambda code)
+  UsersTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub ${AWS::StackName}-retirement-fund
+      TableName: users
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: retirement_fund_id
-          AttributeType: S
         - AttributeName: user_id
           AttributeType: S
+        - AttributeName: email
+          AttributeType: S
       KeySchema:
-        - AttributeName: retirement_fund_id
+        - AttributeName: user_id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: user-id-index
+        - IndexName: EmailIndex
           KeySchema:
-            - AttributeName: user_id
+            - AttributeName: email
               KeyType: HASH
           Projection:
-            ProjectionType: KEYS_ONLY
+            ProjectionType: ALL
 
   FamilyInfoTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub ${AWS::StackName}-family-info
+      TableName: family_info
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: family_info_id
           AttributeType: S
-        - AttributeName: user_id
-          AttributeType: S
       KeySchema:
         - AttributeName: family_info_id
           KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: user-id-index
-          KeySchema:
-            - AttributeName: user_id
-              KeyType: HASH
-          Projection:
-            ProjectionType: KEYS_ONLY
 
-  # ECS Cluster and Fargate Service
-  ECSCluster:
-    Type: AWS::ECS::Cluster
+  RetirementFundTable:
+    Type: AWS::DynamoDB::Table
     Properties:
-      ClusterName: !Sub ${AWS::StackName}-cluster
-
-  TaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: !Sub ${AWS::StackName}-backend
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      Cpu: 256
-      Memory: 512
-      ExecutionRoleArn: !Ref TaskExecutionRole
-      TaskRoleArn: !Ref TaskRole
-      ContainerDefinitions:
-        - Name: backend
-          Image: !Ref BackendImageURI
-          PortMappings:
-            - ContainerPort: 5000
-          Environment:
-            - Name: AWS_DEFAULT_REGION
-              Value: !Ref AWS::Region
-            - Name: FLASK_ENV
-              Value: production
-            - Name: RETIREMENT_FUND_TABLE
-              Value: !Ref RetirementFundTable
-            - Name: FAMILY_INFO_TABLE
-              Value: !Ref FamilyInfoTable
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: !Ref LogGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: backend
-
-  TaskExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-
-  TaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: DynamoDBAccess
-          PolicyDocument:
-            Statement:
-              - Effect: Allow
-                Action:
-                  - dynamodb:GetItem
-                  - dynamodb:PutItem
-                  - dynamodb:UpdateItem
-                  - dynamodb:DeleteItem
-                  - dynamodb:Query
-                  - dynamodb:Scan
-                Resource:
-                  - !GetAtt RetirementFundTable.Arn
-                  - !GetAtt FamilyInfoTable.Arn
-                  - !Sub "${RetirementFundTable.Arn}/index/*"
-                  - !Sub "${FamilyInfoTable.Arn}/index/*"
-
-  LogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub /ecs/${AWS::StackName}
-      RetentionInDays: 7
-
-  # Application Load Balancer
-  ALBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: ALB Security Group
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-
-  ECSSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: ECS Security Group
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 5000
-          ToPort: 5000
-          SourceSecurityGroupId: !Ref ALBSecurityGroup
-
-  ApplicationLoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Name: !Sub ${AWS::StackName}-alb
-      Scheme: internet-facing
-      Type: application
-      Subnets:
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-      SecurityGroups:
-        - !Ref ALBSecurityGroup
-
-  TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Name: !Sub ${AWS::StackName}-tg
-      Port: 5000
-      Protocol: HTTP
-      VpcId: !Ref VPC
-      TargetType: ip
-      HealthCheckPath: /api/health
-      HealthCheckProtocol: HTTP
-
-  Listener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup
-      LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: 80
-      Protocol: HTTP
-
-  ECSService:
-    Type: AWS::ECS::Service
-    DependsOn: Listener
-    Properties:
-      ServiceName: !Sub ${AWS::StackName}-backend-service
-      Cluster: !Ref ECSCluster
-      TaskDefinition: !Ref TaskDefinition
-      LaunchType: FARGATE
-      DesiredCount: 1
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          SecurityGroups:
-            - !Ref ECSSecurityGroup
-          Subnets:
-            - !Ref PublicSubnet1
-            - !Ref PublicSubnet2
-          AssignPublicIp: ENABLED
-      LoadBalancers:
-        - ContainerName: backend
-          ContainerPort: 5000
-          TargetGroupArn: !Ref TargetGroup
+      TableName: retirement_funds
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: retirement_fund_info_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: retirement_fund_info_id
+          KeyType: HASH
 
   # S3 Bucket for Frontend
   FrontendBucket:
@@ -330,11 +85,11 @@ Resources:
             S3OriginConfig:
               OriginAccessIdentity: ''
             OriginAccessControlId: !Ref CloudFrontOriginAccessControl
-          - Id: ALBOrigin
-            DomainName: !GetAtt ApplicationLoadBalancer.DNSName
+          - Id: APIGatewayOrigin
+            DomainName: placeholder-api-gateway.execute-api.us-east-1.amazonaws.com
             CustomOriginConfig:
-              HTTPPort: 80
-              OriginProtocolPolicy: http-only
+              HTTPPort: 443
+              OriginProtocolPolicy: https-only
         Enabled: true
         DefaultRootObject: index.html
         DefaultCacheBehavior:
@@ -343,7 +98,7 @@ Resources:
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
         CacheBehaviors:
           - PathPattern: /api/*
-            TargetOriginId: ALBOrigin
+            TargetOriginId: APIGatewayOrigin
             ViewerProtocolPolicy: redirect-to-https
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf
@@ -356,6 +111,7 @@ Resources:
   # S3 Bucket Policy for CloudFront
   FrontendBucketPolicy:
     Type: AWS::S3::BucketPolicy
+    DependsOn: CloudFrontDistribution
     Properties:
       Bucket: !Ref FrontendBucket
       PolicyDocument:
@@ -364,18 +120,14 @@ Resources:
             Principal:
               Service: cloudfront.amazonaws.com
             Action: s3:GetObject
-            Resource: !Sub ${FrontendBucket}/*
+            Resource: !Sub "arn:aws:s3:::${FrontendBucket}/*"
             Condition:
               StringEquals:
-                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}
+                "AWS:SourceArn": !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+
 
 Outputs:
-  BackendURL:
-    Description: Backend API URL
-    Value: !Sub http://${ApplicationLoadBalancer.DNSName}/api
-    Export:
-      Name: !Sub ${AWS::StackName}-backend-url
-
   FrontendURL:
     Description: Frontend URL
     Value: !Sub https://${CloudFrontDistribution.DomainName}
@@ -393,3 +145,21 @@ Outputs:
     Value: !Ref CloudFrontDistribution
     Export:
       Name: !Sub ${AWS::StackName}-cloudfront-id
+
+  UsersTableName:
+    Description: Users DynamoDB Table
+    Value: !Ref UsersTable
+    Export:
+      Name: !Sub ${AWS::StackName}-users-table
+
+  FamilyInfoTableName:
+    Description: Family Info DynamoDB Table
+    Value: !Ref FamilyInfoTable
+    Export:
+      Name: !Sub ${AWS::StackName}-family-info-table
+
+  RetirementFundTableName:
+    Description: Retirement Fund DynamoDB Table
+    Value: !Ref RetirementFundTable
+    Export:
+      Name: !Sub ${AWS::StackName}-retirement-fund-table

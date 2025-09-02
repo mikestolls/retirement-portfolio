@@ -8,12 +8,16 @@ Globals:
     Environment:
       Variables:
         DYNAMODB_ENDPOINT_URL: !If [IsLocal, "http://localhost:8000", !Ref "AWS::NoValue"]
-        AWS_DEFAULT_REGION: !Ref "AWS::Region"
-        USERS_TABLE: !Ref UsersTable
-        FAMILY_INFO_TABLE: !Ref FamilyInfoTable
-        RETIREMENT_FUND_TABLE: !Ref RetirementFundTable
+        USERS_TABLE: users
+        FAMILY_INFO_TABLE: family_info
+        RETIREMENT_FUND_TABLE: retirement_funds
     Layers:
       - !Ref SharedLayer
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
 
 Conditions:
   IsLocal: !Equals [!Ref "AWS::StackName", "local"]
@@ -53,10 +57,6 @@ Resources:
           Properties:
             Path: /api/health
             Method: get
-            Cors:
-              AllowMethods: "'GET,POST,OPTIONS'"
-              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              AllowOrigin: "'*'"
 
   GetFamilyInfoFunction:
     Type: AWS::Serverless::Function
@@ -65,19 +65,20 @@ Resources:
       Handler: handler.lambda_handler
       Policies:
         - DynamoDBReadPolicy:
-            TableName: !Ref UsersTable
+            TableName: users
         - DynamoDBReadPolicy:
-            TableName: !Ref FamilyInfoTable
+            TableName: family_info
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+              Resource: "*"
       Events:
         Api:
           Type: Api
           Properties:
             Path: /api/get_family_info/{user_id}
             Method: get
-            Cors:
-              AllowMethods: "'GET,POST,OPTIONS'"
-              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              AllowOrigin: "'*'"
 
   UpdateFamilyInfoFunction:
     Type: AWS::Serverless::Function
@@ -86,19 +87,20 @@ Resources:
       Handler: handler.lambda_handler
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref UsersTable
+            TableName: users
         - DynamoDBCrudPolicy:
-            TableName: !Ref FamilyInfoTable
+            TableName: family_info
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+              Resource: "*"
       Events:
         Api:
           Type: Api
           Properties:
             Path: /api/update_family_info/{user_id}
             Method: post
-            Cors:
-              AllowMethods: "'GET,POST,OPTIONS'"
-              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              AllowOrigin: "'*'"
 
   GetRetirementDataFunction:
     Type: AWS::Serverless::Function
@@ -107,21 +109,22 @@ Resources:
       Handler: handler.lambda_handler
       Policies:
         - DynamoDBReadPolicy:
-            TableName: !Ref UsersTable
+            TableName: users
         - DynamoDBReadPolicy:
-            TableName: !Ref FamilyInfoTable
+            TableName: family_info
         - DynamoDBReadPolicy:
-            TableName: !Ref RetirementFundTable
+            TableName: retirement_funds
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+              Resource: "*"
       Events:
         Api:
           Type: Api
           Properties:
             Path: /api/get_retirement_fund_data/{user_id}
             Method: get
-            Cors:
-              AllowMethods: "'GET,POST,OPTIONS'"
-              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              AllowOrigin: "'*'"
 
   UpdateRetirementDataFunction:
     Type: AWS::Serverless::Function
@@ -130,65 +133,22 @@ Resources:
       Handler: handler.lambda_handler
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref UsersTable
+            TableName: users
         - DynamoDBCrudPolicy:
-            TableName: !Ref RetirementFundTable
+            TableName: retirement_funds
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+              Resource: "*"
       Events:
         Api:
           Type: Api
           Properties:
             Path: /api/update_retirement_fund_data/{user_id}
             Method: post
-            Cors:
-              AllowMethods: "'GET,POST,OPTIONS'"
-              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              AllowOrigin: "'*'"
 
-  # DynamoDB Tables
-  UsersTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: users
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: user_id
-          AttributeType: S
-        - AttributeName: email
-          AttributeType: S
-      KeySchema:
-        - AttributeName: user_id
-          KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: EmailIndex
-          KeySchema:
-            - AttributeName: email
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
 
-  FamilyInfoTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: family_info
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: family_info_id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: family_info_id
-          KeyType: HASH
-
-  RetirementFundTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: retirement_funds
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: retirement_fund_info_id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: retirement_fund_info_id
-          KeyType: HASH
 
 Outputs:
   ApiUrl:

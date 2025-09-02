@@ -15,13 +15,33 @@
         },
         {
             "name": "Debug React App",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/frontend",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["start"],
+            "console": "integratedTerminal",
+            "env": {
+                "BROWSER": "none"
+            },
+            "serverReadyAction": {
+                "pattern": "Local:\\s+(https?://localhost:[0-9]+)",
+                "uriFormat": "%s",
+                "action": "openExternally"
+            }
+        },
+        {
+            "name": "Debug React App (Chrome)",
             "type": "chrome",
             "request": "launch",
             "url": "http://localhost:3000",
             "webRoot": "${workspaceFolder}/frontend/src",
             "sourceMapPathOverrides": {
-                "webpack:///src/*": "${webRoot}/*"
-            }
+                "webpack:///src/*": "${workspaceFolder}/frontend/src/*",
+                "webpack:///./*": "${workspaceFolder}/frontend/*",
+                "webpack:///./~/*": "${workspaceFolder}/frontend/node_modules/*"
+            },
+            "preLaunchTask": "npm: start - frontend"
         },
         {
             "name": "Attach to React (Chrome)",
