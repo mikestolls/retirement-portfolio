@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Runtime: python3.9
+    Timeout: 30
+    Environment:
+      Variables:
+        DYNAMODB_ENDPOINT_URL: !If [IsLocal, "http://localhost:8000", !Ref "AWS::NoValue"]
+        USERS_TABLE: users
+        FAMILY_INFO_TABLE: family_info
+        RETIREMENT_FUND_TABLE: retirement_funds
+    Layers:
+      - !Ref SharedLayer
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+
+Conditions:
+  IsLocal: !Equals [!Ref "AWS::StackName", "local"]
+
+Resources:
+  # Shared Layer
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: retirement-portfolio-shared
+      Description: Shared code for retirement portfolio functions
+      ContentUri: layers/shared/
+      CompatibleRuntimes:
+        - python3.9
+
+  # Lambda Functions
+  OptionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/options/
+      Handler: handler.lambda_handler
+      Events:
+        OptionsApi:
+          Type: Api
+          Properties:
+            Path: /api/{proxy+}
+            Method: options
+
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/health/
+      Handler: handler.lambda_handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/health
+            Method: get
+
+  GetFamilyInfoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/get-family-info/
+      Handler: handler.lambda_handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: users
+        - DynamoDBReadPolicy:
+            TableName: family_info
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+              Resource: "*"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/get_family_info/{user_id}
+            Method: get
+
+  UpdateFamilyInfoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/update-family-info/
+      Handler: handler.lambda_handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: users
+        - DynamoDBCrudPolicy:
+            TableName: family_info
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+              Resource: "*"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/update_family_info/{user_id}
+            Method: post
+
+  GetRetirementDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/get-retirement-data/
+      Handler: handler.lambda_handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: users
+        - DynamoDBReadPolicy:
+            TableName: family_info
+        - DynamoDBReadPolicy:
+            TableName: retirement_funds
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+              Resource: "*"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/get_retirement_fund_data/{user_id}
+            Method: get
+
+  UpdateRetirementDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/update-retirement-data/
+      Handler: handler.lambda_handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: users
+        - DynamoDBCrudPolicy:
+            TableName: retirement_funds
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+              Resource: "*"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/update_retirement_fund_data/{user_id}
+            Method: post
+
+
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"

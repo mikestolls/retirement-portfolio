@@ -1,0 +1,153 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Local Debug Server",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/dev_server.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/backend",
+            "env": {
+                "DYNAMODB_ENDPOINT_URL": "http://localhost:8000",
+                "AWS_DEFAULT_REGION": "us-east-1"
+            }
+        },
+        {
+            "name": "Debug React App",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/frontend",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["start"],
+            "console": "integratedTerminal",
+            "env": {
+                "BROWSER": "none"
+            },
+            "serverReadyAction": {
+                "pattern": "Local:\\s+(https?://localhost:[0-9]+)",
+                "uriFormat": "%s",
+                "action": "openExternally"
+            }
+        },
+        {
+            "name": "Debug React App (Chrome)",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}/frontend/src",
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${workspaceFolder}/frontend/src/*",
+                "webpack:///./*": "${workspaceFolder}/frontend/*",
+                "webpack:///./~/*": "${workspaceFolder}/frontend/node_modules/*"
+            },
+            "preLaunchTask": "npm: start - frontend"
+        },
+        {
+            "name": "Attach to React (Chrome)",
+            "type": "chrome",
+            "request": "attach",
+            "port": 9222,
+            "webRoot": "${workspaceFolder}/frontend/src",
+            "url": "http://localhost:3000"
+        },
+        {
+            "name": "SAM Start Local API",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend",
+            "console": "integratedTerminal",
+            "windows": {
+                "command": "sam",
+                "args": [
+                    "local",
+                    "start-api",
+                    "--template-file",
+                    "template.yaml",
+                    "--env-vars",
+                    "env.json",
+                    "--port",
+                    "5000",
+                    "--host",
+                    "0.0.0.0"
+                ]
+            },
+            "linux": {
+                "command": "sam",
+                "args": [
+                    "local",
+                    "start-api",
+                    "--template-file",
+                    "template.yaml",
+                    "--env-vars",
+                    "env.json",
+                    "--port",
+                    "5000",
+                    "--host",
+                    "0.0.0.0"
+                ]
+            },
+            "osx": {
+                "command": "sam",
+                "args": [
+                    "local",
+                    "start-api",
+                    "--template-file",
+                    "template.yaml",
+                    "--env-vars",
+                    "env.json",
+                    "--port",
+                    "5000",
+                    "--host",
+                    "0.0.0.0"
+                ]
+            },
+            "cwd": "${workspaceFolder}/backend",
+            "env": {
+                "AWS_DEFAULT_REGION": "us-east-1"
+            }
+        },
+        {
+            "name": "SAM Build & Start Local API",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend",
+            "console": "integratedTerminal",
+            "windows": {
+                "command": "cmd",
+                "args": [
+                    "/c",
+                    "sam build && sam local start-api --template-file template.yaml --env-vars env.json --port 5000 --host 0.0.0.0"
+                ]
+            },
+            "linux": {
+                "command": "bash",
+                "args": [
+                    "-c",
+                    "sam build && sam local start-api --template-file template.yaml --env-vars env.json --port 5000 --host 0.0.0.0"
+                ]
+            },
+            "osx": {
+                "command": "bash",
+                "args": [
+                    "-c",
+                    "sam build && sam local start-api --template-file template.yaml --env-vars env.json --port 5000 --host 0.0.0.0"
+                ]
+            },
+            "cwd": "${workspaceFolder}/backend",
+            "env": {
+                "AWS_DEFAULT_REGION": "us-east-1"
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Debug Full Stack",
+            "configurations": [
+                "Python: Local Debug Server",
+                "Debug React App"
+            ],
+            "stopAll": true
+        }
+    ]
+}
