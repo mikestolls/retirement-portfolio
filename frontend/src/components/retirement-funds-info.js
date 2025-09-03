@@ -9,7 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import EditIcon from '@mui/icons-material/Edit';
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 const contribution_frequencies = [
   { value: 12, label: 'Monthly' },
@@ -494,6 +494,18 @@ export default function RetirementFundsInfo() {
               
               const filteredData = fund.retirement_projection.filter(data => data.year <= retirementYear);
               
+              // Calculate return rate change markers
+              const returnRateParams = fund['return-rate-params'] || [];
+              const returnRateMarkers = returnRateParams.map(param => {
+                const changeYear = new Date().getFullYear() + (param.fromAge - currentAge);
+                return {
+                  year: changeYear,
+                  rate: param.returnRate,
+                  age: param.fromAge
+                };
+              }).filter(marker => marker.year <= retirementYear);
+              const firstReturnRate = returnRateParams.length > 0 ? returnRateParams[0].returnRate : 7;
+              
               return (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={filteredData} margin={{ top: 40, right: 30, left: 35, bottom: 5 }}>
@@ -514,6 +526,37 @@ export default function RetirementFundsInfo() {
                       fill="#778be7ff" 
                       animationEasing='ease'
                     />
+                    <ReferenceLine
+                      x={new Date().getFullYear()}
+                      stroke="#ff9800"
+                      strokeDasharray="5 5"
+                      label={{ 
+                        value: `${firstReturnRate}%`, 
+                        position: "insideTopRight", 
+                        offset: -5,
+                        angle: 0,
+                        fontStyle: 'italic',
+                        fill: '#ff9800',
+                        fontSize: '12'
+                      }}
+                    />
+                    {returnRateMarkers.map((marker, index) => (
+                      <ReferenceLine
+                        key={`rate-change-${index}`}
+                        x={marker.year}
+                        stroke="#ff9800"
+                        strokeDasharray="5 5"
+                        label={{ 
+                          value: `${marker.rate}%`, 
+                          position: "insideTopRight", 
+                          offset: -5,
+                          angle: 0,
+                          fontStyle: 'italic',
+                          fill: '#ff9800',
+                          fontSize: '12'
+                        }}
+                      />
+                    ))}
                   </BarChart>
                 </ResponsiveContainer>
               );
