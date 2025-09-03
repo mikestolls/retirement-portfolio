@@ -28,7 +28,7 @@ def db_get_dynamodb_client():
         # Check if we're running locally (DynamoDB Local)
         endpoint_url = os.environ.get('DYNAMODB_ENDPOINT_URL')
         if endpoint_url:
-            print(f"Connecting to DynamoDB Local at: {endpoint_url}")
+            # print(f"Connecting to DynamoDB Local at: {endpoint_url}")
             return boto3.resource(
                 'dynamodb',
                 endpoint_url=endpoint_url,
