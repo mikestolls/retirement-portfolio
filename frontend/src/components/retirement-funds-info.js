@@ -533,7 +533,7 @@ export default function RetirementFundsInfo() {
                       label={{ 
                         value: `${firstReturnRate}%`, 
                         position: "insideTopRight", 
-                        offset: -5,
+                        offset: -15,
                         angle: 0,
                         fontStyle: 'italic',
                         fill: '#ff9800',
@@ -549,7 +549,7 @@ export default function RetirementFundsInfo() {
                         label={{ 
                           value: `${marker.rate}%`, 
                           position: "insideTopRight", 
-                          offset: -5,
+                          offset: -15,
                           angle: 0,
                           fontStyle: 'italic',
                           fill: '#ff9800',

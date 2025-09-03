@@ -339,7 +339,7 @@ export default function FamilyInfo() {
                           label={{ 
                             value: marker.name, 
                             position: "insideTopRight", 
-                            offset: -5,
+                            offset: -15,
                             angle: 0,
                             fontStyle: 'italic',
                             fill: '#ff6b6b',
