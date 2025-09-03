@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Retirement Portfolio - Lambda Backend + S3/CloudFront Frontend'
+Description: 'Retirement Portfolio Infrastructure (DynamoDB, S3, CloudFront)'
 
 Parameters:
   Environment:
