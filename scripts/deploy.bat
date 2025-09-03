@@ -19,7 +19,6 @@ aws cloudformation deploy ^
     --template-file cloudformation/infrastructure.yaml ^
     --region %REGION% ^
     --capabilities CAPABILITY_IAM ^
-    --description "Retirement Portfolio Infrastructure (DynamoDB, S3, CloudFront)" ^
     --profile retirement-portfolio
 if %errorlevel% neq 0 goto :error
 
@@ -35,7 +34,6 @@ call sam deploy ^
     --region %REGION% ^
     --capabilities CAPABILITY_IAM ^
     --parameter-overrides Environment=prod ^
-    --description "Retirement Portfolio Lambda Functions and API Gateway" ^
     --profile retirement-portfolio
     
 if %errorlevel% neq 0 goto :error

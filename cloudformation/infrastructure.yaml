@@ -106,6 +106,9 @@ Resources:
           - ErrorCode: 404
             ResponseCode: 200
             ResponsePagePath: /index.html
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
         PriceClass: PriceClass_100
 
   # S3 Bucket Policy for CloudFront
