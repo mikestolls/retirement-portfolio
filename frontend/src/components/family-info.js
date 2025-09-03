@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
 import { Box, Tabs, Tab, Button, Stack, Paper, TextField, Card, CardContent, LinearProgress, Divider, Drawer, IconButton, Typography } from '@mui/material';
@@ -24,11 +24,7 @@ export default function FamilyInfo() {
   // Fund visibility state
   const [visibleFunds, setVisibleFunds] = useState({});
 
-  // fetch on mount from backend
-  useEffect(() => {
-    fetchFamilyInfoData();
-    fetchRetirementFundInfoData();
-  }, []);
+
 
   // handling card click to edit a member
   const [selectedMember, setSelectedMember] = useState(null);

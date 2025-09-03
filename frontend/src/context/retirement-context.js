@@ -184,6 +184,12 @@ export const RetirementProvider = ({ children }) => {
     }
   };
 
+  // Initial data fetch
+  useEffect(() => {
+    fetchFamilyInfoData();
+    fetchRetirementFundInfoData();
+  }, []);
+
   const householdProjection = useMemo(() => {
     if (!retirementFundInfoData?.retirement_fund_data || !familyInfoData?.family_info_data) return { data: [], legendMap: {} };
     

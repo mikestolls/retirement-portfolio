@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
 import { Box, Button, Stack, TextField, Card, CardContent, Typography, Drawer, IconButton, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper } from '@mui/material';
@@ -21,10 +21,7 @@ const contribution_frequencies = [
 export default function RetirementFundsInfo() {
   const { updateRetirementFundInfoData, fetchRetirementFundInfoData, retirementFundInfoData, fetchFamilyInfoData, familyInfoData, loading, error } = useRetirement();
 
-  useEffect(() => {
-    fetchRetirementFundInfoData();
-    fetchFamilyInfoData();
-  }, []);
+
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
