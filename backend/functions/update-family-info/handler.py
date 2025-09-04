@@ -1,6 +1,6 @@
 import json
 import logging
-from db.dynamodb import db_save_family_info, db_create_tables_if_not_exist
+from db.dynamodb import db_update_family_info, db_create_tables_if_not_exist, db_create_user_if_not_exists
 from models.family_info_data import FamilyInfoData
 
 # Configure logging
@@ -15,6 +15,9 @@ def lambda_handler(event, context):
         
         # Get user_id from path parameters
         user_id = event['pathParameters']['user_id']
+        
+        # Create user if they don't exist
+        db_create_user_if_not_exists(user_id)
         
         if not user_id or user_id.strip() == "":
             return {
@@ -46,12 +49,12 @@ def lambda_handler(event, context):
         
         # Get validated input data and save
         validated_input = family_info_data.to_dict()
-        saved_id = db_save_family_info(user_id, validated_input)
+        success = db_update_family_info(user_id, validated_input['family_info_data'])
         
         return {
-            'statusCode': 200,
+            'statusCode': 200 if success else 500,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps(saved_id)
+            'body': json.dumps({"status": "success" if success else "error"})
         }
         
     except Exception as e:

@@ -15,9 +15,9 @@ class FamilyInfoData:
         # need to validate the list of family members
         for member in self.family_info_data:
             name = member.get('name', '')
-            date_of_birth = member.get('date-of-birth', '')
-            life_expectancy = int(member.get('life-expectancy', 0))
-            retirement_age = int(member.get('retirement-age', 0))
+            date_of_birth = member.get('date_of_birth', '')
+            life_expectancy = int(member.get('life_expectancy', 0))
+            retirement_age = int(member.get('retirement_age', 0))
             
             if name is not None and len(name) < 1:
                 return False, "Name must be at least 1 character long"
