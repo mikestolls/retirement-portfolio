@@ -61,6 +61,10 @@ export const RetirementProvider = ({ children }) => {
           // Save both family and retirement data
           await updateFamilyInfoData(0, memberWithId);
           await updateRetirementData(0, fundWithMemberId);
+          
+          // Fetch the data again to get calculated projections
+          fetchingRef.current.retirement = false; // Reset flag to allow refetch
+          await fetchRetirementData();
           return;
         }
       }
