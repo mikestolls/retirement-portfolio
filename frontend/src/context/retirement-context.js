@@ -41,7 +41,7 @@ export const RetirementProvider = ({ children }) => {
 
     try {
       if (process.env.REACT_APP_BACKEND_API_URL) {
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/retirement_data/${user_id}`);
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_retirement_data/${user_id}`);
         if (response.ok) {
           const data = await response.json();
           // Set both retirement and family data from combined response
@@ -131,7 +131,7 @@ export const RetirementProvider = ({ children }) => {
       // Try to sync with backend
       if (process.env.REACT_APP_BACKEND_API_URL) {
         try {
-          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/retirement_data/${user_id}`, {
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_data/${user_id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedData)
@@ -161,7 +161,7 @@ export const RetirementProvider = ({ children }) => {
       // Try to sync with backend
       if (process.env.REACT_APP_BACKEND_API_URL) {
         try {
-          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/retirement_data/${user_id}/funds/${fundId}`, {
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_data/${user_id}/funds/${fundId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ actual_data: [{ year, actual_balance: actualBalance }] })
