@@ -507,7 +507,9 @@ export default function RetirementFundsInfo() {
                   age: param.from_age
                 };
               }).filter(marker => marker.year <= retirementYear);
-              const firstReturnRate = returnRateParams.length > 0 ? returnRateParams[0].return_rate : 7;
+              const firstYear = filteredData.length > 0 ? filteredData[0].year : new Date().getFullYear();
+              const firstReturnRateMarker = returnRateMarkers.find(marker => marker.year <= firstYear);
+              const firstReturnRate = firstReturnRateMarker ? firstReturnRateMarker.rate : 7;
               
               const hasActuals = filteredData.some(data => data.actual_balance !== null);
               
