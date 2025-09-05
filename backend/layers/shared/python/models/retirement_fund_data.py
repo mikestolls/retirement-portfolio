@@ -18,6 +18,7 @@ class RetirementFundData:
             initial_investment = float(fund.get('initial_investment', 0))
             regular_contribution = float(fund.get('regular_contribution', 0))
             contribution_frequency = int(fund.get('contribution_frequency', 0))
+            start_date = fund.get('start_date', '')
             
             # Convert return rate params to ensure numeric types
             return_rate_params = fund.get('return_rate_params', [])
@@ -27,17 +28,19 @@ class RetirementFundData:
                     param['to_age'] = int(param.get('to_age', 0))
                     param['return_rate'] = float(param.get('return_rate', 0.0))
             
-            # Validate actual_data if present
+            # Validate and convert actual_data if present
             actual_data = fund.get('actual_data', [])
             if actual_data:
                 for entry in actual_data:
-                    year = entry.get('year')
-                    actual_balance = entry.get('actual_balance')
+                    entry['year'] = int(entry.get('year'))
+                    entry['actual_balance'] = float(entry.get('actual_balance'))
+                    entry['actual_contributions'] = float(entry.get('actual_contributions'))
+                    entry['actual_growth'] = float(entry.get('actual_growth'))
                     
-                    if not isinstance(year, int) or year < 2000 or year > 2100:
+                    if entry['year'] < 2000 or entry['year'] > 2100:
                         return False, "Actual data year must be a valid year between 2000 and 2100"
                     
-                    if not isinstance(actual_balance, (int, float)) or actual_balance < 0:
+                    if entry['actual_balance'] < 0:
                         return False, "Actual balance must be a non-negative number"
 
             if name is not None and len(name) < 1:
