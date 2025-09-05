@@ -28,10 +28,10 @@ def load_handler(function_name):
 
 # Load handlers
 health_handler = load_handler('health')
-get_family_handler = load_handler('get-family-info')
 update_family_handler = load_handler('update-family-info')
 get_retirement_handler = load_handler('get-retirement-data')
 update_retirement_handler = load_handler('update-retirement-data')
+update_retirement_fund_handler = load_handler('update-retirement-fund-data')
 
 app = Flask(__name__)
 CORS(app)
@@ -60,21 +60,21 @@ def lambda_to_flask(handler):
 def health():
     return lambda_to_flask(health_handler)()
 
-@app.route('/api/get_family_info/<user_id>', methods=['GET'])
-def get_family_info(user_id):
-    return lambda_to_flask(get_family_handler)(user_id=user_id)
+@app.route('/api/get_retirement_data/<user_id>', methods=['GET'])
+def get_retirement_data(user_id):
+    return lambda_to_flask(get_retirement_handler)(user_id=user_id)
 
 @app.route('/api/update_family_info/<user_id>', methods=['POST'])
 def update_family_info(user_id):
     return lambda_to_flask(update_family_handler)(user_id=user_id)
 
-@app.route('/api/get_retirement_fund_data/<user_id>', methods=['GET'])
-def get_retirement_data(user_id):
-    return lambda_to_flask(get_retirement_handler)(user_id=user_id)
-
-@app.route('/api/update_retirement_fund_data/<user_id>', methods=['POST'])
+@app.route('/api/update_retirement_data/<user_id>', methods=['POST'])
 def update_retirement_data(user_id):
     return lambda_to_flask(update_retirement_handler)(user_id=user_id)
+
+@app.route('/api/update_retirement_data/<user_id>/funds/<fund_id>', methods=['POST'])
+def update_retirement_fund(user_id, fund_id):
+    return lambda_to_flask(update_retirement_fund_handler)(user_id=user_id, fund_id=fund_id)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

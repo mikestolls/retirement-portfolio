@@ -5,17 +5,18 @@ const RetirementContext = createContext();
 const DEFAULT_FAMILY_MEMBER = {
   'id': '',
   'name': 'Stolz',
-  'date-of-birth': '1986-01-31',
-  'life-expectancy': 90,
-  'retirement-age': 65,
+  'date_of_birth': '1986-01-31',
+  'life_expectancy': 90,
+  'retirement_age': 65,
 };
 
 const DEFAULT_RETIREMENT_FUND = {
+  'id': crypto.randomUUID(),
   'name': 'Fund',
-  'family-member-id': '',
-  'initial-investment': 1000,
-  'regular-contribution': 10,
-  'contribution-frequency': 12,
+  'family_member_id': '',
+  'initial_investment': 1000,
+  'regular_contribution': 10,
+  'contribution_frequency': 12,
 };
 
 export const RetirementProvider = ({ children }) => {
@@ -30,89 +31,9 @@ export const RetirementProvider = ({ children }) => {
   const [familyInfoData, setFamilyInfoData] = useState({ family_info_data: [DEFAULT_FAMILY_MEMBER] });
 
   // defaulting retirement data
-  const [retirementFundInfoData, setRetirementFundInfoData] = useState({ retirement_fund_data: [DEFAULT_RETIREMENT_FUND] });
+  const [retirementData, setRetirementData] = useState({ retirement_fund_data: [DEFAULT_RETIREMENT_FUND] });
 
-  const fetchFamilyInfoData = async () => {
-    if (fetchingRef.current.family) return;
-    fetchingRef.current.family = true;
-    setLoading(true);
-    setError(null);
-
-    try {
-      if (process.env.REACT_APP_BACKEND_API_URL) {
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_family_info/${user_id}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.family_info_data) {
-            setFamilyInfoData({ family_info_data: data.family_info_data });
-          }
-          return;
-        } else if (response.status === 404) {
-          // Create and save default family info for new user
-          const newId = crypto.randomUUID();
-          const memberWithId = { ...DEFAULT_FAMILY_MEMBER, 'id': newId };
-          await updateFamilyInfoData(0, memberWithId);
-          // Update retirement fund to use the new family member ID
-          await updateRetirementFundInfoData(0, { 'family-member-id': newId });
-          // Refresh retirement fund data to recalculate projections
-          await fetchRetirementFundInfoData();
-          return;
-        }
-      }
-      // Fallback to offline data - keep existing data
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-      fetchingRef.current.family = false;
-    }
-  };
-  
-  const updateFamilyInfoData = async (memberIndex, updatedMember) => {
-    setLoading(true);
-    setError(null);
-
-    try {      
-      const updatedData = {
-        ...familyInfoData,
-        family_info_data: updatedMember === null
-          ? // Delete member at memberIndex
-            (familyInfoData?.family_info_data || []).filter((_, index) => index !== memberIndex)
-          : memberIndex < (familyInfoData?.family_info_data?.length || 0)
-            ? // Update existing member
-              (familyInfoData?.family_info_data || []).map((member, index) => 
-                index === memberIndex ? { ...member, ...updatedMember } : member
-              )
-            : // Add new member
-              [...(familyInfoData?.family_info_data || []), updatedMember]
-      };
-
-      // Try to sync with backend
-      if (process.env.REACT_APP_BACKEND_API_URL) {
-        try {
-          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_family_info/${user_id}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedData)
-          });
-          if (!response.ok) throw new Error('Backend sync failed');
-        } catch (backendError) {
-          console.warn('Backend sync failed, continuing offline:', backendError);
-        }
-      }
-      
-      // Update local state regardless of backend status
-      setFamilyInfoData(updatedData);
-      return true;
-    } catch (err) {
-      setError(err.message);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const fetchRetirementFundInfoData = async () => {
+  const fetchRetirementData = async () => {
     if (fetchingRef.current.retirement) return;
     fetchingRef.current.retirement = true;
     setLoading(true);
@@ -120,14 +41,30 @@ export const RetirementProvider = ({ children }) => {
 
     try {
       if (process.env.REACT_APP_BACKEND_API_URL) {
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_retirement_fund_data/${user_id}`);
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/get_retirement_data/${user_id}`);
         if (response.ok) {
           const data = await response.json();
-          setRetirementFundInfoData(data);
+          // Set both retirement and family data from combined response
+          if (data.retirement_fund_data) {
+            setRetirementData({ retirement_fund_data: data.retirement_fund_data });
+          }
+          if (data.family_info_data) {
+            setFamilyInfoData({ family_info_data: data.family_info_data });
+          }
           return;
         } else if (response.status === 404) {
-          // Create and save default retirement fund info for new user
-          await updateRetirementFundInfoData(0, DEFAULT_RETIREMENT_FUND);
+          // Create default data for new user
+          const newId = crypto.randomUUID();
+          const memberWithId = { ...DEFAULT_FAMILY_MEMBER, 'id': newId };
+          const fundWithMemberId = { ...DEFAULT_RETIREMENT_FUND, 'family_member_id': newId };
+          
+          // Save both family and retirement data
+          await updateFamilyInfoData(0, memberWithId);
+          await updateRetirementData(0, fundWithMemberId);
+          
+          // Fetch the data again to get calculated projections
+          fetchingRef.current.retirement = false; // Reset flag to allow refetch
+          await fetchRetirementData();
           return;
         }
       }
@@ -140,29 +77,65 @@ export const RetirementProvider = ({ children }) => {
     }
   };
 
-  const updateRetirementFundInfoData = async (fundIndex, updatedFund) => {
+  const updateFamilyInfoData = async (memberIndex, updatedMember) => {
+    setLoading(true);
+    setError(null);
+
+    try {      
+      const updatedFamilyData = {
+        ...familyInfoData,
+        family_info_data: updatedMember === null
+          ? (familyInfoData?.family_info_data || []).filter((_, index) => index !== memberIndex)
+          : memberIndex < (familyInfoData?.family_info_data?.length || 0)
+            ? (familyInfoData?.family_info_data || []).map((member, index) => 
+                index === memberIndex ? { ...member, ...updatedMember } : member
+              )
+            : [...(familyInfoData?.family_info_data || []), updatedMember]
+      };
+
+      // Sync with backend
+      if (process.env.REACT_APP_BACKEND_API_URL) {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_family_info/${user_id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedFamilyData)
+        });
+        if (!response.ok) throw new Error('Backend sync failed');
+      }
+      
+      setFamilyInfoData(updatedFamilyData);
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateRetirementData = async (fundIndex, updatedFund) => {
     setLoading(true);
     setError(null);
 
     try {      
       const updatedData = {
-        ...retirementFundInfoData,
+        ...retirementData,
         retirement_fund_data: updatedFund === null
           ? // Delete fund at fundIndex
-            (retirementFundInfoData?.retirement_fund_data || []).filter((_, index) => index !== fundIndex)
-          : fundIndex < (retirementFundInfoData?.retirement_fund_data?.length || 0)
+            (retirementData?.retirement_fund_data || []).filter((_, index) => index !== fundIndex)
+          : fundIndex < (retirementData?.retirement_fund_data?.length || 0)
             ? // Update existing fund
-              (retirementFundInfoData?.retirement_fund_data || []).map((fund, index) => 
+              (retirementData?.retirement_fund_data || []).map((fund, index) => 
                 index === fundIndex ? { ...fund, ...updatedFund } : fund 
               )
             : // Add new fund
-              [...(retirementFundInfoData?.retirement_fund_data || []), updatedFund]
+              [...(retirementData?.retirement_fund_data || []), updatedFund]
       };
 
       // Try to sync with backend
       if (process.env.REACT_APP_BACKEND_API_URL) {
         try {
-          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_fund_data/${user_id}`, {
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_data/${user_id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedData)
@@ -174,7 +147,48 @@ export const RetirementProvider = ({ children }) => {
       }
       
       // Update local state regardless of backend status
-      setRetirementFundInfoData(updatedData);
+      setRetirementData(updatedData);
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateActualBalance = async (fundId, year, actualBalance) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Try to sync with backend
+      if (process.env.REACT_APP_BACKEND_API_URL) {
+        try {
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_data/${user_id}/funds/${fundId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ actual_data: [{ year, actual_balance: actualBalance }] })
+          });
+          if (!response.ok) throw new Error('Backend sync failed');
+        } catch (backendError) {
+          console.warn('Backend sync failed, continuing offline:', backendError);
+        }
+      }
+      
+      // Update local state
+      const updatedData = { ...retirementData };
+      const fund = updatedData.retirement_fund_data.find(f => f.id === fundId);
+      if (fund) {
+        if (!fund.actual_balances) {
+          fund.actual_balances = {};
+        }
+        fund.actual_balances[year] = actualBalance;
+        setRetirementData(updatedData);
+      }
+      
+      // Refresh to recalculate projections with actual data
+      await fetchRetirementData();
       return true;
     } catch (err) {
       setError(err.message);
@@ -186,19 +200,18 @@ export const RetirementProvider = ({ children }) => {
 
   // Initial data fetch
   useEffect(() => {
-    fetchFamilyInfoData();
-    fetchRetirementFundInfoData();
+    fetchRetirementData(); // This now fetches both retirement and family data
   }, []);
 
   const householdProjection = useMemo(() => {
-    if (!retirementFundInfoData?.retirement_fund_data || !familyInfoData?.family_info_data) return { data: [], legendMap: {} };
+    if (!retirementData?.retirement_fund_data || !familyInfoData?.family_info_data) return { data: [], legendMap: {} };
     
     const yearData = {};
     const legendMap = {};
     
-    retirementFundInfoData.retirement_fund_data.forEach((fund, fundIndex) => {
+    retirementData.retirement_fund_data.forEach((fund, fundIndex) => {
       if (fund.retirement_projection) {
-        const member = familyInfoData.family_info_data.find(m => m.id === fund['family-member-id']);
+        const member = familyInfoData.family_info_data.find(m => m.id === fund['family_member_id']);
         const fundKey = `fund_${fundIndex}`;
         const legendName = `${fund.name} (${member?.name || 'Unknown'})`;
         
@@ -218,19 +231,19 @@ export const RetirementProvider = ({ children }) => {
       data: Object.values(yearData).sort((a, b) => a.year - b.year),
       legendMap
     };
-  }, [retirementFundInfoData, familyInfoData]);
+  }, [retirementData, familyInfoData]);
 
   return (
     <RetirementContext.Provider value={{ 
-      retirementFundInfoData, 
+      retirementData, 
       familyInfoData,
       householdProjection,
       loading, 
       error,
       updateFamilyInfoData,
-      fetchFamilyInfoData,
-      updateRetirementFundInfoData,
-      fetchRetirementFundInfoData
+      updateRetirementData,
+      fetchRetirementData,
+      updateActualBalance
     }}>
       {children}
     </RetirementContext.Provider>

@@ -1,6 +1,6 @@
 import json
 import logging
-from db.dynamodb import db_get_retirement_fund_info, db_get_family_info, db_create_tables_if_not_exist
+from db.dynamodb import db_get_retirement_data, db_create_tables_if_not_exist, db_create_user_if_not_exists
 from services.retirement_calculator import calculate_retirement_projection
 
 # Configure logging
@@ -16,6 +16,9 @@ def lambda_handler(event, context):
         # Get user_id from path parameters
         user_id = event['pathParameters']['user_id']
         
+        # Create user if they don't exist
+        db_create_user_if_not_exists(user_id)
+        
         if not user_id or user_id.strip() == "":
             return {
                 'statusCode': 400,
@@ -23,29 +26,28 @@ def lambda_handler(event, context):
                 'body': json.dumps({"message": "user_id not provided", "status": "error"})
             }
         
-        # Get retirement fund info and family info
-        retirement_fund_info = db_get_retirement_fund_info(user_id)
-        if not retirement_fund_info:
+        # Get all retirement data (both fund and family info)
+        retirement_data = db_get_retirement_data(user_id)
+        if not retirement_data:
             return {
                 'statusCode': 404,
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({"message": "Retirement fund info not found", "status": "error"})
-            }
-        
-        family_info = db_get_family_info(user_id)
-        if not family_info:
-            return {
-                'statusCode': 404,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({"message": "Family info not found", "status": "error"})
+                'body': json.dumps({"message": "Retirement data not found", "status": "error"})
             }
         
         # Calculate retirement projection with both datasets
-        calculate_retirement_projection(retirement_fund_info, family_info)
+        calculate_retirement_projection(retirement_data, retirement_data)
+        
+        # Return the data structure
+        response_data = {
+            'retirement_fund_data': retirement_data.get('retirement_fund_data', []),
+            'family_info_data': retirement_data.get('family_info_data', [])
+        }
+        
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps(retirement_fund_info, default=str)
+            'body': json.dumps(response_data, default=str)
         }
         
     except Exception as e:
