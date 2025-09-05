@@ -21,16 +21,12 @@ if not "!CURRENT_BRANCH!"=="develop" (
     )
 )
 
-pause 
-
 REM Start release
 git flow release start %VERSION%
 if errorlevel 1 (
     echo Error: Could not start release
     exit /b 1
 )
-
-pause 
 
 REM Update frontend version
 cd frontend
@@ -42,12 +38,8 @@ if errorlevel 1 (
 )
 cd ..
 
-pause 
-
 REM Create version file
 echo # Version %VERSION% > VERSION
-
-pause 
 
 REM Commit changes
 git add .
@@ -56,8 +48,6 @@ if errorlevel 1 (
     echo Error: Could not commit version changes
     exit /b 1
 )
-
-pause 
 
 REM Finish release manually to avoid prompts
 echo Finishing release manually...
@@ -71,8 +61,6 @@ if errorlevel 1 (
     echo Error: Could not finish release
     exit /b 1
 )
-
-pause 
 
 REM Push everything
 echo Pushing to remote...
