@@ -486,17 +486,22 @@ export default function RetirementFundsInfo() {
         open={actualsDrawerOpen}
         onClose={() => {
           if (editingActuals) {
-            const fund = retirementData.retirement_fund_data[selectedFund];
-            const actualContributions = actualFormData.actual_contributions || 0;
-            const actualBalance = actualFormData.actual_balance || 0;
+            const hasFormData = actualFormData.actual_contributions || actualFormData.actual_balance;
+            const hasExistingData = editingActuals.yearData.is_actual_balance;
             
-            if (actualContributions > 0 || actualBalance > 0) {
-              const beginAmount = editingActuals.yearData.begin_amount;
-              const actualGrowth = actualBalance - beginAmount - actualContributions;
-              updateActualBalance(fund.id, editingActuals.year, actualBalance, actualContributions, actualGrowth);
-            } else {
-              // Clear the entry if both fields are empty
-              updateActualBalance(fund.id, editingActuals.year, null, null, null);
+            if (hasFormData || hasExistingData) {
+              const fund = retirementData.retirement_fund_data[selectedFund];
+              const actualContributions = actualFormData.actual_contributions || 0;
+              const actualBalance = actualFormData.actual_balance || 0;
+              
+              if (actualContributions > 0 || actualBalance > 0) {
+                const beginAmount = editingActuals.yearData.begin_amount;
+                const actualGrowth = actualBalance - beginAmount - actualContributions;
+                updateActualBalance(fund.id, editingActuals.year, actualBalance, actualContributions, actualGrowth);
+              } else {
+                // Clear the entry if both fields are empty
+                updateActualBalance(fund.id, editingActuals.year, null, null, null);
+              }
             }
           }
           setActualsDrawerOpen(false);
