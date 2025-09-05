@@ -486,18 +486,20 @@ export default function RetirementFundsInfo() {
         open={actualsDrawerOpen}
         onClose={() => {
           if (editingActuals) {
-            const hasFormData = actualFormData.actual_contributions || actualFormData.actual_balance;
-            const hasExistingData = editingActuals.yearData.is_actual_balance;
+            const currentContributions = actualFormData.actual_contributions || 0;
+            const currentBalance = actualFormData.actual_balance || 0;
+            const originalContributions = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.contribution : 0;
+            const originalBalance = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.end_amount : 0;
             
-            if (hasFormData || hasExistingData) {
+            const hasChanges = currentContributions !== originalContributions || currentBalance !== originalBalance;
+            
+            if (hasChanges) {
               const fund = retirementData.retirement_fund_data[selectedFund];
-              const actualContributions = actualFormData.actual_contributions || 0;
-              const actualBalance = actualFormData.actual_balance || 0;
               
-              if (actualContributions > 0 || actualBalance > 0) {
+              if (currentContributions > 0 || currentBalance > 0) {
                 const beginAmount = editingActuals.yearData.begin_amount;
-                const actualGrowth = actualBalance - beginAmount - actualContributions;
-                updateActualBalance(fund.id, editingActuals.year, actualBalance, actualContributions, actualGrowth);
+                const actualGrowth = currentBalance - beginAmount - currentContributions;
+                updateActualBalance(fund.id, editingActuals.year, currentBalance, currentContributions, actualGrowth);
               } else {
                 // Clear the entry if both fields are empty
                 updateActualBalance(fund.id, editingActuals.year, null, null, null);
@@ -549,7 +551,21 @@ export default function RetirementFundsInfo() {
               onChange={(e) => setActualFormData(prev => ({ ...prev, actual_balance: parseFloat(e.target.value) || 0 }))}
               slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
             />
-
+            {editingActuals.yearData.is_actual_balance && (
+              <Button
+                variant="outlined"
+                color="error"
+                fullWidth
+                onClick={() => {
+                  const fund = retirementData.retirement_fund_data[selectedFund];
+                  updateActualBalance(fund.id, editingActuals.year, null, null, null);
+                  setActualsDrawerOpen(false);
+                  setActualFormData({});
+                }}
+              >
+                Clear Actuals
+              </Button>
+            )}
           </Stack>
         )}
       </Drawer>
