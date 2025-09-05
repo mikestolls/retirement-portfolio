@@ -158,10 +158,48 @@ export const RetirementProvider = ({ children }) => {
   };
 
   const updateActualBalance = async (fundId, year, actualBalance, actualContributions, actualGrowth) => {
+    // If all values are null, remove the entry
+    if (actualBalance === null && actualContributions === null && actualGrowth === null) {
+      const updatedData = { ...retirementData };
+      const fund = updatedData.retirement_fund_data.find(f => f.id === fundId);
+      if (fund && fund.actual_data) {
+        fund.actual_data = fund.actual_data
+          .filter(data => parseInt(data.year) !== parseInt(year))
+          .map(data => ({
+            year: parseInt(data.year),
+            actual_balance: parseFloat(data.actual_balance),
+            actual_contributions: parseFloat(data.actual_contributions),
+            actual_growth: parseFloat(data.actual_growth)
+          }));
+        setRetirementData(updatedData);
+        
+        // Sync removal with backend
+        if (process.env.REACT_APP_BACKEND_API_URL) {
+          try {
+            const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/update_retirement_data/${user_id}/funds/${fundId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ actual_data: fund.actual_data })
+            });
+          } catch (error) {
+            console.warn('Backend sync failed:', error);
+          }
+        }
+        
+        await fetchRetirementData();
+      }
+      return;
+    }
     setLoading(true);
     setError(null);
 
     try {
+      // Ensure proper type conversion
+      const yearInt = parseInt(year);
+      const balanceFloat = parseFloat(actualBalance);
+      const contributionsFloat = parseFloat(actualContributions);
+      const growthFloat = parseFloat(actualGrowth);
+      
       // Try to sync with backend
       if (process.env.REACT_APP_BACKEND_API_URL) {
         try {
@@ -169,15 +207,15 @@ export const RetirementProvider = ({ children }) => {
           const existingActualData = fund?.actual_data || [];
           
           const actualData = { 
-            year: parseInt(year), 
-            actual_balance: parseFloat(actualBalance),
-            actual_contributions: parseFloat(actualContributions),
-            actual_growth: parseFloat(actualGrowth)
+            year: yearInt, 
+            actual_balance: balanceFloat,
+            actual_contributions: contributionsFloat,
+            actual_growth: growthFloat
           };
           
           // Remove existing entry for this year and add new one
           const updatedActualData = existingActualData
-            .filter(data => parseInt(data.year) !== parseInt(year))
+            .filter(data => parseInt(data.year) !== yearInt)
             .map(data => ({
               year: parseInt(data.year),
               actual_balance: parseFloat(data.actual_balance),
@@ -205,13 +243,13 @@ export const RetirementProvider = ({ children }) => {
           fund.actual_data = [];
         }
         // Remove existing entry for this year
-        fund.actual_data = fund.actual_data.filter(data => parseInt(data.year) !== parseInt(year));
+        fund.actual_data = fund.actual_data.filter(data => parseInt(data.year) !== yearInt);
         // Add new entry
         const newActualData = { 
-          year: parseInt(year), 
-          actual_balance: parseFloat(actualBalance),
-          actual_contributions: parseFloat(actualContributions),
-          actual_growth: parseFloat(actualGrowth)
+          year: yearInt, 
+          actual_balance: balanceFloat,
+          actual_contributions: contributionsFloat,
+          actual_growth: growthFloat
         };
         fund.actual_data.push(newActualData);
         setRetirementData(updatedData);

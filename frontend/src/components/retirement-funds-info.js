@@ -21,8 +21,6 @@ const contribution_frequencies = [
 export default function RetirementFundsInfo() {
   const { updateRetirementData, fetchRetirementData, retirementData, familyInfoData, loading, error, updateActualBalance } = useRetirement();
 
-
-
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
   const [returnRateDrawerOpen, setReturnRateDrawerOpen] = useState(false);
@@ -487,15 +485,19 @@ export default function RetirementFundsInfo() {
         anchor="right"
         open={actualsDrawerOpen}
         onClose={() => {
-          const hasChanges = actualFormData.actual_contributions || actualFormData.actual_balance;
-          if (hasChanges && editingActuals) {
+          if (editingActuals) {
             const fund = retirementData.retirement_fund_data[selectedFund];
-            const actualContributions = parseFloat(actualFormData.actual_contributions) || 0;
-            const actualBalance = parseFloat(actualFormData.actual_balance) || 0;
-            const beginAmount = editingActuals.yearData.begin_amount;
-            const actualGrowth = actualBalance - beginAmount - actualContributions;
+            const actualContributions = actualFormData.actual_contributions || 0;
+            const actualBalance = actualFormData.actual_balance || 0;
             
-            updateActualBalance(fund.id, editingActuals.year, actualBalance, actualContributions, actualGrowth);
+            if (actualContributions > 0 || actualBalance > 0) {
+              const beginAmount = editingActuals.yearData.begin_amount;
+              const actualGrowth = actualBalance - beginAmount - actualContributions;
+              updateActualBalance(fund.id, editingActuals.year, actualBalance, actualContributions, actualGrowth);
+            } else {
+              // Clear the entry if both fields are empty
+              updateActualBalance(fund.id, editingActuals.year, null, null, null);
+            }
           }
           setActualsDrawerOpen(false);
           setActualFormData({});
@@ -508,8 +510,8 @@ export default function RetirementFundsInfo() {
             const hasChanges = actualFormData.actual_contributions || actualFormData.actual_balance;
             if (hasChanges && editingActuals) {
               const fund = retirementData.retirement_fund_data[selectedFund];
-              const actualContributions = parseFloat(actualFormData.actual_contributions) || 0;
-              const actualBalance = parseFloat(actualFormData.actual_balance) || 0;
+              const actualContributions = actualFormData.actual_contributions || 0;
+              const actualBalance = actualFormData.actual_balance || 0;
               const beginAmount = editingActuals.yearData.begin_amount;
               const actualGrowth = actualBalance - beginAmount - actualContributions;
               
@@ -530,7 +532,7 @@ export default function RetirementFundsInfo() {
               variant="outlined"
               fullWidth
               value={actualFormData.actual_contributions || ''}
-              onChange={(e) => setActualFormData(prev => ({ ...prev, actual_contributions: e.target.value }))}
+              onChange={(e) => setActualFormData(prev => ({ ...prev, actual_contributions: parseFloat(e.target.value) || 0 }))}
               slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
             />
             <TextField
@@ -539,7 +541,7 @@ export default function RetirementFundsInfo() {
               variant="outlined"
               fullWidth
               value={actualFormData.actual_balance || ''}
-              onChange={(e) => setActualFormData(prev => ({ ...prev, actual_balance: e.target.value }))}
+              onChange={(e) => setActualFormData(prev => ({ ...prev, actual_balance: parseFloat(e.target.value) || 0 }))}
               slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
             />
 
