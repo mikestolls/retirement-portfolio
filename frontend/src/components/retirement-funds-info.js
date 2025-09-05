@@ -9,7 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import EditIcon from '@mui/icons-material/Edit';
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, LineChart, Line, Cell } from 'recharts';
 
 const contribution_frequencies = [
   { value: 12, label: 'Monthly' },
@@ -111,7 +111,10 @@ export default function RetirementFundsInfo() {
       'family_member_id': familyInfoData?.family_info_data?.[0]?.id || '',
       'initial_investment': 1000,
       'regular_contribution': 10,
-      'contribution_frequency': 12
+      'contribution_frequency': 12,
+      'start_date': new Date().toISOString().split('T')[0],
+      'return_rate_params': [],
+      'actual_data': []
     }).then(() => {
       fetchRetirementData(); // Refresh to get projections
     });
@@ -209,8 +212,10 @@ export default function RetirementFundsInfo() {
   };
 
   const [selectedFund, setSelectedFund] = useState(0);
-  const [showActuals, setShowActuals] = useState(false);
   const [actualInputs, setActualInputs] = useState({});
+  const [actualsDrawerOpen, setActualsDrawerOpen] = useState(false);
+  const [editingActuals, setEditingActuals] = useState(null);
+  const [actualFormData, setActualFormData] = useState({});
 
   return (
     <div style={{ width: '100%', overflow: 'hidden' }}>
@@ -313,6 +318,16 @@ export default function RetirementFundsInfo() {
                   </MenuItem>
                 ))}
               </TextField>
+              <TextField
+                label="Start Date"
+                name="start_date"
+                variant="outlined"
+                fullWidth
+                type="date"
+                slotProps={{ inputLabel: { shrink: true } }}
+                value={getFormData(editingFund)['start_date'] || retirementData.retirement_fund_data[editingFund]['start_date'] || ''}
+                onChange={handleChange(editingFund)}
+              />
               <Button 
                 variant="outlined" 
                 startIcon={<TuneIcon />}
@@ -467,6 +482,71 @@ export default function RetirementFundsInfo() {
 
       </Drawer>
 
+      {/* Actuals Input Drawer */}
+      <Drawer
+        anchor="right"
+        open={actualsDrawerOpen}
+        onClose={() => {
+          const hasChanges = actualFormData.actual_contributions || actualFormData.actual_balance;
+          if (hasChanges && editingActuals) {
+            const fund = retirementData.retirement_fund_data[selectedFund];
+            const actualContributions = parseFloat(actualFormData.actual_contributions) || 0;
+            const actualBalance = parseFloat(actualFormData.actual_balance) || 0;
+            const beginAmount = editingActuals.yearData.begin_amount;
+            const actualGrowth = actualBalance - beginAmount - actualContributions;
+            
+            updateActualBalance(fund.id, editingActuals.year, actualBalance, actualContributions, actualGrowth);
+          }
+          setActualsDrawerOpen(false);
+          setActualFormData({});
+        }}
+        sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">Actual Data - {editingActuals?.year}</Typography>
+          <IconButton onClick={() => {
+            const hasChanges = actualFormData.actual_contributions || actualFormData.actual_balance;
+            if (hasChanges && editingActuals) {
+              const fund = retirementData.retirement_fund_data[selectedFund];
+              const actualContributions = parseFloat(actualFormData.actual_contributions) || 0;
+              const actualBalance = parseFloat(actualFormData.actual_balance) || 0;
+              const beginAmount = editingActuals.yearData.begin_amount;
+              const actualGrowth = actualBalance - beginAmount - actualContributions;
+              
+              updateActualBalance(fund.id, editingActuals.year, actualBalance, actualContributions, actualGrowth);
+            }
+            setActualsDrawerOpen(false);
+            setActualFormData({});
+          }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        
+        {editingActuals && (
+          <Stack spacing={2}>
+            <TextField
+              label="Actual Contributions"
+              type="number"
+              variant="outlined"
+              fullWidth
+              value={actualFormData.actual_contributions || ''}
+              onChange={(e) => setActualFormData(prev => ({ ...prev, actual_contributions: e.target.value }))}
+              slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
+            />
+            <TextField
+              label="Actual End Balance"
+              type="number"
+              variant="outlined"
+              fullWidth
+              value={actualFormData.actual_balance || ''}
+              onChange={(e) => setActualFormData(prev => ({ ...prev, actual_balance: e.target.value }))}
+              slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
+            />
+
+          </Stack>
+        )}
+      </Drawer>
+
       {/* Fund Projection Chart */}
         <Box
           sx={{ 
@@ -495,7 +575,8 @@ export default function RetirementFundsInfo() {
               const currentAge = Math.floor((new Date() - new Date(member['date_of_birth'])) / (365.25 * 24 * 60 * 60 * 1000));
               const retirementYear = new Date().getFullYear() + (member['retirement_age'] - currentAge);
               
-              const filteredData = fund.retirement_projection.filter(data => data.year <= retirementYear);
+              const startYear = fund.start_date ? new Date(fund.start_date).getFullYear() : new Date().getFullYear();
+              const filteredData = fund.retirement_projection.filter(data => data.year <= retirementYear && data.year >= startYear);
               
               // Calculate return rate change markers
               const returnRateParams = fund['return_rate_params'] || [];
@@ -506,49 +587,12 @@ export default function RetirementFundsInfo() {
                   rate: param.return_rate,
                   age: param.from_age
                 };
-              }).filter(marker => marker.year <= retirementYear);
-              const firstReturnRate = returnRateParams.length > 0 ? returnRateParams[0].return_rate : 7;
+              }).filter(marker => marker.year <= retirementYear && marker.year >= startYear);
+              const firstYear = filteredData.length > 0 ? filteredData[0].year : startYear;
+              const firstReturnRateMarker = returnRateMarkers.find(marker => marker.year <= firstYear);
+              const firstReturnRate = firstReturnRateMarker ? firstReturnRateMarker.rate : 7;
+              const currentYear = new Date().getFullYear();
               
-              const hasActuals = filteredData.some(data => data.actual_balance !== null);
-              
-              if (showActuals && hasActuals) {
-                return (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={filteredData} margin={{ top: 40, right: 30, left: 35, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="year" interval={0} angle={-45} textAnchor="end" tick={{ fontSize: 12 }} />
-                      <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} tick={{ fontSize: 12 }} />
-                      <Tooltip 
-                        formatter={(value, name) => {
-                          const label = name === 'end_amount' ? 'Target Balance' : 'Actual Balance';
-                          return [`$${value.toLocaleString()}`, label];
-                        }}
-                        labelFormatter={(label, payload) => {
-                          if (payload && payload[0]) {
-                            return `Year: ${label} - Age: ${payload[0].payload.age}`;
-                          }
-                          return `Year: ${label}`;
-                        }}
-                      />
-                      <Line 
-                        dataKey="end_amount"
-                        stroke="#778be7ff"
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        name="Target"
-                      />
-                      <Line 
-                        dataKey="actual_balance"
-                        stroke="#4caf50"
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        connectNulls={false}
-                        name="Actual"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                );
-              }
               
               return (
                 <ResponsiveContainer width="100%" height={300}>
@@ -567,11 +611,14 @@ export default function RetirementFundsInfo() {
                     />
                     <Bar 
                       dataKey="end_amount"
-                      fill="#778be7ff" 
                       animationEasing='ease'
-                    />
+                    >
+                      {filteredData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.is_actual_balance ? '#ff4444' : '#778be7ff'} />
+                      ))}
+                    </Bar>
                     <ReferenceLine
-                      x={new Date().getFullYear()}
+                      x={startYear}
                       stroke="#ff9800"
                       strokeDasharray="5 5"
                       label={{ 
@@ -581,6 +628,21 @@ export default function RetirementFundsInfo() {
                         angle: 0,
                         fontStyle: 'italic',
                         fill: '#ff9800',
+                        fontSize: '12'
+                      }}
+                    />
+                    <ReferenceLine
+                      x={currentYear}
+                      stroke="#4caf50"
+                      strokeWidth={3}
+                      y1={0}
+                      label={{ 
+                        value: 'Current Year', 
+                        position: "top", 
+                        offset: 20,
+                        angle: 0,
+                        fontWeight: 'bold',
+                        fill: '#4caf50',
                         fontSize: '12'
                       }}
                     />
@@ -628,18 +690,8 @@ export default function RetirementFundsInfo() {
             }} 
           > 
             <CardContent className="p-4">
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography variant="h6">Year by Year Projection - {retirementData.retirement_fund_data[selectedFund]?.name || 'Loading...'}</Typography>
-                <Button
-                  variant={showActuals ? "contained" : "outlined"}
-                  size="small"
-                  onClick={() => setShowActuals(!showActuals)}
-                >
-                  {showActuals ? 'Hide Actuals' : 'Show Actuals'}
-                </Button>
-              </Stack>
               <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
-                <Table stickyHeader size="small">
+                <Table stickyHeader size="small" sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0' } }}>
                   <TableHead>
                     <TableRow>
                       <TableCell align="right">Year</TableCell>
@@ -649,9 +701,8 @@ export default function RetirementFundsInfo() {
                       <TableCell align="right">Contributions</TableCell>
                       <TableCell align="right">Growth</TableCell>
                       <TableCell align="right">End Amount</TableCell>
-                      {showActuals && <TableCell align="right">Actual Balance</TableCell>}
-                      {showActuals && <TableCell align="right">Actual Growth</TableCell>}
-                      <TableCell align="center">Actions</TableCell>
+
+                      <TableCell align="center">Actuals</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -663,48 +714,41 @@ export default function RetirementFundsInfo() {
                       
                       const currentAge = Math.floor((new Date() - new Date(member['date_of_birth'])) / (365.25 * 24 * 60 * 60 * 1000));
                       const retirementYear = new Date().getFullYear() + (member['retirement_age'] - currentAge);
+                      const startYear = fund.start_date ? new Date(fund.start_date).getFullYear() : new Date().getFullYear();
                       
-                      return fund.retirement_projection?.filter(data => data.year <= retirementYear).map((yearData, yearIndex) => {
+                      return fund.retirement_projection?.filter(data => data.year <= retirementYear && data.year >= startYear).map((yearData, yearIndex, filteredArray) => {
                         const inputKey = `${selectedFund}-${yearData.year}`;
-                        const hasActual = yearData.actual_balance !== null;
+                        const hasActual = yearData.is_actual_balance;
+                        const prevYearHasActual = yearIndex > 0 && filteredArray[yearIndex - 1].is_actual_balance;
+                        
+                        const currentYear = new Date().getFullYear();
+                        const isCurrentYear = yearData.year === currentYear;
                         
                         return (
-                          <TableRow key={yearIndex}>
+                          <TableRow key={yearIndex} sx={{ backgroundColor: isCurrentYear ? '#e8f5e8' : 'inherit' }}>
                             <TableCell align="right">{yearData.year}</TableCell>
                             <TableCell align="right">{yearData.age}</TableCell>
                             <TableCell align="right">{(yearData.annual_return_rate * 100).toFixed(2)}%</TableCell>
-                            <TableCell align="right">${yearData.begin_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell align="right">${yearData.contribution.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell align="right">${yearData.growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell align="right">${yearData.end_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            {showActuals && (
-                              <TableCell align="right">
-                                {hasActual ? `$${yearData.actual_balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-                              </TableCell>
-                            )}
-                            {showActuals && (
-                              <TableCell align="right">
-                                {yearData.actual_growth !== null ? `$${yearData.actual_growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-                              </TableCell>
-                            )}
+                            <TableCell align="right" sx={{ color: prevYearHasActual ? 'red' : 'inherit' }}>${yearData.begin_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                            <TableCell align="right" sx={{ color: hasActual ? 'red' : 'inherit' }}>${yearData.contribution.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                            <TableCell align="right" sx={{ color: hasActual ? 'red' : 'inherit' }}>${yearData.growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                            <TableCell align="right" sx={{ color: hasActual ? 'red' : 'inherit' }}>${yearData.end_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+
                             <TableCell align="center">
-                              {!hasActual && (
-                                <TextField
-                                  size="small"
-                                  type="number"
-                                  placeholder="Actual"
-                                  value={actualInputs[inputKey] || ''}
-                                  onChange={(e) => setActualInputs(prev => ({ ...prev, [inputKey]: e.target.value }))}
-                                  onKeyPress={(e) => {
-                                    if (e.key === 'Enter' && actualInputs[inputKey]) {
-                                      const fund = retirementData.retirement_fund_data[selectedFund];
-                                      updateActualBalance(fund.id, yearData.year, parseFloat(actualInputs[inputKey]));
-                                      setActualInputs(prev => ({ ...prev, [inputKey]: '' }));
-                                    }
-                                  }}
-                                  sx={{ width: 100 }}
-                                />
-                              )}
+                              <Button
+                                size="small"
+                                variant={hasActual ? "outlined" : "contained"}
+                                onClick={() => {
+                                  setEditingActuals({ fundIndex: selectedFund, year: yearData.year, yearData });
+                                  setActualFormData({
+                                    actual_contributions: hasActual ? yearData.contribution : '',
+                                    actual_balance: hasActual ? yearData.end_amount : ''
+                                  });
+                                  setActualsDrawerOpen(true);
+                                }}
+                              >
+                                {hasActual ? 'Update' : 'Add'}
+                              </Button>
                             </TableCell>
                           </TableRow>
                         );

@@ -54,13 +54,22 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
         # Get return rate parameters from fund data
         return_rate_params = fund.get('return_rate_params', [])
         
+        # Get fund start date or default to current year
+        start_date = fund.get('start_date')
+        if start_date:
+            start_year = datetime.strptime(start_date, '%Y-%m-%d').year
+            start_age = age + (start_year - datetime.now().year)
+        else:
+            start_year = datetime.now().year
+            start_age = age
+        
         retirement_data = []
         current_amount = initial_investment
         retirement_amount = 0  # Amount at retirement to maintain
-        year = datetime.now().year
+        year = start_year
 
         # Calculate retirement projection for each year
-        for current_age in range(age, end_age + 1):
+        for current_age in range(start_age, end_age + 1):
             begin_amount = current_amount
             annual_return_rate = get_return_rate_for_age(current_age, return_rate_params)
             
@@ -84,14 +93,17 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
                 growth = 0
                 current_amount = retirement_amount  # Flatline at retirement amount
             
-            # Check for actual balance data
-            actual_balances = fund.get('actual_balances', {})
-            actual_balance = actual_balances.get(str(year))
-            actual_growth = None
-            
-            if actual_balance is not None:
-                actual_growth = float(actual_balance) - begin_amount - contribution
-            
+            # Check for actual data
+            actual_data_list = fund.get('actual_data', [])
+            year_actual_data = next((data for data in actual_data_list if data.get('year') == year), None)
+            is_actual_balance = False
+
+            if year_actual_data:
+                current_amount = float(year_actual_data.get('actual_balance'))
+                contribution = float(year_actual_data.get('actual_contributions'))
+                growth = float(year_actual_data.get('actual_growth'))
+                is_actual_balance = True
+                        
             retirement_data.append({
                 "year": year,
                 "age": current_age,
@@ -100,8 +112,7 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
                 "contribution": float(round(contribution, 2)),
                 "growth": float(round(growth, 2)),
                 "end_amount": float(round(current_amount, 2)),
-                "actual_balance": float(actual_balance) if actual_balance is not None else None,
-                "actual_growth": float(round(actual_growth, 2)) if actual_growth is not None else None
+                "is_actual_balance": is_actual_balance,
             })
             
             year = year + 1
