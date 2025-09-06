@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Retirement Portfolio - Lambda Backend + S3/CloudFront Frontend'
+Description: 'Retirement Portfolio Infrastructure (DynamoDB, S3, CloudFront)'
 
 Parameters:
   Environment:
@@ -104,6 +104,9 @@ Resources:
             OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf
         CustomErrorResponses:
           - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 403
             ResponseCode: 200
             ResponsePagePath: /index.html
         PriceClass: PriceClass_100

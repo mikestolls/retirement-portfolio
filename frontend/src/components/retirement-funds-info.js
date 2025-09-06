@@ -9,7 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import EditIcon from '@mui/icons-material/Edit';
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, LineChart, Line, Cell } from 'recharts';
 
 const contribution_frequencies = [
   { value: 12, label: 'Monthly' },
@@ -19,9 +19,7 @@ const contribution_frequencies = [
 ];
 
 export default function RetirementFundsInfo() {
-  const { updateRetirementFundInfoData, fetchRetirementFundInfoData, retirementFundInfoData, fetchFamilyInfoData, familyInfoData, loading, error } = useRetirement();
-
-
+  const { updateRetirementData, fetchRetirementData, retirementData, familyInfoData, loading, error, updateActualBalance } = useRetirement();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
@@ -30,8 +28,8 @@ export default function RetirementFundsInfo() {
   const [originalReturnRateParams, setOriginalReturnRateParams] = useState({});
 
   const getReturnRateParams = (index) => {
-    const fund = retirementFundInfoData?.retirement_fund_data?.[index];
-    const params = returnRateParams[index] || fund?.['return-rate-params'] || [];
+    const fund = retirementData?.retirement_fund_data?.[index];
+    const params = returnRateParams[index] || fund?.['return_rate_params'] || [];
     return params;
   };
   const setReturnRateParamsForFund = (fundIndex, params) => {
@@ -53,10 +51,10 @@ export default function RetirementFundsInfo() {
     if (editingFund !== null && formStates[editingFund] && Object.keys(formStates[editingFund]).length > 0) {
       const updateData = {
         ...formStates[editingFund],
-        'return-rate-params': getReturnRateParams(editingFund)
+        'return_rate_params': getReturnRateParams(editingFund)
       };
-      updateRetirementFundInfoData(editingFund, updateData).then(() => {
-        fetchRetirementFundInfoData(); // Recalculate projections
+      updateRetirementData(editingFund, updateData).then(() => {
+        fetchRetirementData(); // Recalculate projections
         setFormStates(prev => {
           const newStates = { ...prev };
           delete newStates[editingFund];
@@ -72,15 +70,15 @@ export default function RetirementFundsInfo() {
     const { name, value } = event.target;
     setFormData(index, {
       ...getFormData(index),
-      [name]: ['initial-investment', 'regular-contribution', 'contribution-frequency'].includes(name) 
-        ? (name === 'contribution-frequency' ? parseInt(value) : parseFloat(value) || 0) 
+      [name]: ['initial_investment', 'regular_contribution', 'contribution_frequency'].includes(name) 
+        ? (name === 'contribution_frequency' ? parseInt(value) : parseFloat(value) || 0) 
         : value
     });
   };
 
 
   const deleteFund = async (index) => {
-    await updateRetirementFundInfoData(index, null);
+    await updateRetirementData(index, null);
     setFormStates(prev => {
       const newStates = {};
       Object.keys(prev).forEach(key => {
@@ -100,28 +98,32 @@ export default function RetirementFundsInfo() {
   };
 
   const handleAddFund = () => {
-    const newIndex = retirementFundInfoData?.retirement_fund_data?.length || 0;
+    const newIndex = retirementData?.retirement_fund_data?.length || 0;
     setSelectedFund(newIndex);
     setEditingFund(newIndex);
     setDrawerOpen(true);
     
-    updateRetirementFundInfoData(newIndex, {
+    updateRetirementData(newIndex, {
+      'id': crypto.randomUUID(),
       'name': 'New Fund',
-      'family-member-id': familyInfoData?.family_info_data?.[0]?.id || '',
-      'initial-investment': 1000,
-      'regular-contribution': 10,
-      'contribution-frequency': 12
+      'family_member_id': familyInfoData?.family_info_data?.[0]?.id || '',
+      'initial_investment': 1000,
+      'regular_contribution': 10,
+      'contribution_frequency': 12,
+      'start_date': new Date().toISOString().split('T')[0],
+      'return_rate_params': [],
+      'actual_data': []
     }).then(() => {
-      fetchRetirementFundInfoData(); // Refresh to get projections
+      fetchRetirementData(); // Refresh to get projections
     });
   };
 
   const renderFundCards = () => {
     if (error) return null;
     
-    const fundCards = retirementFundInfoData?.retirement_fund_data?.length ? 
-      retirementFundInfoData.retirement_fund_data.map((fund, index) => {
-        const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family-member-id']);
+    const fundCards = retirementData?.retirement_fund_data?.length ? 
+      retirementData.retirement_fund_data.map((fund, index) => {
+        const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family_member_id']);
         const latestProjection = fund.retirement_projection?.[fund.retirement_projection.length - 1];
         
         return (
@@ -149,8 +151,8 @@ export default function RetirementFundsInfo() {
               </Stack>
               <Stack direction="column" spacing={0.5} alignItems="left" className="mb-2">
                 <p className="text-sm">Owner: {member?.name || 'Unknown'}</p>
-                <p className="text-sm">Initial: ${fund['initial-investment']?.toLocaleString()}</p>
-                <p className="text-sm">Monthly: ${fund['regular-contribution']}</p>
+                <p className="text-sm">Initial: ${fund['initial_investment']?.toLocaleString()}</p>
+                <p className="text-sm">Monthly: ${fund['regular_contribution']}</p>
                 {latestProjection && (
                   <p className="text-sm">Final Balance: ${latestProjection.end_amount?.toLocaleString()}</p>
                 )}
@@ -208,6 +210,10 @@ export default function RetirementFundsInfo() {
   };
 
   const [selectedFund, setSelectedFund] = useState(0);
+  const [actualInputs, setActualInputs] = useState({});
+  const [actualsDrawerOpen, setActualsDrawerOpen] = useState(false);
+  const [editingActuals, setEditingActuals] = useState(null);
+  const [actualFormData, setActualFormData] = useState({});
 
   return (
     <div style={{ width: '100%', overflow: 'hidden' }}>
@@ -250,23 +256,23 @@ export default function RetirementFundsInfo() {
               <CloseIcon />
             </IconButton>
           </Stack>
-          {editingFund !== null && retirementFundInfoData?.retirement_fund_data?.[editingFund] && (
+          {editingFund !== null && retirementData?.retirement_fund_data?.[editingFund] && (
             <Stack spacing={2}>
               <TextField 
                 label="Name" 
                 name="name"
                 variant="outlined"
                 fullWidth
-                value={getFormData(editingFund)['name'] || retirementFundInfoData.retirement_fund_data[editingFund]['name']}
+                value={getFormData(editingFund)['name'] || retirementData.retirement_fund_data[editingFund]['name']}
                 onChange={handleChange(editingFund)}
               />
               <TextField 
                 label="Family Member"
-                name="family-member-id"
+                name="family_member_id"
                 select
                 variant="outlined"
                 fullWidth
-                value={getFormData(editingFund)['family-member-id'] || retirementFundInfoData.retirement_fund_data[editingFund]['family-member-id']}
+                value={getFormData(editingFund)['family_member_id'] || retirementData.retirement_fund_data[editingFund]['family_member_id']}
                 onChange={handleChange(editingFund)}
               >
                 {familyInfoData?.family_info_data?.map((member) => (
@@ -277,31 +283,31 @@ export default function RetirementFundsInfo() {
               </TextField>
               <TextField
                 label="Initial Investment"
-                name="initial-investment"
+                name="initial_investment"
                 variant="outlined"
                 fullWidth
                 type="number"
                 slotProps={{ htmlInput: { min: 0, step: 1 } }}
-                value={getFormData(editingFund)['initial-investment'] || retirementFundInfoData.retirement_fund_data[editingFund]['initial-investment']}
+                value={getFormData(editingFund)['initial_investment'] || retirementData.retirement_fund_data[editingFund]['initial_investment']}
                 onChange={handleChange(editingFund)}
               />
               <TextField
                 label="Regular Contribution"
-                name="regular-contribution"
+                name="regular_contribution"
                 variant="outlined"
                 fullWidth
                 type="number"
                 slotProps={{ htmlInput: { min: 0, step: 1 } }}
-                value={getFormData(editingFund)['regular-contribution'] || retirementFundInfoData.retirement_fund_data[editingFund]['regular-contribution']}
+                value={getFormData(editingFund)['regular_contribution'] || retirementData.retirement_fund_data[editingFund]['regular_contribution']}
                 onChange={handleChange(editingFund)}
               />
               <TextField
                 label="Contribution Frequency"
-                name="contribution-frequency"
+                name="contribution_frequency"
                 select
                 variant="outlined"
                 fullWidth
-                value={getFormData(editingFund)['contribution-frequency'] || retirementFundInfoData.retirement_fund_data[editingFund]['contribution-frequency']}
+                value={getFormData(editingFund)['contribution_frequency'] || retirementData.retirement_fund_data[editingFund]['contribution_frequency']}
                 onChange={handleChange(editingFund)}
               >
                 {contribution_frequencies.map((option) => (
@@ -310,15 +316,25 @@ export default function RetirementFundsInfo() {
                   </MenuItem>
                 ))}
               </TextField>
+              <TextField
+                label="Start Date"
+                name="start_date"
+                variant="outlined"
+                fullWidth
+                type="date"
+                slotProps={{ inputLabel: { shrink: true } }}
+                value={getFormData(editingFund)['start_date'] || retirementData.retirement_fund_data[editingFund]['start_date'] || ''}
+                onChange={handleChange(editingFund)}
+              />
               <Button 
                 variant="outlined" 
                 startIcon={<TuneIcon />}
                 fullWidth
                 sx={{ mt: 2 }}
                 onClick={() => {
-                  const fund = retirementFundInfoData?.retirement_fund_data?.[editingFund];
+                  const fund = retirementData?.retirement_fund_data?.[editingFund];
                   if (fund) {
-                    const existingParams = fund['return-rate-params'] || [];
+                    const existingParams = fund['return_rate_params'] || [];
                     setReturnRateParamsForFund(editingFund, existingParams);
                     setOriginalReturnRateParams(prev => ({ ...prev, [editingFund]: JSON.parse(JSON.stringify(existingParams)) }));
                   }
@@ -356,10 +372,10 @@ export default function RetirementFundsInfo() {
             // Only save if parameters have changed
             if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
               const updateData = {
-                'return-rate-params': currentParams
+                'return_rate_params': currentParams
               };
-              updateRetirementFundInfoData(editingFund, updateData).then(() => {
-                fetchRetirementFundInfoData();
+              updateRetirementData(editingFund, updateData).then(() => {
+                fetchRetirementData();
               });
             }
           }
@@ -377,10 +393,10 @@ export default function RetirementFundsInfo() {
               // Only save if parameters have changed
               if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
                 const updateData = {
-                  'return-rate-params': currentParams
+                  'return_rate_params': currentParams
                 };
-                updateRetirementFundInfoData(editingFund, updateData).then(() => {
-                  fetchRetirementFundInfoData();
+                updateRetirementData(editingFund, updateData).then(() => {
+                  fetchRetirementData();
                 });
               }
             }
@@ -400,10 +416,10 @@ export default function RetirementFundsInfo() {
                 variant="standard"
                 sx={{ width: 100 }}
                 slotProps={{ htmlInput: { min: 0, max: 150 } }}
-                value={param.fromAge || ''}
+                value={param.from_age || ''}
                 onChange={(e) => {
                   const params = [...getReturnRateParams(editingFund)];
-                  params[paramIndex] = { ...params[paramIndex], fromAge: parseInt(e.target.value) };
+                  params[paramIndex] = { ...params[paramIndex], from_age: parseInt(e.target.value) };
                   setReturnRateParamsForFund(editingFund, params);
                 }}
               />
@@ -414,10 +430,10 @@ export default function RetirementFundsInfo() {
                 variant="standard"
                 sx={{ width: 100 }}
                 slotProps={{ htmlInput: { min: 0, max: 150 } }}
-                value={param.toAge || ''}
+                value={param.to_age || ''}
                 onChange={(e) => {
                   const params = [...getReturnRateParams(editingFund)];
-                  params[paramIndex] = { ...params[paramIndex], toAge: parseInt(e.target.value) };
+                  params[paramIndex] = { ...params[paramIndex], to_age: parseInt(e.target.value) };
                   setReturnRateParamsForFund(editingFund, params);
                 }}
               />
@@ -428,10 +444,10 @@ export default function RetirementFundsInfo() {
                 variant="standard"
                 sx={{ width: 120 }}
                 slotProps={{ htmlInput: { step: 0.1, min: 0, max: 100 } }}
-                value={param.returnRate || ''}
+                value={param.return_rate || ''}
                 onChange={(e) => {
                   const params = [...getReturnRateParams(editingFund)];
-                  params[paramIndex] = { ...params[paramIndex], returnRate: parseFloat(e.target.value) };
+                  params[paramIndex] = { ...params[paramIndex], return_rate: parseFloat(e.target.value) };
                   setReturnRateParamsForFund(editingFund, params);
                 }}
               />
@@ -453,7 +469,7 @@ export default function RetirementFundsInfo() {
           variant="contained" 
           onClick={() => {
             if (editingFund !== null) {
-              const params = [...getReturnRateParams(editingFund), { fromAge: 25, toAge: 65, returnRate: 7.0 }];
+              const params = [...getReturnRateParams(editingFund), { from_age: 25, to_age: 65, return_rate: 7.0 }];
               setReturnRateParamsForFund(editingFund, params);
             }
           }}
@@ -462,6 +478,96 @@ export default function RetirementFundsInfo() {
         </Button>
         
 
+      </Drawer>
+
+      {/* Actuals Input Drawer */}
+      <Drawer
+        anchor="right"
+        open={actualsDrawerOpen}
+        onClose={() => {
+          if (editingActuals) {
+            const currentContributions = actualFormData.actual_contributions || 0;
+            const currentBalance = actualFormData.actual_balance || 0;
+            const originalContributions = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.contribution : 0;
+            const originalBalance = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.end_amount : 0;
+            
+            const hasChanges = currentContributions !== originalContributions || currentBalance !== originalBalance;
+            
+            if (hasChanges) {
+              const fund = retirementData.retirement_fund_data[selectedFund];
+              
+              if (currentContributions > 0 || currentBalance > 0) {
+                const beginAmount = editingActuals.yearData.begin_amount;
+                const actualGrowth = currentBalance - beginAmount - currentContributions;
+                updateActualBalance(fund.id, editingActuals.year, currentBalance, currentContributions, actualGrowth);
+              } else {
+                // Clear the entry if both fields are empty
+                updateActualBalance(fund.id, editingActuals.year, null, null, null);
+              }
+            }
+          }
+          setActualsDrawerOpen(false);
+          setActualFormData({});
+        }}
+        sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">Actual Data - {editingActuals?.year}</Typography>
+          <IconButton onClick={() => {
+            const hasChanges = actualFormData.actual_contributions || actualFormData.actual_balance;
+            if (hasChanges && editingActuals) {
+              const fund = retirementData.retirement_fund_data[selectedFund];
+              const actualContributions = actualFormData.actual_contributions || 0;
+              const actualBalance = actualFormData.actual_balance || 0;
+              const beginAmount = editingActuals.yearData.begin_amount;
+              const actualGrowth = actualBalance - beginAmount - actualContributions;
+              
+              updateActualBalance(fund.id, editingActuals.year, actualBalance, actualContributions, actualGrowth);
+            }
+            setActualsDrawerOpen(false);
+            setActualFormData({});
+          }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        
+        {editingActuals && (
+          <Stack spacing={2}>
+            <TextField
+              label="Actual Contributions"
+              type="number"
+              variant="outlined"
+              fullWidth
+              value={actualFormData.actual_contributions || ''}
+              onChange={(e) => setActualFormData(prev => ({ ...prev, actual_contributions: parseFloat(e.target.value) || 0 }))}
+              slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
+            />
+            <TextField
+              label="Actual End Balance"
+              type="number"
+              variant="outlined"
+              fullWidth
+              value={actualFormData.actual_balance || ''}
+              onChange={(e) => setActualFormData(prev => ({ ...prev, actual_balance: parseFloat(e.target.value) || 0 }))}
+              slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
+            />
+            {editingActuals.yearData.is_actual_balance && (
+              <Button
+                variant="outlined"
+                color="error"
+                fullWidth
+                onClick={() => {
+                  const fund = retirementData.retirement_fund_data[selectedFund];
+                  updateActualBalance(fund.id, editingActuals.year, null, null, null);
+                  setActualsDrawerOpen(false);
+                  setActualFormData({});
+                }}
+              >
+                Clear Actuals
+              </Button>
+            )}
+          </Stack>
+        )}
       </Drawer>
 
       {/* Fund Projection Chart */}
@@ -482,29 +588,34 @@ export default function RetirementFundsInfo() {
           }} 
         > 
           <CardContent className="p-4">
-            <Typography variant="h6" sx={{ mb: 2 }}>Fund Projection - {retirementFundInfoData.retirement_fund_data[selectedFund]?.name || 'Loading...'}</Typography>
-            {retirementFundInfoData.retirement_fund_data[selectedFund]?.retirement_projection && (() => {
-              const fund = retirementFundInfoData.retirement_fund_data[selectedFund];
-              const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family-member-id']);
+            <Typography variant="h6" sx={{ mb: 2 }}>Fund Projection - {retirementData.retirement_fund_data[selectedFund]?.name || 'Loading...'}</Typography>
+            {retirementData.retirement_fund_data[selectedFund]?.retirement_projection && (() => {
+              const fund = retirementData.retirement_fund_data[selectedFund];
+              const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family_member_id']);
               
               if (!member) return null;
               
-              const currentAge = Math.floor((new Date() - new Date(member['date-of-birth'])) / (365.25 * 24 * 60 * 60 * 1000));
-              const retirementYear = new Date().getFullYear() + (member['retirement-age'] - currentAge);
+              const currentAge = Math.floor((new Date() - new Date(member['date_of_birth'])) / (365.25 * 24 * 60 * 60 * 1000));
+              const retirementYear = new Date().getFullYear() + (member['retirement_age'] - currentAge);
               
-              const filteredData = fund.retirement_projection.filter(data => data.year <= retirementYear);
+              const startYear = fund.start_date ? new Date(fund.start_date).getFullYear() : new Date().getFullYear();
+              const filteredData = fund.retirement_projection.filter(data => data.year <= retirementYear && data.year >= startYear);
               
               // Calculate return rate change markers
-              const returnRateParams = fund['return-rate-params'] || [];
+              const returnRateParams = fund['return_rate_params'] || [];
               const returnRateMarkers = returnRateParams.map(param => {
-                const changeYear = new Date().getFullYear() + (param.fromAge - currentAge);
+                const changeYear = new Date().getFullYear() + (param.from_age - currentAge);
                 return {
                   year: changeYear,
-                  rate: param.returnRate,
-                  age: param.fromAge
+                  rate: param.return_rate,
+                  age: param.from_age
                 };
-              }).filter(marker => marker.year <= retirementYear);
-              const firstReturnRate = returnRateParams.length > 0 ? returnRateParams[0].returnRate : 7;
+              }).filter(marker => marker.year <= retirementYear && marker.year >= startYear);
+              const firstYear = filteredData.length > 0 ? filteredData[0].year : startYear;
+              const firstReturnRateMarker = returnRateMarkers.find(marker => marker.year <= firstYear);
+              const firstReturnRate = firstReturnRateMarker ? firstReturnRateMarker.rate : 7;
+              const currentYear = new Date().getFullYear();
+              
               
               return (
                 <ResponsiveContainer width="100%" height={300}>
@@ -523,11 +634,14 @@ export default function RetirementFundsInfo() {
                     />
                     <Bar 
                       dataKey="end_amount"
-                      fill="#778be7ff" 
                       animationEasing='ease'
-                    />
+                    >
+                      {filteredData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.is_actual_balance ? '#ff4444' : '#778be7ff'} />
+                      ))}
+                    </Bar>
                     <ReferenceLine
-                      x={new Date().getFullYear()}
+                      x={startYear}
                       stroke="#ff9800"
                       strokeDasharray="5 5"
                       label={{ 
@@ -537,6 +651,21 @@ export default function RetirementFundsInfo() {
                         angle: 0,
                         fontStyle: 'italic',
                         fill: '#ff9800',
+                        fontSize: '12'
+                      }}
+                    />
+                    <ReferenceLine
+                      x={currentYear}
+                      stroke="#4caf50"
+                      strokeWidth={3}
+                      y1={0}
+                      label={{ 
+                        value: 'Current Year', 
+                        position: "top", 
+                        offset: 20,
+                        angle: 0,
+                        fontWeight: 'bold',
+                        fill: '#4caf50',
                         fontSize: '12'
                       }}
                     />
@@ -566,7 +695,7 @@ export default function RetirementFundsInfo() {
       </Box>
 
       {/* Year by Year Table */}
-      {retirementFundInfoData?.retirement_fund_data?.[selectedFund] && (
+      {retirementData?.retirement_fund_data?.[selectedFund] && (
         <Box
           sx={{ 
             display: 'flex', 
@@ -584,9 +713,8 @@ export default function RetirementFundsInfo() {
             }} 
           > 
             <CardContent className="p-4">
-              <Typography variant="h6" sx={{ mb: 2 }}>Year by Year Projection - {retirementFundInfoData.retirement_fund_data[selectedFund]?.name || 'Loading...'}</Typography>
               <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
-                <Table stickyHeader size="small">
+                <Table stickyHeader size="small" sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0' } }}>
                   <TableHead>
                     <TableRow>
                       <TableCell align="right">Year</TableCell>
@@ -596,29 +724,58 @@ export default function RetirementFundsInfo() {
                       <TableCell align="right">Contributions</TableCell>
                       <TableCell align="right">Growth</TableCell>
                       <TableCell align="right">End Amount</TableCell>
+
+                      <TableCell align="center">Actuals</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {(() => {
-                      const fund = retirementFundInfoData.retirement_fund_data[selectedFund];
-                      const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family-member-id']);
+                      const fund = retirementData.retirement_fund_data[selectedFund];
+                      const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family_member_id']);
                       
                       if (!member) return null;
                       
-                      const currentAge = Math.floor((new Date() - new Date(member['date-of-birth'])) / (365.25 * 24 * 60 * 60 * 1000));
-                      const retirementYear = new Date().getFullYear() + (member['retirement-age'] - currentAge);
+                      const currentAge = Math.floor((new Date() - new Date(member['date_of_birth'])) / (365.25 * 24 * 60 * 60 * 1000));
+                      const retirementYear = new Date().getFullYear() + (member['retirement_age'] - currentAge);
+                      const startYear = fund.start_date ? new Date(fund.start_date).getFullYear() : new Date().getFullYear();
                       
-                      return fund.retirement_projection?.filter(data => data.year <= retirementYear).map((yearData, yearIndex) => (
-                        <TableRow key={yearIndex}>
-                          <TableCell align="right">{yearData.year}</TableCell>
-                          <TableCell align="right">{yearData.age}</TableCell>
-                          <TableCell align="right">{(yearData.annual_return_rate * 100).toFixed(2)}%</TableCell>
-                          <TableCell align="right">${yearData.begin_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell align="right">${yearData.contribution.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell align="right">${yearData.growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell align="right">${yearData.end_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                        </TableRow>
-                      ));
+                      return fund.retirement_projection?.filter(data => data.year <= retirementYear && data.year >= startYear).map((yearData, yearIndex, filteredArray) => {
+                        const inputKey = `${selectedFund}-${yearData.year}`;
+                        const hasActual = yearData.is_actual_balance;
+                        const prevYearHasActual = yearIndex > 0 && filteredArray[yearIndex - 1].is_actual_balance;
+                        
+                        const currentYear = new Date().getFullYear();
+                        const isCurrentYear = yearData.year === currentYear;
+                        
+                        return (
+                          <TableRow key={yearIndex} sx={{ backgroundColor: isCurrentYear ? '#e8f5e8' : 'inherit' }}>
+                            <TableCell align="right">{yearData.year}</TableCell>
+                            <TableCell align="right">{yearData.age}</TableCell>
+                            <TableCell align="right">{(yearData.annual_return_rate * 100).toFixed(2)}%</TableCell>
+                            <TableCell align="right" sx={{ color: prevYearHasActual ? 'red' : 'inherit' }}>${yearData.begin_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                            <TableCell align="right" sx={{ color: hasActual ? 'red' : 'inherit' }}>${yearData.contribution.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                            <TableCell align="right" sx={{ color: hasActual ? 'red' : 'inherit' }}>${yearData.growth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                            <TableCell align="right" sx={{ color: hasActual ? 'red' : 'inherit' }}>${yearData.end_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+
+                            <TableCell align="center">
+                              <Button
+                                size="small"
+                                variant={hasActual ? "outlined" : "contained"}
+                                onClick={() => {
+                                  setEditingActuals({ fundIndex: selectedFund, year: yearData.year, yearData });
+                                  setActualFormData({
+                                    actual_contributions: hasActual ? yearData.contribution : '',
+                                    actual_balance: hasActual ? yearData.end_amount : ''
+                                  });
+                                  setActualsDrawerOpen(true);
+                                }}
+                              >
+                                {hasActual ? 'Update' : 'Add'}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      });
                     })()}
                   </TableBody>
                 </Table>

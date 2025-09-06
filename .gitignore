@@ -44,4 +44,4 @@ venv
 
 # SAM
 .aws-sam/
-scripts/release.bat
+scripts/test_release.bat

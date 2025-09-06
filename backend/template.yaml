@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
+Description: 'Retirement Portfolio Lambda Functions and API Gateway'
 
 Globals:
   Function:
@@ -9,8 +10,7 @@ Globals:
       Variables:
         DYNAMODB_ENDPOINT_URL: !If [IsLocal, "http://localhost:8000", !Ref "AWS::NoValue"]
         USERS_TABLE: users
-        FAMILY_INFO_TABLE: family_info
-        RETIREMENT_FUND_TABLE: retirement_funds
+        RETIREMENT_DATA_TABLE: retirement_data
     Layers:
       - !Ref SharedLayer
   Api:
@@ -58,28 +58,6 @@ Resources:
             Path: /api/health
             Method: get
 
-  GetFamilyInfoFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/get-family-info/
-      Handler: handler.lambda_handler
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: users
-        - DynamoDBReadPolicy:
-            TableName: family_info
-        - Statement:
-            - Effect: Allow
-              Action:
-                - dynamodb:ListTables
-              Resource: "*"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/get_family_info/{user_id}
-            Method: get
-
   UpdateFamilyInfoFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -89,7 +67,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: users
         - DynamoDBCrudPolicy:
-            TableName: family_info
+            TableName: retirement_data
         - Statement:
             - Effect: Allow
               Action:
@@ -108,12 +86,10 @@ Resources:
       CodeUri: functions/get-retirement-data/
       Handler: handler.lambda_handler
       Policies:
-        - DynamoDBReadPolicy:
+        - DynamoDBCrudPolicy:
             TableName: users
         - DynamoDBReadPolicy:
-            TableName: family_info
-        - DynamoDBReadPolicy:
-            TableName: retirement_funds
+            TableName: retirement_data
         - Statement:
             - Effect: Allow
               Action:
@@ -123,7 +99,7 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /api/get_retirement_fund_data/{user_id}
+            Path: /api/get_retirement_data/{user_id}
             Method: get
 
   UpdateRetirementDataFunction:
@@ -135,7 +111,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: users
         - DynamoDBCrudPolicy:
-            TableName: retirement_funds
+            TableName: retirement_data
         - Statement:
             - Effect: Allow
               Action:
@@ -145,7 +121,29 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /api/update_retirement_fund_data/{user_id}
+            Path: /api/update_retirement_data/{user_id}
+            Method: post
+
+  UpdateRetirementFundDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/update-retirement-fund-data/
+      Handler: handler.lambda_handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: users
+        - DynamoDBCrudPolicy:
+            TableName: retirement_data
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+              Resource: "*"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/update_retirement_data/{user_id}/funds/{fund_id}
             Method: post
 
 

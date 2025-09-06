@@ -19,7 +19,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 export default function FamilyInfo() {
   // Use the shared context
-  const { updateFamilyInfoData, fetchFamilyInfoData, fetchRetirementFundInfoData, familyInfoData, householdProjection, loading, error } = useRetirement();
+  const { updateFamilyInfoData, fetchRetirementData, familyInfoData, householdProjection, loading, error } = useRetirement();
 
   // Fund visibility state
   const [visibleFunds, setVisibleFunds] = useState({});
@@ -40,7 +40,7 @@ export default function FamilyInfo() {
     // Only update if there are changes in formStates for this member
     if (editingMember !== null && formStates[editingMember] && Object.keys(formStates[editingMember]).length > 0) {
       updateFamilyInfoData(editingMember, formStates[editingMember]).then(() => {
-        fetchRetirementFundInfoData(); // Refresh projections
+        fetchRetirementData(); // Refresh projections
         // Clear the form state after successful update
         setFormStates(prev => {
           const newStates = { ...prev };
@@ -65,7 +65,7 @@ export default function FamilyInfo() {
     const { name, value } = event.target;
     setFormData(index, {
       ...getFormData(index),
-      [name]: ['retirement-age', 'life-expectancy'].includes(name) ? parseInt(value) || 0 : value
+      [name]: ['retirement_age', 'life_expectancy'].includes(name) ? parseInt(value) || 0 : value
     });
   };
 
@@ -99,9 +99,9 @@ export default function FamilyInfo() {
     updateFamilyInfoData(newIndex, {
       'id': crypto.randomUUID(),
       'name': 'New Member',
-      'date-of-birth': '2000-01-01',
-      'life-expectancy': 90,
-      'retirement-age': 65,
+      'date_of_birth': '2000-01-01',
+      'life_expectancy': 90,
+      'retirement_age': 65,
     });
   };
 
@@ -133,8 +133,8 @@ export default function FamilyInfo() {
               <h3 className="text-sm">{member['name']}</h3>
             </Stack>
             <Stack direction={"column"} spacing={0.5} alignItems="left" className="mb-2">
-              <p className="text-sm">Age: {Math.floor((new Date() - new Date(member['date-of-birth'])) / (365.25 * 24 * 60 * 60 * 1000))} | Retirement Age: {member['retirement-age']}</p>
-              <p className="text-sm">Life Expectancy: {member['life-expectancy']}</p>
+              <p className="text-sm">Age: {Math.floor((new Date() - new Date(member['date_of_birth'])) / (365.25 * 24 * 60 * 60 * 1000))} | Retirement Age: {member['retirement_age']}</p>
+              <p className="text-sm">Life Expectancy: {member['life_expectancy']}</p>
               <p className="text-sm">Balance: </p>
             </Stack>
             <h4 className="text-sm">Success Rate</h4>
@@ -272,8 +272,8 @@ export default function FamilyInfo() {
               
               // Calculate retirement years for markers
               const retirementMarkers = familyInfoData?.family_info_data?.map(member => {
-                const currentAge = Math.floor((new Date() - new Date(member['date-of-birth'])) / (365.25 * 24 * 60 * 60 * 1000));
-                const retirementYear = new Date().getFullYear() + (member['retirement-age'] - currentAge);
+                const currentAge = Math.floor((new Date() - new Date(member['date_of_birth'])) / (365.25 * 24 * 60 * 60 * 1000));
+                const retirementYear = new Date().getFullYear() + (member['retirement_age'] - currentAge);
                 return { name: member.name, year: retirementYear };
               }) || [];
               
@@ -440,11 +440,11 @@ export default function FamilyInfo() {
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   label="Date of Birth"
-                  value={dayjs(getFormData(editingMember)['date-of-birth'] || familyInfoData.family_info_data[editingMember]['date-of-birth'])}
+                  value={dayjs(getFormData(editingMember)['date_of_birth'] || familyInfoData.family_info_data[editingMember]['date_of_birth'])}
                   onChange={(newValue) => {
                     setFormData(editingMember, {
                       ...getFormData(editingMember),
-                      'date-of-birth': newValue ? newValue.format('YYYY-MM-DD') : ''
+                      'date_of_birth': newValue ? newValue.format('YYYY-MM-DD') : ''
                     });
                   }}
                   maxDate={dayjs()}
@@ -458,22 +458,22 @@ export default function FamilyInfo() {
               </LocalizationProvider>
               <TextField
                 label="Retirement Age"
-                name="retirement-age"
+                name="retirement_age"
                 variant="outlined"
                 fullWidth
                 type="number"
                 slotProps={{ htmlInput: { min: 50, max: 80 } }}
-                value={getFormData(editingMember)['retirement-age'] || familyInfoData.family_info_data[editingMember]['retirement-age']}
+                value={getFormData(editingMember)['retirement_age'] || familyInfoData.family_info_data[editingMember]['retirement_age']}
                 onChange={handleChange(editingMember)}
               />
               <TextField
                 label="Life Expectancy"
-                name="life-expectancy"
+                name="life_expectancy"
                 variant="outlined"
                 fullWidth
                 type="number"
                 slotProps={{ htmlInput: { min: 60, max: 120 } }}
-                value={getFormData(editingMember)['life-expectancy'] || familyInfoData.family_info_data[editingMember]['life-expectancy']}
+                value={getFormData(editingMember)['life_expectancy'] || familyInfoData.family_info_data[editingMember]['life_expectancy']}
                 onChange={handleChange(editingMember)}
               />
               <Button 
