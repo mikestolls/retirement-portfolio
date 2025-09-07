@@ -9,6 +9,13 @@ def get_return_rate_for_age(age, return_rate_params):
         
     return 0.07  # Default 7% if no matching range
 
+def get_contribution_for_age(age, contribution_params, default_contribution, default_frequency):
+    for param in contribution_params:
+        if param['from_age'] <= age <= param['to_age']:
+            return float(param['contribution_amount']), int(param['contribution_frequency'])
+        
+    return default_contribution, default_frequency  # Use fund's defaults if no matching range
+
 def calculate_retirement_projection(retirement_fund_info, family_info):
     """
     Calculate retirement projection based on retirement fund info and family info.
@@ -51,8 +58,9 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
         regular_contribution = int(fund['regular_contribution'])
         contribution_frequency = int(fund['contribution_frequency'])
     
-        # Get return rate parameters from fund data
+        # Get return rate and contribution parameters from fund data
         return_rate_params = fund.get('return_rate_params', [])
+        contribution_params = fund.get('contribution_params', [])
         
         # Get fund start date or default to current year
         start_date = fund.get('start_date')
@@ -75,12 +83,13 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
             
             if current_age < retirement_age:
                 # Accumulation phase - continue contributions and growth
-                contribution = regular_contribution * contribution_frequency
+                age_contribution, age_frequency = get_contribution_for_age(current_age, contribution_params, regular_contribution, contribution_frequency)
+                contribution = age_contribution * age_frequency  # Total annual contribution
                 
                 # Calculate growth (compounded)
-                inc_return_rate = annual_return_rate / contribution_frequency
-                inc_contribution = contribution / contribution_frequency
-                for i in range(contribution_frequency):
+                inc_return_rate = annual_return_rate / age_frequency
+                inc_contribution = age_contribution  # Per-period contribution amount
+                for i in range(age_frequency):
                     current_amount = (current_amount + inc_contribution) * (1 + inc_return_rate)
                 
                 growth = current_amount - begin_amount - contribution

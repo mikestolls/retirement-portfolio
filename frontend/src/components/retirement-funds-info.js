@@ -26,6 +26,9 @@ export default function RetirementFundsInfo() {
   const [returnRateDrawerOpen, setReturnRateDrawerOpen] = useState(false);
   const [returnRateParams, setReturnRateParams] = useState({});
   const [originalReturnRateParams, setOriginalReturnRateParams] = useState({});
+  const [contributionDrawerOpen, setContributionDrawerOpen] = useState(false);
+  const [contributionParams, setContributionParams] = useState({});
+  const [originalContributionParams, setOriginalContributionParams] = useState({});
 
   const getReturnRateParams = (index) => {
     const fund = retirementData?.retirement_fund_data?.[index];
@@ -34,6 +37,15 @@ export default function RetirementFundsInfo() {
   };
   const setReturnRateParamsForFund = (fundIndex, params) => {
     setReturnRateParams(prev => ({ ...prev, [fundIndex]: params }));
+  };
+
+  const getContributionParams = (index) => {
+    const fund = retirementData?.retirement_fund_data?.[index];
+    const params = contributionParams[index] || fund?.['contribution_params'] || [];
+    return params;
+  };
+  const setContributionParamsForFund = (fundIndex, params) => {
+    setContributionParams(prev => ({ ...prev, [fundIndex]: params }));
   };
 
   const [formStates, setFormStates] = useState({});
@@ -51,7 +63,8 @@ export default function RetirementFundsInfo() {
     if (editingFund !== null && formStates[editingFund] && Object.keys(formStates[editingFund]).length > 0) {
       const updateData = {
         ...formStates[editingFund],
-        'return_rate_params': getReturnRateParams(editingFund)
+        'return_rate_params': getReturnRateParams(editingFund),
+        'contribution_params': getContributionParams(editingFund)
       };
       updateRetirementData(editingFund, updateData).then(() => {
         fetchRetirementData(); // Recalculate projections
@@ -112,6 +125,7 @@ export default function RetirementFundsInfo() {
       'contribution_frequency': 12,
       'start_date': new Date().toISOString().split('T')[0],
       'return_rate_params': [],
+      'contribution_params': [],
       'actual_data': []
     }).then(() => {
       fetchRetirementData(); // Refresh to get projections
@@ -345,6 +359,23 @@ export default function RetirementFundsInfo() {
               </Button>
               <Button 
                 variant="outlined" 
+                startIcon={<TuneIcon />}
+                fullWidth
+                sx={{ mt: 1 }}
+                onClick={() => {
+                  const fund = retirementData?.retirement_fund_data?.[editingFund];
+                  if (fund) {
+                    const existingParams = fund['contribution_params'] || [];
+                    setContributionParamsForFund(editingFund, existingParams);
+                    setOriginalContributionParams(prev => ({ ...prev, [editingFund]: JSON.parse(JSON.stringify(existingParams)) }));
+                  }
+                  setContributionDrawerOpen(true);
+                }}
+              >
+                Contributions
+              </Button>
+              <Button 
+                variant="outlined" 
                 color="error" 
                 disabled={loading}
                 fullWidth
@@ -478,6 +509,142 @@ export default function RetirementFundsInfo() {
         </Button>
         
 
+      </Drawer>
+
+      <Drawer
+        anchor="right"
+        open={contributionDrawerOpen}
+        onClose={() => {
+          if (editingFund !== null) {
+            const currentParams = getContributionParams(editingFund);
+            const originalParams = originalContributionParams[editingFund] || [];
+            
+            // Only save if parameters have changed
+            if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
+              const updateData = {
+                'contribution_params': currentParams
+              };
+              updateRetirementData(editingFund, updateData).then(() => {
+                fetchRetirementData();
+              });
+            }
+          }
+          setContributionDrawerOpen(false);
+        }}
+        sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">Contribution Parameters</Typography>
+          <IconButton onClick={() => {
+            if (editingFund !== null) {
+              const currentParams = getContributionParams(editingFund);
+              const originalParams = originalContributionParams[editingFund] || [];
+              
+              // Only save if parameters have changed
+              if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
+                const updateData = {
+                  'contribution_params': currentParams
+                };
+                updateRetirementData(editingFund, updateData).then(() => {
+                  fetchRetirementData();
+                });
+              }
+            }
+            setContributionDrawerOpen(false);
+          }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        
+        {editingFund !== null && getContributionParams(editingFund).map((param, paramIndex) => (
+          <Paper key={paramIndex} elevation={1} sx={{ p: 2, mb: 2 }}>
+            <Stack spacing={1} direction={'row'} alignItems="center">
+              <TextField
+                label="From Age"
+                type="number"
+                size="small"
+                variant="standard"
+                sx={{ width: 80 }}
+                slotProps={{ htmlInput: { min: 0, max: 150 } }}
+                value={param.from_age || ''}
+                onChange={(e) => {
+                  const params = [...getContributionParams(editingFund)];
+                  params[paramIndex] = { ...params[paramIndex], from_age: parseInt(e.target.value) };
+                  setContributionParamsForFund(editingFund, params);
+                }}
+              />
+              <TextField
+                label="To Age"
+                type="number"
+                size="small"
+                variant="standard"
+                sx={{ width: 80 }}
+                slotProps={{ htmlInput: { min: 0, max: 150 } }}
+                value={param.to_age || ''}
+                onChange={(e) => {
+                  const params = [...getContributionParams(editingFund)];
+                  params[paramIndex] = { ...params[paramIndex], to_age: parseInt(e.target.value) };
+                  setContributionParamsForFund(editingFund, params);
+                }}
+              />
+              <TextField
+                label="Amount ($)"
+                type="number"
+                size="small"
+                variant="standard"
+                sx={{ width: 100 }}
+                slotProps={{ htmlInput: { step: 1, min: 0 } }}
+                value={param.contribution_amount || ''}
+                onChange={(e) => {
+                  const params = [...getContributionParams(editingFund)];
+                  params[paramIndex] = { ...params[paramIndex], contribution_amount: parseFloat(e.target.value) };
+                  setContributionParamsForFund(editingFund, params);
+                }}
+              />
+              <TextField
+                label="Frequency"
+                select
+                size="small"
+                variant="standard"
+                sx={{ width: 100 }}
+                value={param.contribution_frequency || 12}
+                onChange={(e) => {
+                  const params = [...getContributionParams(editingFund)];
+                  params[paramIndex] = { ...params[paramIndex], contribution_frequency: parseInt(e.target.value) };
+                  setContributionParamsForFund(editingFund, params);
+                }}
+              >
+                {contribution_frequencies.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+            <Button sx={{ mt: 2 }}
+              variant="contained" 
+              size="small"
+              onClick={() => {
+                const params = getContributionParams(editingFund).filter((_, i) => i !== paramIndex);
+                setContributionParamsForFund(editingFund, params);
+              }}
+            >
+              Remove
+            </Button>
+          </Paper>
+        ))}
+        
+        <Button 
+          variant="contained" 
+          onClick={() => {
+            if (editingFund !== null) {
+              const params = [...getContributionParams(editingFund), { from_age: 25, to_age: 65, contribution_amount: 100, contribution_frequency: 12 }];
+              setContributionParamsForFund(editingFund, params);
+            }
+          }}
+        >
+          Add Contribution Range
+        </Button>
       </Drawer>
 
       {/* Actuals Input Drawer */}
