@@ -88,9 +88,8 @@ def calculate_retirement_projection(retirement_fund_info, family_info):
                 
                 # Calculate growth (compounded)
                 inc_return_rate = annual_return_rate / age_frequency
-                inc_contribution = age_contribution  # Per-period contribution amount
                 for i in range(age_frequency):
-                    current_amount = (current_amount + inc_contribution) * (1 + inc_return_rate)
+                    current_amount = (current_amount + age_contribution) * (1 + inc_return_rate)
                 
                 growth = current_amount - begin_amount - contribution
             else:
