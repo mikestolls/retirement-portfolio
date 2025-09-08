@@ -72,6 +72,7 @@ Resources:
             - Effect: Allow
               Action:
                 - dynamodb:ListTables
+                - dynamodb:CreateTable
               Resource: "*"
       Events:
         Api:
@@ -94,6 +95,7 @@ Resources:
             - Effect: Allow
               Action:
                 - dynamodb:ListTables
+                - dynamodb:CreateTable
               Resource: "*"
       Events:
         Api:
@@ -116,6 +118,7 @@ Resources:
             - Effect: Allow
               Action:
                 - dynamodb:ListTables
+                - dynamodb:CreateTable
               Resource: "*"
       Events:
         Api:
@@ -138,6 +141,7 @@ Resources:
             - Effect: Allow
               Action:
                 - dynamodb:ListTables
+                - dynamodb:CreateTable
               Resource: "*"
       Events:
         Api:

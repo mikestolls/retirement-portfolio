@@ -28,6 +28,15 @@ class RetirementFundData:
                     param['to_age'] = int(param.get('to_age', 0))
                     param['return_rate'] = float(param.get('return_rate', 0.0))
             
+            # Convert contribution params to ensure numeric types
+            contribution_params = fund.get('contribution_params', [])
+            if contribution_params:
+                for param in contribution_params:
+                    param['from_age'] = int(param.get('from_age', 0))
+                    param['to_age'] = int(param.get('to_age', 0))
+                    param['contribution_amount'] = float(param.get('contribution_amount', 0.0))
+                    param['contribution_frequency'] = int(param.get('contribution_frequency', 12))
+            
             # Validate and convert actual_data if present
             actual_data = fund.get('actual_data', [])
             if actual_data:
