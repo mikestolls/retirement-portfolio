@@ -22,6 +22,7 @@ import Avatar from '@mui/material/Avatar';
 // Routes
 import FamilyInfo from './family-info.js';
 import RetirementFundsInfo from './retirement-funds-info.js';
+import Budget from './budget.js';
 
 // Icons
 import MenuIcon from '@mui/icons-material/Menu';
@@ -30,6 +31,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import HouseIcon from '@mui/icons-material/House';
 import SavingsIcon from '@mui/icons-material/Savings';
 import ElderlyIcon from '@mui/icons-material/Elderly';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 const openedMixin = (theme) => ({
@@ -114,6 +116,7 @@ const drawerWidth = 240;
 const drawerOptions = [
   [
     { text: 'Family Info', icon: <HouseIcon />, path: '/family_info'},
+    { text: 'Budget', icon: <AccountBalanceWalletIcon />, path: '/budget'},
     { text: 'Retirement Funds', icon: <SavingsIcon />, path:'/retirement_funds' },
     { text: 'Retirement Strategy', icon: <ElderlyIcon />, path: '/retirement_strategy' }
   ], 
@@ -273,6 +276,7 @@ export default function MainDashboard() {
         <Routes>
           <Route path="/" element={<Navigate to="/family_info" replace />} />
           <Route path="/family_info" element={<FamilyInfo />} />
+          <Route path="/budget" element={<Budget />} />
           <Route path="/retirement_funds" element={<RetirementFundsInfo />} />
         </Routes>
       </Box>
