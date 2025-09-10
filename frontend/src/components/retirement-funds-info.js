@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
 import { Box, Button, Stack, TextField, Card, CardContent, Typography, Drawer, IconButton, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper } from '@mui/material';
+import '../css/app.css';
 import MenuItem from '@mui/material/MenuItem';
 import TuneIcon from '@mui/icons-material/Tune';
 import CloseIcon from '@mui/icons-material/Close';
@@ -142,19 +143,7 @@ export default function RetirementFundsInfo() {
         
         return (
           <Card 
-            className="rounded-2xl shadow-md" 
-            sx={{ 
-              mb: 2, 
-              width: 300,
-              minWidth: 300,
-              cursor: 'pointer',
-              '&:hover': {
-                backgroundColor: '#d4d4d4ff',
-                transform: 'translateY(-2px)',
-                boxShadow: 3
-              },
-              transition: 'all 0.2s ease-in-out'
-            }} 
+            className="rounded-2xl shadow-md standard-card card-300 clickable-card"
             key={index}
             onClick={() => setSelectedFund(index)}
           >
@@ -190,22 +179,7 @@ export default function RetirementFundsInfo() {
 
     const addFundCard = (
       <Card 
-        className="rounded-2xl shadow-md" 
-        sx={{ 
-          mb: 2, 
-          width: 300,
-          minWidth: 300,
-          cursor: 'pointer',
-          border: '2px dashed #ccc',
-          backgroundColor: '#f9f9f9',
-          '&:hover': {
-            backgroundColor: '#e8f5e8',
-            border: '2px dashed #4caf50',
-            transform: 'translateY(0px)',
-            boxShadow: 3
-          },
-          transition: 'all 0.2s ease-in-out'
-        }} 
+        className="rounded-2xl shadow-md standard-card card-300 add-card"
         key="add-fund"
         onClick={handleAddFund}
       >
@@ -746,14 +720,7 @@ export default function RetirementFundsInfo() {
             pb: 1,
           }}
         >
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "100%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-100-percent"> 
           <CardContent className="p-4">
             <Typography variant="h6" sx={{ mb: 2 }}>Fund Projection - {retirementData.retirement_fund_data[selectedFund]?.name || 'Loading...'}</Typography>
             {retirementData.retirement_fund_data[selectedFund]?.retirement_projection && (() => {
@@ -871,14 +838,7 @@ export default function RetirementFundsInfo() {
             pb: 1,
           }}
         >
-          <Card
-            className="rounded-2xl shadow-md" 
-            sx={{ 
-              mb: 2, 
-              width: "100%",
-              transition: 'all 0.2s ease-in-out'
-            }} 
-          > 
+          <Card className="rounded-2xl shadow-md standard-card card-100-percent"> 
             <CardContent className="p-4">
               <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
                 <Table stickyHeader size="small" sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0' } }}>

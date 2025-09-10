@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Box, Typography, Paper, Stack, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Select, MenuItem, FormControl, TableSortLabel } from '@mui/material';
+import '../css/app.css';
 
 export default function Budget() {
   const [expenses, setExpenses] = useState([
@@ -79,14 +80,7 @@ export default function Budget() {
         }}
       >
         {/* Total Income */}
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "33%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-33-percent"> 
           <CardContent sx={{ textAlign: 'center' }}>
             <Stack direction="column" spacing={1} alignItems="center">
               <Typography variant="h6" color="text.secondary">
@@ -100,14 +94,7 @@ export default function Budget() {
         </Card>
 
         {/* Total Expenses */}
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "33%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-33-percent"> 
           <CardContent sx={{ textAlign: 'center' }}>
             <Stack direction="column" spacing={1} alignItems="center">
               <Typography variant="h6" color="text.secondary">
@@ -121,14 +108,7 @@ export default function Budget() {
         </Card>
 
         {/* Net Position */}
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "33%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-33-percent"> 
           <CardContent sx={{ textAlign: 'center' }}>
             <Stack direction="column" spacing={1} alignItems="center">
               <Typography variant="h6" color="text.secondary">
@@ -154,14 +134,7 @@ export default function Budget() {
         }}
       >
         {/* Expenses */}
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "100%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-100-percent"> 
         <CardContent sx={{ textAlign: 'Left' }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
               <Typography variant="h6">

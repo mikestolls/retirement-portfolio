@@ -1,0 +1,46 @@
+/* Standard Card Styles */
+.standard-card {
+  margin-bottom: 16px;
+  transition: all 0.2s ease-in-out;
+}
+
+.clickable-card {
+  cursor: pointer;
+}
+
+.clickable-card:hover {
+  background-color: #d4d4d4ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.add-card {
+  cursor: pointer;
+  border: 2px dashed #ccc;
+  background-color: #f9f9f9;
+}
+
+.add-card:hover {
+  background-color: #e8f5e8;
+  border: 2px dashed #4caf50;
+  transform: translateY(0px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
+}
+
+/* Card width variants */
+.card-33-percent {
+  width: 33%;
+}
+
+.card-50-percent {
+  width: 50%;
+}
+
+.card-100-percent {
+  width: 100%;
+}
+
+.card-300 {
+  width: 300px;
+  min-width: 300px;
+}
