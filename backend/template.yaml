@@ -10,7 +10,9 @@ Globals:
       Variables:
         DYNAMODB_ENDPOINT_URL: !If [IsLocal, "http://localhost:8000", !Ref "AWS::NoValue"]
         USERS_TABLE: users
-        RETIREMENT_DATA_TABLE: retirement_data
+        FAMILIES_TABLE: families
+        RETIREMENT_FUNDS_TABLE: retirement_funds
+        BUDGETS_TABLE: budgets
     Layers:
       - !Ref SharedLayer
   Api:
@@ -58,62 +60,43 @@ Resources:
             Path: /api/health
             Method: get
 
-  UpdateFamilyInfoFunction:
+  GetUserDataFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/update-family-info/
-      Handler: handler.lambda_handler
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: users
-        - DynamoDBCrudPolicy:
-            TableName: retirement_data
-        - Statement:
-            - Effect: Allow
-              Action:
-                - dynamodb:ListTables
-                - dynamodb:CreateTable
-              Resource: "*"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/update_family_info/{user_id}
-            Method: post
-
-  GetRetirementDataFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/get-retirement-data/
+      CodeUri: functions/get-user-data/
       Handler: handler.lambda_handler
       Policies:
         - DynamoDBCrudPolicy:
             TableName: users
         - DynamoDBReadPolicy:
-            TableName: retirement_data
+            TableName: families
+        - DynamoDBReadPolicy:
+            TableName: retirement_funds
+        - DynamoDBReadPolicy:
+            TableName: budgets
         - Statement:
             - Effect: Allow
               Action:
                 - dynamodb:ListTables
                 - dynamodb:CreateTable
+                - dynamodb:GetItem
+                - dynamodb:Query
               Resource: "*"
       Events:
         Api:
           Type: Api
           Properties:
-            Path: /api/get_retirement_data/{user_id}
+            Path: /api/user/{user_id}
             Method: get
 
-  UpdateRetirementDataFunction:
+  UpdateFamilyFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/update-retirement-data/
+      CodeUri: functions/update-family/
       Handler: handler.lambda_handler
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: users
-        - DynamoDBCrudPolicy:
-            TableName: retirement_data
+            TableName: families
         - Statement:
             - Effect: Allow
               Action:
@@ -124,19 +107,17 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /api/update_retirement_data/{user_id}
+            Path: /api/family/{family_id}
             Method: post
 
-  UpdateRetirementFundDataFunction:
+  UpdateFundFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/update-retirement-fund-data/
+      CodeUri: functions/update-fund/
       Handler: handler.lambda_handler
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: users
-        - DynamoDBCrudPolicy:
-            TableName: retirement_data
+            TableName: retirement_funds
         - Statement:
             - Effect: Allow
               Action:
@@ -147,7 +128,28 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /api/update_retirement_data/{user_id}/funds/{fund_id}
+            Path: /api/fund/{fund_id}
+            Method: post
+
+  UpdateBudgetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/update-budget/
+      Handler: handler.lambda_handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: budgets
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+                - dynamodb:CreateTable
+              Resource: "*"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/budget/{budget_id}
             Method: post
 
 

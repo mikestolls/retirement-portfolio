@@ -28,10 +28,10 @@ def load_handler(function_name):
 
 # Load handlers
 health_handler = load_handler('health')
-update_family_handler = load_handler('update-family-info')
-get_retirement_handler = load_handler('get-retirement-data')
-update_retirement_handler = load_handler('update-retirement-data')
-update_retirement_fund_handler = load_handler('update-retirement-fund-data')
+update_family_handler = load_handler('update-family')
+get_user_data_handler = load_handler('get-user-data')
+update_fund_handler = load_handler('update-fund')
+update_budget_handler = load_handler('update-budget')
 
 app = Flask(__name__)
 CORS(app)
@@ -60,21 +60,21 @@ def lambda_to_flask(handler):
 def health():
     return lambda_to_flask(health_handler)()
 
-@app.route('/api/get_retirement_data/<user_id>', methods=['GET'])
-def get_retirement_data(user_id):
-    return lambda_to_flask(get_retirement_handler)(user_id=user_id)
+@app.route('/api/users/<user_id>/data', methods=['GET'])
+def get_user_data(user_id):
+    return lambda_to_flask(get_user_data_handler)(user_id=user_id)
 
-@app.route('/api/update_family_info/<user_id>', methods=['POST'])
-def update_family_info(user_id):
-    return lambda_to_flask(update_family_handler)(user_id=user_id)
+@app.route('/api/families/<family_id>', methods=['POST'])
+def update_family(family_id):
+    return lambda_to_flask(update_family_handler)(family_id=family_id)
 
-@app.route('/api/update_retirement_data/<user_id>', methods=['POST'])
-def update_retirement_data(user_id):
-    return lambda_to_flask(update_retirement_handler)(user_id=user_id)
+@app.route('/api/funds/<fund_id>', methods=['POST'])
+def update_fund(fund_id):
+    return lambda_to_flask(update_fund_handler)(fund_id=fund_id)
 
-@app.route('/api/update_retirement_data/<user_id>/funds/<fund_id>', methods=['POST'])
-def update_retirement_fund(user_id, fund_id):
-    return lambda_to_flask(update_retirement_fund_handler)(user_id=user_id, fund_id=fund_id)
+@app.route('/api/budgets/<budget_id>', methods=['POST'])
+def update_budget(budget_id):
+    return lambda_to_flask(update_budget_handler)(budget_id=budget_id)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

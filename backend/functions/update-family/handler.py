@@ -1,6 +1,6 @@
 import json
 import logging
-from db.dynamodb import db_update_family_info, db_create_tables_if_not_exist, db_create_user_if_not_exists
+from db.dynamodb import db_update_family, db_create_tables_if_not_exist
 from models.family_info_data import FamilyInfoData
 
 # Configure logging
@@ -13,17 +13,14 @@ def lambda_handler(event, context):
         # Ensure tables exist
         db_create_tables_if_not_exist()
         
-        # Get user_id from path parameters
-        user_id = event['pathParameters']['user_id']
+        # Get family_id from path parameters
+        family_id = event['pathParameters']['family_id']
         
-        # Create user if they don't exist
-        db_create_user_if_not_exists(user_id)
-        
-        if not user_id or user_id.strip() == "":
+        if not family_id or family_id.strip() == "":
             return {
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({"message": "user_id parameter is required", "status": "error"})
+                'body': json.dumps({"message": "family_id parameter is required", "status": "error"})
             }
         
         # Get JSON data from request body
@@ -47,14 +44,23 @@ def lambda_handler(event, context):
                 'body': json.dumps({"message": error_message, "status": "error"})
             }
         
-        # Get validated input data and save
+        # Get validated input data and save to families table
         validated_input = family_info_data.to_dict()
-        success = db_update_family_info(user_id, validated_input['family_info_data'])
+        updated_family = db_update_family(family_id, validated_input['family_info_data'])
+        
+        if not updated_family:
+            return {
+                'statusCode': 500,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({"message": "Failed to update family", "status": "error"})
+            }
+        
+        # Note: User linking to family should be done separately via user endpoint
         
         return {
-            'statusCode': 200 if success else 500,
+            'statusCode': 200,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({"status": "success" if success else "error"})
+            'body': json.dumps({"family": updated_family, "status": "success"}, default=str)
         }
         
     except Exception as e:

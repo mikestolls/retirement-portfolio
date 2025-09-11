@@ -1,6 +1,6 @@
 import json
 import logging
-from db.dynamodb import db_get_retirement_data, db_create_tables_if_not_exist, db_create_user_if_not_exists
+from db.dynamodb import db_get_user_data, db_create_tables_if_not_exist, db_create_user_if_not_exists
 from services.retirement_calculator import calculate_retirement_projection
 
 # Configure logging
@@ -8,7 +8,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
-    """Get retirement fund data for a user"""    
+    """Get all user data from 4 tables"""    
     try:
         # Ensure tables exist
         db_create_tables_if_not_exist()
@@ -26,32 +26,28 @@ def lambda_handler(event, context):
                 'body': json.dumps({"message": "user_id not provided", "status": "error"})
             }
         
-        # Get all retirement data (both fund and family info)
-        retirement_data = db_get_retirement_data(user_id)
-        if not retirement_data:
+        # Get all user data from 4 tables
+        user_data = db_get_user_data(user_id)
+        if not user_data:
             return {
-                'statusCode': 404,
+                'statusCode': 500,
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({"message": "Retirement data not found", "status": "error"})
+                'body': json.dumps({"message": "Error retrieving user data", "status": "error"})
             }
         
-        # Calculate retirement projection with both datasets
-        calculate_retirement_projection(retirement_data, retirement_data)
-        
-        # Return the data structure
-        response_data = {
-            'retirement_fund_data': retirement_data.get('retirement_fund_data', []),
-            'family_info_data': retirement_data.get('family_info_data', [])
-        }
+        # Calculate retirement projections if we have funds and family data
+        if user_data['funds'] and user_data['family']:
+            for fund in user_data['funds']:
+                calculate_retirement_projection(fund, user_data['family'])
         
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps(response_data, default=str)
+            'body': json.dumps(user_data, default=str)
         }
         
     except Exception as e:
-        logger.error(f"Error processing retirement data: {str(e)}", exc_info=True)
+        logger.error(f"Error processing user data: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
