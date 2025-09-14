@@ -86,7 +86,7 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /api/user/{user_id}
+            Path: /api/user_data/{user_id}
             Method: get
 
   UpdateFamilyFunction:
