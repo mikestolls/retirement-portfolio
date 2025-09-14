@@ -2,6 +2,7 @@ import json
 import logging
 from db.dynamodb import db_update_retirement_fund, db_create_tables_if_not_exist, db_create_user_if_not_exists
 from services.retirement_calculator import calculate_retirement_projection
+from models.retirement_fund_data import RetirementFundData
 
 # Configure logging
 logger = logging.getLogger()
@@ -23,18 +24,42 @@ def lambda_handler(event, context):
                 'body': json.dumps({"message": "fund_id not provided", "status": "error"})
             }
         
+        # Get JSON data from request body
+        if not event.get('body'):
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({"message": "No data provided!", "status": "error"})
+            }
+
         # Parse request body
         try:
-            fund_data = json.loads(event['body'])
+            input_data = json.loads(event['body'])
         except json.JSONDecodeError:
             return {
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
                 'body': json.dumps({"message": "Invalid JSON in request body", "status": "error"})
             }
+
+        # Create and validate input model
+        # Wrap single fund in array format expected by RetirementFundData
+        fund_validation_data = {'retirement_fund_data': [input_data]}
+        retirement_fund_data = RetirementFundData(fund_validation_data)
+        is_valid, error_message = retirement_fund_data.validate()
+        
+        if not is_valid:
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({"message": error_message, "status": "error"})
+            }
+
+        # Get validated input data (extract the single fund from the array)
+        validated_fund_data = retirement_fund_data.to_dict()['retirement_fund_data'][0]
         
         # Update fund in retirement_funds table
-        updated_fund = db_update_retirement_fund(fund_id, fund_data)
+        updated_fund = db_update_retirement_fund(fund_id, validated_fund_data)
         if not updated_fund:
             return {
                 'statusCode': 500,

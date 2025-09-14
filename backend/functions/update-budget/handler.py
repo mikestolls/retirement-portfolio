@@ -1,6 +1,7 @@
 import json
 import logging
 from db.dynamodb import db_update_budget, db_create_tables_if_not_exist
+from models.budget_data import BudgetData
 
 # Configure logging
 logger = logging.getLogger()
@@ -24,7 +25,7 @@ def lambda_handler(event, context):
         
         # Parse request body
         try:
-            budget_data = json.loads(event['body'])
+            request_data = json.loads(event['body'])
         except json.JSONDecodeError:
             return {
                 'statusCode': 400,
@@ -32,8 +33,20 @@ def lambda_handler(event, context):
                 'body': json.dumps({"message": "Invalid JSON in request body", "status": "error"})
             }
         
-        # Update budget in budgets table
-        updated_budget = db_update_budget(budget_id, budget_data)
+        # Validate budget data
+        budget_data = BudgetData(request_data)
+        is_valid, error_message = budget_data.validate()
+        
+        if not is_valid:
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({"message": error_message, "status": "error"})
+            }
+        
+        # Get validated input data and save to budgets table
+        validated_input = budget_data.to_dict()
+        updated_budget = db_update_budget(budget_id, validated_input['budget_data'])
         if not updated_budget:
             return {
                 'statusCode': 500,

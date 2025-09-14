@@ -92,7 +92,7 @@ Resources:
   UpdateFamilyFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/update-family/
+      CodeUri: functions/update-family-info/
       Handler: handler.lambda_handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -113,7 +113,7 @@ Resources:
   UpdateFundFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/update-fund/
+      CodeUri: functions/update-retirement-fund/
       Handler: handler.lambda_handler
       Policies:
         - DynamoDBCrudPolicy:

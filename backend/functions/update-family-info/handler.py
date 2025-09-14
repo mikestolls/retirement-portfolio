@@ -1,6 +1,6 @@
 import json
 import logging
-from db.dynamodb import db_update_family, db_create_tables_if_not_exist
+from db.dynamodb import db_update_family_info, db_create_tables_if_not_exist
 from models.family_info_data import FamilyInfoData
 
 # Configure logging
@@ -46,7 +46,7 @@ def lambda_handler(event, context):
         
         # Get validated input data and save to families table
         validated_input = family_info_data.to_dict()
-        updated_family = db_update_family(family_id, validated_input['family_info_data'])
+        updated_family = db_update_family_info(family_id, validated_input['family_info_data'])
         
         if not updated_family:
             return {

@@ -139,15 +139,13 @@ def db_create_tables_if_not_exist():
                     'KeySchema': [
                         {'AttributeName': 'family_id', 'KeyType': 'HASH'}
                     ],
-                    'Projection': {
-                        'ProjectionType': 'INCLUDE',
-                        'NonKeyAttributes': ['month', 'year', 'planned_income', 'planned_expenses']
-                    }
+                    'Projection': {'ProjectionType': 'KEYS_ONLY'}
                 }
             ],
             BillingMode='PAY_PER_REQUEST'
         )
 
+# User operations
 def db_create_user_if_not_exists(user_id, email=None, family_id=None):
     """Create user if they don't exist"""
     try:
@@ -214,9 +212,7 @@ def db_get_user_id(email):
     return items[0]['user_id'] if items else None
 
 
-
-# New 4-table structure operations
-
+# 4-table structure operations
 def db_get_user_data(user_id):
     """Get all user data from 4 tables"""
     try:
@@ -235,7 +231,7 @@ def db_get_user_data(user_id):
         # Get family
         family_table = dynamodb.Table(FAMILIES_TABLE)
         family_response = family_table.get_item(Key={'family_id': family_id})
-        family = family_response.get('Item')
+        family_info = family_response.get('Item')
         
         # Get retirement funds
         funds_table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
@@ -244,7 +240,7 @@ def db_get_user_data(user_id):
             KeyConditionExpression='family_id = :family_id',
             ExpressionAttributeValues={':family_id': family_id}
         )
-        funds = funds_response.get('Items', [])
+        retirement_funds = funds_response.get('Items', [])
         
         # Get budgets
         budgets_table = dynamodb.Table(BUDGETS_TABLE)
@@ -257,16 +253,16 @@ def db_get_user_data(user_id):
         
         return {
             'user': user,
-            'family': family,
-            'funds': funds,
+            'family_info': family_info,
+            'retirement_funds': retirement_funds,
             'budgets': budgets
         }
     except Exception as e:
         print(f"Error getting user data: {str(e)}")
         return None
 
-def db_update_family(family_id, family_data):
-    """Update family or create if doesn't exist"""
+def db_update_family_info(family_id, family_data):
+    """Update family info or create if doesn't exist"""
     try:
         dynamodb = db_get_dynamodb_client()
         table = dynamodb.Table(FAMILIES_TABLE)
