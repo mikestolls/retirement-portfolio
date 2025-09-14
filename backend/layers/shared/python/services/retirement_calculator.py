@@ -16,114 +16,121 @@ def get_contribution_for_age(age, contribution_params, default_contribution, def
         
     return default_contribution, default_frequency  # Use fund's defaults if no matching range
 
-def calculate_retirement_projection(retirement_fund_info, family_info):
+def calculate_retirement_projection(retirement_fund, family_info):
     """
-    Calculate retirement projection based on retirement fund info and family info.
+    Calculate retirement projection based on individual fund data and family info.
     
     Args:
-        retirement_fund_info (dict): Dictionary containing retirement fund data
+        retirement_fund (RetirementFundData): Retirement fund data object
         family_info (dict): Dictionary containing family information data
 
     Returns:
-        dict: Retirement projection data by year
+        dict: Retirement projection data by year (modifies fund_data in place)
     """
+    # Get family members from family_data field
+    family_members = family_info.get('family_data', [])
+    
     # Find the latest retirement year across all family members
     latest_retirement_year = 0
-    for member in family_info.get('family_info_data', []):
+    for member in family_members:
         member_dob = datetime.strptime(member['date_of_birth'], '%Y-%m-%d')
         member_age = (datetime.now() - member_dob).days // 365
         member_retirement_year = datetime.now().year + (int(member['retirement_age']) - member_age)
         latest_retirement_year = max(latest_retirement_year, member_retirement_year)
     
-    for fund in retirement_fund_info.get('retirement_fund_data', []):   
-        # get family member data from family_info
-        family_member_id = fund['family_member_id']
-        family_member = next((member for member in family_info.get('family_info_data', []) if member['id'] == family_member_id), None)
-
-        if not family_member:
-            fund['retirement_projection'] = []
-            continue
-
-        # Calculate age from date of birth
-        dob = datetime.strptime(family_member['date_of_birth'], '%Y-%m-%d')
-        age = (datetime.now() - dob).days // 365
-        retirement_age = int(family_member['retirement_age'])
-        
-        # Calculate end age - continue until latest family member retires + 5 years
-        end_year = latest_retirement_year + 5
-        end_age = age + (end_year - datetime.now().year)
+    # Get fund data from retirement fund record
+    fund = retirement_fund.get('fund_data')
+    if not fund:
+        return  # Exit early if fund_data structure is missing
     
-        # Convert numeric inputs to Decimal for precise financial calculations
-        initial_investment = int(fund['initial_investment'])
-        regular_contribution = int(fund['regular_contribution'])
-        contribution_frequency = int(fund['contribution_frequency'])
+    # get family member data from family_info
+    family_member_id = fund['family_member_id']
+    family_member = next((member for member in family_members if member['id'] == family_member_id), None)
+
+    if not family_member:
+        fund['retirement_projection'] = []
+        return
+
+    # Calculate age from date of birth
+    dob = datetime.strptime(family_member['date_of_birth'], '%Y-%m-%d')
+    age = (datetime.now() - dob).days // 365
+    retirement_age = int(family_member['retirement_age'])
     
-        # Get return rate and contribution parameters from fund data
-        return_rate_params = fund.get('return_rate_params', [])
-        contribution_params = fund.get('contribution_params', [])
+    # Calculate end age - continue until latest family member retires + 5 years
+    end_year = latest_retirement_year + 5
+    end_age = age + (end_year - datetime.now().year)
+
+    # Convert numeric inputs to Decimal for precise financial calculations
+    initial_investment = int(fund['initial_investment'])
+    regular_contribution = int(fund['regular_contribution'])
+    contribution_frequency = int(fund['contribution_frequency'])
+
+    # Get return rate and contribution parameters from fund data
+    return_rate_params = fund.get('return_rate_params', [])
+    contribution_params = fund.get('contribution_params', [])
+    
+    # Get fund start date or default to current year
+    start_date = fund.get('start_date')
+    if start_date:
+        start_year = datetime.strptime(start_date, '%Y-%m-%d').year
+        start_age = age + (start_year - datetime.now().year)
+    else:
+        start_year = datetime.now().year
+        start_age = age
+    
+    retirement_data = []
+    current_amount = initial_investment
+    retirement_amount = 0  # Amount at retirement to maintain
+    year = start_year
+
+    # Calculate retirement projection for each year
+    for current_age in range(start_age, end_age + 1):
+        begin_amount = current_amount
+        annual_return_rate = get_return_rate_for_age(current_age, return_rate_params)
         
-        # Get fund start date or default to current year
-        start_date = fund.get('start_date')
-        if start_date:
-            start_year = datetime.strptime(start_date, '%Y-%m-%d').year
-            start_age = age + (start_year - datetime.now().year)
+        if current_age < retirement_age:
+            # Accumulation phase - continue contributions and growth
+            age_contribution, age_frequency = get_contribution_for_age(current_age, contribution_params, regular_contribution, contribution_frequency)
+            contribution = age_contribution * age_frequency  # Total annual contribution
+            
+            # Calculate growth (compounded)
+            inc_return_rate = annual_return_rate / age_frequency
+            for i in range(age_frequency):
+                current_amount = (current_amount + age_contribution) * (1 + inc_return_rate)
+            
+            growth = current_amount - begin_amount - contribution
         else:
-            start_year = datetime.now().year
-            start_age = age
+            # Retirement phase - maintain amount at retirement level
+            if current_age == retirement_age:
+                retirement_amount = current_amount
+            
+            contribution = 0
+            growth = 0
+            current_amount = retirement_amount  # Flatline at retirement amount
         
-        retirement_data = []
-        current_amount = initial_investment
-        retirement_amount = 0  # Amount at retirement to maintain
-        year = start_year
+        # Check for actual data
+        actual_data_list = fund.get('actual_data', [])
+        year_actual_data = next((data for data in actual_data_list if data.get('year') == year), None)
+        is_actual_balance = False
 
-        # Calculate retirement projection for each year
-        for current_age in range(start_age, end_age + 1):
-            begin_amount = current_amount
-            annual_return_rate = get_return_rate_for_age(current_age, return_rate_params)
-            
-            if current_age < retirement_age:
-                # Accumulation phase - continue contributions and growth
-                age_contribution, age_frequency = get_contribution_for_age(current_age, contribution_params, regular_contribution, contribution_frequency)
-                contribution = age_contribution * age_frequency  # Total annual contribution
-                
-                # Calculate growth (compounded)
-                inc_return_rate = annual_return_rate / age_frequency
-                for i in range(age_frequency):
-                    current_amount = (current_amount + age_contribution) * (1 + inc_return_rate)
-                
-                growth = current_amount - begin_amount - contribution
-            else:
-                # Retirement phase - maintain amount at retirement level
-                if current_age == retirement_age:
-                    retirement_amount = current_amount
-                
-                contribution = 0
-                growth = 0
-                current_amount = retirement_amount  # Flatline at retirement amount
-            
-            # Check for actual data
-            actual_data_list = fund.get('actual_data', [])
-            year_actual_data = next((data for data in actual_data_list if data.get('year') == year), None)
-            is_actual_balance = False
-
-            if year_actual_data:
-                current_amount = float(year_actual_data.get('actual_balance'))
-                contribution = float(year_actual_data.get('actual_contributions'))
-                growth = float(year_actual_data.get('actual_growth'))
-                is_actual_balance = True
-                        
-            retirement_data.append({
-                "year": year,
-                "age": current_age,
-                "annual_return_rate": annual_return_rate,
-                "begin_amount": float(round(begin_amount, 2)),
-                "contribution": float(round(contribution, 2)),
-                "growth": float(round(growth, 2)),
-                "end_amount": float(round(current_amount, 2)),
-                "is_actual_balance": is_actual_balance,
-            })
-            
-            year = year + 1
+        if year_actual_data:
+            current_amount = float(year_actual_data.get('actual_balance'))
+            contribution = float(year_actual_data.get('actual_contributions'))
+            growth = float(year_actual_data.get('actual_growth'))
+            is_actual_balance = True
+                    
+        retirement_data.append({
+            "year": year,
+            "age": current_age,
+            "annual_return_rate": annual_return_rate,
+            "begin_amount": float(round(begin_amount, 2)),
+            "contribution": float(round(contribution, 2)),
+            "growth": float(round(growth, 2)),
+            "end_amount": float(round(current_amount, 2)),
+            "is_actual_balance": is_actual_balance,
+        })
         
-        fund['retirement_projection'] = retirement_data
+        year = year + 1
+    
+    fund['retirement_projection'] = retirement_data
         
