@@ -366,4 +366,31 @@ def db_update_budget(budget_id, budget_data):
         print(f"Error updating budget: {str(e)}")
         return None
 
+def db_delete_retirement_fund(fund_id):
+    """
+    Delete a retirement fund from the retirement_funds table
+    
+    Args:
+        fund_id (str): ID of the retirement fund to delete
+        
+    Returns:
+        bool: True if deletion was successful, False otherwise
+    """
+    try:
+        dynamodb = db_get_dynamodb_client()
+        table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
+        
+        # Check if item exists before attempting deletion
+        response = table.get_item(Key={'fund_id': fund_id})
+        if 'Item' not in response:
+            return False
+        
+        # Delete the item
+        table.delete_item(Key={'fund_id': fund_id})
+        
+        return True
+    except Exception as e:
+        print(f"Error deleting retirement fund: {str(e)}")
+        return False
+
 

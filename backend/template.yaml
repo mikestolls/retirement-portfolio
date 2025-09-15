@@ -1,6 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: 'Retirement Portfolio Lambda Functions and API Gateway'
+Description: 'Retirement Portfolio Lambda Funct      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/user/{user_id}/retirement_fund/{fund_id}
+            Method: post
+        DeleteApi:
+          Type: Api
+          Properties:
+            Path: /api/user/{user_id}/retirement_fund/{fund_id}
+            Method: deletend API Gateway'
 
 Globals:
   Function:
@@ -107,7 +117,7 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /api/family/{family_id}
+            Path: /api/family_info/{family_id}
             Method: post
 
   UpdateFundFunction:
@@ -125,11 +135,16 @@ Resources:
                 - dynamodb:CreateTable
               Resource: "*"
       Events:
-        Api:
+        ApiPost:
           Type: Api
           Properties:
-            Path: /api/fund/{fund_id}
+            Path: /api/retirement_fund/{fund_id}
             Method: post
+        ApiDelete:
+          Type: Api
+          Properties:
+            Path: /api/retirement_fund/{fund_id}
+            Method: delete
 
   UpdateBudgetFunction:
     Type: AWS::Serverless::Function

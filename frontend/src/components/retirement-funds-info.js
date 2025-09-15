@@ -19,7 +19,11 @@ const contribution_frequencies = [
 ];
 
 export default function RetirementFundsInfo() {
-  const { updateRetirementData, fetchRetirementData, retirementData, familyInfoData, loading, error, updateActualBalance } = useRetirement();
+  const { updateRetirementFund, fetchUserData, userData, loading, error, updateActualBalance } = useRetirement();
+
+  // Extract data from new structure
+  const retirementData = { retirement_fund_data: userData?.retirement_funds || [] };
+  const familyInfoData = { family_info_data: userData?.family_info || [] };
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
@@ -66,8 +70,8 @@ export default function RetirementFundsInfo() {
         'return_rate_params': getReturnRateParams(editingFund),
         'contribution_params': getContributionParams(editingFund)
       };
-      updateRetirementData(editingFund, updateData).then(() => {
-        fetchRetirementData(); // Recalculate projections
+      updateRetirementFund(editingFund, updateData).then(() => {
+        fetchUserData(); // Recalculate projections
         setFormStates(prev => {
           const newStates = { ...prev };
           delete newStates[editingFund];
@@ -91,7 +95,7 @@ export default function RetirementFundsInfo() {
 
 
   const deleteFund = async (index) => {
-    await updateRetirementData(index, null);
+    await updateRetirementFund(index, null);
     setFormStates(prev => {
       const newStates = {};
       Object.keys(prev).forEach(key => {
@@ -116,7 +120,7 @@ export default function RetirementFundsInfo() {
     setEditingFund(newIndex);
     setDrawerOpen(true);
     
-    updateRetirementData(newIndex, {
+    updateRetirementFund(newIndex, {
       'id': crypto.randomUUID(),
       'name': 'New Fund',
       'family_member_id': familyInfoData?.family_info_data?.[0]?.id || '',
@@ -128,7 +132,7 @@ export default function RetirementFundsInfo() {
       'contribution_params': [],
       'actual_data': []
     }).then(() => {
-      fetchRetirementData(); // Refresh to get projections
+      fetchUserData(); // Refresh to get projections
     });
   };
 
@@ -405,8 +409,8 @@ export default function RetirementFundsInfo() {
               const updateData = {
                 'return_rate_params': currentParams
               };
-              updateRetirementData(editingFund, updateData).then(() => {
-                fetchRetirementData();
+              updateRetirementFund(editingFund, updateData).then(() => {
+                fetchUserData();
               });
             }
           }
@@ -426,8 +430,8 @@ export default function RetirementFundsInfo() {
                 const updateData = {
                   'return_rate_params': currentParams
                 };
-                updateRetirementData(editingFund, updateData).then(() => {
-                  fetchRetirementData();
+                updateRetirementFund(editingFund, updateData).then(() => {
+                  fetchUserData();
                 });
               }
             }
@@ -524,8 +528,8 @@ export default function RetirementFundsInfo() {
               const updateData = {
                 'contribution_params': currentParams
               };
-              updateRetirementData(editingFund, updateData).then(() => {
-                fetchRetirementData();
+              updateRetirementFund(editingFund, updateData).then(() => {
+                fetchUserData();
               });
             }
           }
@@ -545,8 +549,8 @@ export default function RetirementFundsInfo() {
                 const updateData = {
                   'contribution_params': currentParams
                 };
-                updateRetirementData(editingFund, updateData).then(() => {
-                  fetchRetirementData();
+                updateRetirementFund(editingFund, updateData).then(() => {
+                  fetchUserData();
                 });
               }
             }
