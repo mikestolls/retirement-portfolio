@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
 import { Box, Tabs, Tab, Button, Stack, Paper, TextField, Card, CardContent, LinearProgress, Divider, Drawer, IconButton, Typography } from '@mui/material';
+import '../css/app.css';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -110,19 +111,7 @@ export default function FamilyInfo() {
     const memberCards = userData?.family_info?.length ? 
       userData.family_info.map((member, index) => (
         <Card 
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: 300,
-            minWidth: 300, // Prevent shrinking
-            cursor: 'pointer',
-            '&:hover': {
-              backgroundColor: '#d4d4d4ff',
-              transform: 'translateY(-2px)',
-              boxShadow: 3
-            },
-            transition: 'all 0.2s ease-in-out'
-          }} 
+          className="rounded-2xl shadow-md standard-card card-300 clickable-card"
           key={index}
           onClick={() => handleCardClick(index)}
         >
@@ -145,22 +134,7 @@ export default function FamilyInfo() {
     // Add Member card
     const addMemberCard = (
       <Card 
-        className="rounded-2xl shadow-md" 
-        sx={{ 
-          mb: 2, 
-          width: 300,
-          minWidth: 300,
-          cursor: 'pointer',
-          border: '2px dashed #ccc',
-          backgroundColor: '#f9f9f9',
-          '&:hover': {
-            backgroundColor: '#e8f5e8',
-            border: '2px dashed #4caf50',
-            transform: 'translateY(0px)',
-            boxShadow: 3
-          },
-          transition: 'all 0.2s ease-in-out'
-        }} 
+        className="rounded-2xl shadow-md standard-card card-300 add-card"
         key="add-member"
         onClick={handleAddMember}
       >
@@ -191,14 +165,7 @@ export default function FamilyInfo() {
         }}
       >
         {/* Household Summary */}
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "50%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-50-percent"> 
           <CardContent className="p-4">
             <Stack direction="row" spacing={1} alignItems="center">
               <HouseIcon/>
@@ -216,14 +183,7 @@ export default function FamilyInfo() {
         </Card>
 
         {/* Insights Summary */}
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "50%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-50-percent"> 
           <CardContent className="p-4">
             <Stack direction="row" spacing={1} alignItems="center">
               <InsightsIcon/>
@@ -245,14 +205,7 @@ export default function FamilyInfo() {
           pb: 1,
         }}
       >
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "100%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-100-percent"> 
           <CardContent className="p-4">
             <Stack direction="row" spacing={1} alignItems="center">
               <TrendingUpIcon/>
