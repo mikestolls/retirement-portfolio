@@ -19,7 +19,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 export default function FamilyInfo() {
   // Use the shared context
-  const { updateFamilyInfoData, fetchRetirementData, familyInfoData, householdProjection, loading, error } = useRetirement();
+  const { updateFamilyInfoData, userData, householdProjection, loading, error } = useRetirement();
 
   // Fund visibility state
   const [visibleFunds, setVisibleFunds] = useState({});
@@ -40,7 +40,6 @@ export default function FamilyInfo() {
     // Only update if there are changes in formStates for this member
     if (editingMember !== null && formStates[editingMember] && Object.keys(formStates[editingMember]).length > 0) {
       updateFamilyInfoData(editingMember, formStates[editingMember]).then(() => {
-        fetchRetirementData(); // Refresh projections
         // Clear the form state after successful update
         setFormStates(prev => {
           const newStates = { ...prev };
@@ -92,7 +91,7 @@ export default function FamilyInfo() {
   };
 
   const handleAddMember = () => {
-    const newIndex = familyInfoData?.family_info_data?.length || 0;
+    const newIndex = userData?.family_info?.length || 0;
     setEditingMember(newIndex);
     setDrawerOpen(true);
     
@@ -108,8 +107,8 @@ export default function FamilyInfo() {
   const renderFamilyCards = () => {
     if (error) return null;
     
-    const memberCards = familyInfoData?.family_info_data?.length ? 
-      familyInfoData.family_info_data.map((member, index) => (
+    const memberCards = userData?.family_info?.length ? 
+      userData.family_info.map((member, index) => (
         <Card 
           className="rounded-2xl shadow-md" 
           sx={{ 
@@ -271,7 +270,7 @@ export default function FamilyInfo() {
               }
               
               // Calculate retirement years for markers
-              const retirementMarkers = familyInfoData?.family_info_data?.map(member => {
+              const retirementMarkers = userData?.family_info?.map(member => {
                 const currentAge = Math.floor((new Date() - new Date(member['date_of_birth'])) / (365.25 * 24 * 60 * 60 * 1000));
                 const retirementYear = new Date().getFullYear() + (member['retirement_age'] - currentAge);
                 return { name: member.name, year: retirementYear };
@@ -427,20 +426,20 @@ export default function FamilyInfo() {
             </IconButton>
           </Stack>
           
-          {editingMember !== null && familyInfoData?.family_info_data?.[editingMember] && (
+          {editingMember !== null && userData?.family_info?.[editingMember] && (
             <Stack spacing={2}>
               <TextField 
                 label="Name" 
                 name="name"
                 variant="outlined"
                 fullWidth
-                value={getFormData(editingMember)['name'] || familyInfoData.family_info_data[editingMember]['name']}
+                value={getFormData(editingMember)['name'] || userData.family_info[editingMember]['name']}
                 onChange={handleChange(editingMember)}
               />
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   label="Date of Birth"
-                  value={dayjs(getFormData(editingMember)['date_of_birth'] || familyInfoData.family_info_data[editingMember]['date_of_birth'])}
+                  value={dayjs(getFormData(editingMember)['date_of_birth'] || userData.family_info[editingMember]['date_of_birth'])}
                   onChange={(newValue) => {
                     setFormData(editingMember, {
                       ...getFormData(editingMember),
@@ -463,7 +462,7 @@ export default function FamilyInfo() {
                 fullWidth
                 type="number"
                 slotProps={{ htmlInput: { min: 50, max: 80 } }}
-                value={getFormData(editingMember)['retirement_age'] || familyInfoData.family_info_data[editingMember]['retirement_age']}
+                value={getFormData(editingMember)['retirement_age'] || userData.family_info[editingMember]['retirement_age']}
                 onChange={handleChange(editingMember)}
               />
               <TextField
@@ -473,7 +472,7 @@ export default function FamilyInfo() {
                 fullWidth
                 type="number"
                 slotProps={{ htmlInput: { min: 60, max: 120 } }}
-                value={getFormData(editingMember)['life_expectancy'] || familyInfoData.family_info_data[editingMember]['life_expectancy']}
+                value={getFormData(editingMember)['life_expectancy'] || userData.family_info[editingMember]['life_expectancy']}
                 onChange={handleChange(editingMember)}
               />
               <Button 

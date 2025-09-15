@@ -296,6 +296,57 @@ export const RetirementProvider = ({ children }) => {
     }
   };
 
+  const updateFamilyInfoData = async (memberIndex, updatedMember) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const familyId = userData?.user?.family_id;
+      if (!familyId) throw new Error('Family ID not available');
+
+      let updatedFamilyData = [...(userData?.family_info || [])];
+
+      if (updatedMember === null) {
+        // Delete member
+        updatedFamilyData = updatedFamilyData.filter((_, index) => index !== memberIndex);
+      } else if (memberIndex < updatedFamilyData.length) {
+        // Update existing member
+        updatedFamilyData[memberIndex] = { ...updatedFamilyData[memberIndex], ...updatedMember };
+      } else {
+        // Add new member
+        updatedFamilyData.push(updatedMember);
+      }
+
+      // Sync with backend
+      if (process.env.REACT_APP_BACKEND_API_URL) {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/family_info/${familyId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ family_data: updatedFamilyData })
+        });
+        
+        if (!response.ok) throw new Error('Backend sync failed');
+        
+        const result = await response.json();
+        
+        // Update local state with the returned family data
+        if (result.family) {
+          setUserData(prevData => ({
+            ...prevData,
+            family_info: result.family
+          }));
+        }
+      }
+
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Initial data fetch using new optimized flow
   useEffect(() => {
     fetchUserData(); // This fetches all user data or creates defaults if needed
@@ -336,6 +387,7 @@ export const RetirementProvider = ({ children }) => {
       userData,
       fetchUserData,
       updateRetirementFund, // Legacy index-based
+      updateFamilyInfoData,
       updateActualBalance,
       householdProjection,
       loading, 

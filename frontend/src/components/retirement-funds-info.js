@@ -19,7 +19,7 @@ const contribution_frequencies = [
 ];
 
 export default function RetirementFundsInfo() {
-  const { updateRetirementFund, fetchUserData, userData, loading, error, updateActualBalance } = useRetirement();
+  const { updateRetirementFund, userData, loading, error, updateActualBalance } = useRetirement();
 
   // Extract data from new structure
   const retirementData = { retirement_fund_data: userData?.retirement_funds || [] };
@@ -71,7 +71,6 @@ export default function RetirementFundsInfo() {
         'contribution_params': getContributionParams(editingFund)
       };
       updateRetirementFund(editingFund, updateData).then(() => {
-        fetchUserData(); // Recalculate projections
         setFormStates(prev => {
           const newStates = { ...prev };
           delete newStates[editingFund];
@@ -131,8 +130,6 @@ export default function RetirementFundsInfo() {
       'return_rate_params': [],
       'contribution_params': [],
       'actual_data': []
-    }).then(() => {
-      fetchUserData(); // Refresh to get projections
     });
   };
 
@@ -228,7 +225,6 @@ export default function RetirementFundsInfo() {
   };
 
   const [selectedFund, setSelectedFund] = useState(0);
-  const [actualInputs, setActualInputs] = useState({});
   const [actualsDrawerOpen, setActualsDrawerOpen] = useState(false);
   const [editingActuals, setEditingActuals] = useState(null);
   const [actualFormData, setActualFormData] = useState({});
@@ -409,9 +405,7 @@ export default function RetirementFundsInfo() {
               const updateData = {
                 'return_rate_params': currentParams
               };
-              updateRetirementFund(editingFund, updateData).then(() => {
-                fetchUserData();
-              });
+              updateRetirementFund(editingFund, updateData);
             }
           }
           setReturnRateDrawerOpen(false);
@@ -430,9 +424,7 @@ export default function RetirementFundsInfo() {
                 const updateData = {
                   'return_rate_params': currentParams
                 };
-                updateRetirementFund(editingFund, updateData).then(() => {
-                  fetchUserData();
-                });
+                updateRetirementFund(editingFund, updateData);
               }
             }
             setReturnRateDrawerOpen(false);
@@ -528,9 +520,7 @@ export default function RetirementFundsInfo() {
               const updateData = {
                 'contribution_params': currentParams
               };
-              updateRetirementFund(editingFund, updateData).then(() => {
-                fetchUserData();
-              });
+              updateRetirementFund(editingFund, updateData);
             }
           }
           setContributionDrawerOpen(false);
@@ -549,9 +539,7 @@ export default function RetirementFundsInfo() {
                 const updateData = {
                   'contribution_params': currentParams
                 };
-                updateRetirementFund(editingFund, updateData).then(() => {
-                  fetchUserData();
-                });
+                updateRetirementFund(editingFund, updateData);
               }
             }
             setContributionDrawerOpen(false);
