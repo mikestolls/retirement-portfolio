@@ -70,11 +70,11 @@ def get_user_data(user_id):
     return lambda_to_flask(get_user_data_handler)(user_id=user_id)
 
 @app.route('/api/family_info/<family_id>', methods=['POST'])
-def update_family(family_id):
+def update_family_info(family_id):
     return lambda_to_flask(update_family_handler)(family_id=family_id)
 
 @app.route('/api/retirement_fund/<fund_id>', methods=['POST', 'DELETE'])
-def update_fund(fund_id):
+def update_retirement_fund(fund_id):
     return lambda_to_flask(update_fund_handler)(fund_id=fund_id)
 
 @app.route('/api/budget/<budget_id>', methods=['POST'])

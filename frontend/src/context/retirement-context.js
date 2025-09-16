@@ -47,9 +47,6 @@ export const RetirementProvider = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         setUserData(data);
-      } else if (response.status === 404) {
-        // No data exists, create defaults using the new optimized flow
-        await createDefaultUserData();
       } else {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -60,82 +57,6 @@ export const RetirementProvider = ({ children }) => {
       setLoading(false);
       fetchingRef.current.retirement = false;
     }
-  };
-
-  const createDefaultUserData = async () => {
-    try {
-      const newId = crypto.randomUUID();
-      const familyId = crypto.randomUUID();
-      const fundId = crypto.randomUUID();
-      const budgetId = crypto.randomUUID();
-      
-      const memberWithId = { ...DEFAULT_FAMILY_MEMBER, 'id': newId };
-      const fundWithMemberId = { ...DEFAULT_RETIREMENT_FUND, 'family_member_id': newId };
-      
-      // Create default data - each POST returns the created record (no need for additional GET)
-      const [familyResponse, fundResponse, budgetResponse] = await Promise.all([
-        createDefaultFamily(familyId, [memberWithId]),
-        createDefaultFund(fundId, fundWithMemberId),
-        createDefaultBudget(budgetId, familyId)
-      ]);
-
-      // Build userData from the returned data
-      const newUserData = {
-        user: { user_id: user_id, family_id: familyId },
-        family_info: familyResponse,
-        retirement_funds: [fundResponse],
-        budgets: [budgetResponse]
-      };
-      
-      setUserData(newUserData);
-
-    } catch (error) {
-      console.error('Error creating default data:', error);
-      setError('Failed to create default data');
-    }
-  };
-
-  const createDefaultFamily = async (familyId, familyMembers) => {
-    const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/family_info/${familyId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ family_data: familyMembers })
-    });
-    if (!response.ok) throw new Error('Failed to create family');
-    const result = await response.json();
-    return result.family_info || result;
-  };
-
-  const createDefaultFund = async (fundId, fundData) => {
-    const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/retirement_fund/${fundId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fund_data: fundData })
-    });
-    if (!response.ok) throw new Error('Failed to create fund');
-    const result = await response.json();
-    return result.fund || result;
-  };
-
-  const createDefaultBudget = async (budgetId, familyId) => {
-    const defaultBudgetData = {
-      family_id: familyId,
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear(),
-      planned_income: 5000,
-      planned_expenses: 4000,
-      actual_income: 0,
-      actual_expenses: 0
-    };
-    
-    const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/budget/${budgetId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ budget_data: defaultBudgetData })
-    });
-    if (!response.ok) throw new Error('Failed to create budget');
-    const result = await response.json();
-    return result.budget || result;
   };
 
   const updateRetirementFund = async (fundIdentifier, updatedFund) => {

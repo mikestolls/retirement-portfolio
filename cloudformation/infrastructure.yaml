@@ -8,7 +8,7 @@ Parameters:
     AllowedValues: [dev, staging, prod]
 
 Resources:
-  # DynamoDB Tables (matching your Lambda code)
+  # DynamoDB Tables (matching your 4-table structure)
   UsersTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -30,29 +30,59 @@ Resources:
           Projection:
             ProjectionType: ALL
 
-  FamilyInfoTable:
+  FamiliesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: family_info
+      TableName: families
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: family_info_id
+        - AttributeName: family_id
           AttributeType: S
       KeySchema:
-        - AttributeName: family_info_id
+        - AttributeName: family_id
           KeyType: HASH
 
-  RetirementFundTable:
+  RetirementFundsTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: retirement_funds
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: retirement_fund_info_id
+        - AttributeName: fund_id
+          AttributeType: S
+        - AttributeName: family_id
           AttributeType: S
       KeySchema:
-        - AttributeName: retirement_fund_info_id
+        - AttributeName: fund_id
           KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: familyId-index
+          KeySchema:
+            - AttributeName: family_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: KEYS_ONLY
+
+  BudgetsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: budgets
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: budget_id
+          AttributeType: S
+        - AttributeName: family_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: budget_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: familyId-index
+          KeySchema:
+            - AttributeName: family_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
 
   # S3 Bucket for Frontend
   FrontendBucket:
@@ -155,14 +185,20 @@ Outputs:
     Export:
       Name: !Sub ${AWS::StackName}-users-table
 
-  FamilyInfoTableName:
-    Description: Family Info DynamoDB Table
-    Value: !Ref FamilyInfoTable
+  FamiliesTableName:
+    Description: Families DynamoDB Table
+    Value: !Ref FamiliesTable
     Export:
-      Name: !Sub ${AWS::StackName}-family-info-table
+      Name: !Sub ${AWS::StackName}-families-table
 
-  RetirementFundTableName:
-    Description: Retirement Fund DynamoDB Table
-    Value: !Ref RetirementFundTable
+  RetirementFundsTableName:
+    Description: Retirement Funds DynamoDB Table
+    Value: !Ref RetirementFundsTable
     Export:
-      Name: !Sub ${AWS::StackName}-retirement-fund-table
+      Name: !Sub ${AWS::StackName}-retirement-funds-table
+
+  BudgetsTableName:
+    Description: Budgets DynamoDB Table
+    Value: !Ref BudgetsTable
+    Export:
+      Name: !Sub ${AWS::StackName}-budgets-table

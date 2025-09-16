@@ -1,6 +1,6 @@
 import json
 import logging
-from db.dynamodb import db_update_retirement_fund, db_create_tables_if_not_exist, db_delete_retirement_fund, db_get_user_data
+from db.dynamodb import db_update_retirement_fund, db_create_tables_if_not_exist, db_delete_retirement_fund
 from services.retirement_calculator import calculate_retirement_projection
 from models.retirement_fund_data import RetirementFundData
 
@@ -16,7 +16,6 @@ def lambda_handler(event, context):
         
         # Get user_id and fund_id from path parameters
         fund_id = event['pathParameters']['fund_id']
-        user_id = event['pathParameters'].get('user_id')  # Optional for POST, required for DELETE
         
         if not fund_id or fund_id.strip() == "":
             return {
@@ -30,7 +29,7 @@ def lambda_handler(event, context):
             return handle_delete_fund(fund_id)
         
         # Handle POST method (update/create) - user_id is optional
-        return handle_update_fund(event, user_id, fund_id)
+        return handle_update_fund(event, fund_id)
         
     except Exception as e:
         logger.error(f"Error in lambda_handler: {str(e)}", exc_info=True)
@@ -72,7 +71,7 @@ def handle_delete_fund(fund_id):
             'body': json.dumps({"message": f"Error deleting fund: {str(e)}", "status": "error"})
         }
 
-def handle_update_fund(event, user_id, fund_id):
+def handle_update_fund(event, fund_id):
     """Handle POST requests to update/create a retirement fund"""
     # Get JSON data from request body
     if not event.get('body'):
@@ -117,19 +116,8 @@ def handle_update_fund(event, user_id, fund_id):
             'body': json.dumps({"message": "Failed to update fund", "status": "error"})
         }
     
-    # Calculate projection for the updated fund with family info
-    if updated_fund:
-        # Get just the family info for projection calculation
-        user_data = db_get_user_data(user_id)
-        if user_data and user_data.get('family_info'):
-            # Create a temporary fund structure for projection calculation
-            fund_for_projection = {
-                'fund_data': updated_fund,
-                'id': fund_id
-            }
-            calculate_retirement_projection(fund_for_projection, user_data['family_info'])
-            updated_fund = fund_for_projection.get('fund_data', updated_fund)
-
+    # Return the updated fund without projection calculation
+    # Frontend will handle projection calculation with its existing family data
     return {
         'statusCode': 200,
         'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},

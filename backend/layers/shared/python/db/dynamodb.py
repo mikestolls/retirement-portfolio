@@ -42,6 +42,71 @@ def db_get_dynamodb_client():
         print(f"Error connecting to DynamoDB: {str(e)}")
         raise
 
+def db_delete_all_tables():
+    """Delete all tables - for development only"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        
+        tables_to_delete = [USERS_TABLE, FAMILIES_TABLE, RETIREMENT_FUNDS_TABLE, BUDGETS_TABLE]
+        
+        for table_name in tables_to_delete:
+            try:
+                table = dynamodb.Table(table_name)
+                table.delete()
+                print(f"Deleted table: {table_name}")
+                # Wait for table to be deleted
+                table.wait_until_not_exists()
+            except Exception as e:
+                print(f"Error deleting table {table_name}: {e}")
+        
+        return True
+    except Exception as e:
+        print(f"Error deleting tables: {str(e)}")
+        return False
+
+def db_recreate_retirement_funds_table():
+    """Recreate retirement funds table with correct GSI - for development only"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        
+        # Delete retirement funds table
+        try:
+            table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
+            table.delete()
+            print(f"Deleted table: {RETIREMENT_FUNDS_TABLE}")
+            # Wait for table to be deleted
+            table.wait_until_not_exists()
+        except Exception as e:
+            print(f"Error deleting table {RETIREMENT_FUNDS_TABLE}: {e}")
+        
+        # Recreate retirement funds table with correct GSI
+        dynamodb.create_table(
+            TableName=RETIREMENT_FUNDS_TABLE,
+            KeySchema=[
+                {'AttributeName': 'fund_id', 'KeyType': 'HASH'}
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'fund_id', 'AttributeType': 'S'},
+                {'AttributeName': 'family_id', 'AttributeType': 'S'}
+            ],
+            GlobalSecondaryIndexes=[
+                {
+                    'IndexName': 'familyId-index',
+                    'KeySchema': [
+                        {'AttributeName': 'family_id', 'KeyType': 'HASH'}
+                    ],
+                    'Projection': {'ProjectionType': 'ALL'}
+                }
+            ],
+            BillingMode='PAY_PER_REQUEST'
+        )
+        print(f"Recreated table: {RETIREMENT_FUNDS_TABLE}")
+        
+        return True
+    except Exception as e:
+        print(f"Error recreating retirement funds table: {str(e)}")
+        return False
+
 # Initialize tables
 def db_create_tables_if_not_exist():
     """Create DynamoDB tables if they don't exist"""
@@ -139,15 +204,15 @@ def db_create_tables_if_not_exist():
                     'KeySchema': [
                         {'AttributeName': 'family_id', 'KeyType': 'HASH'}
                     ],
-                    'Projection': {'ProjectionType': 'KEYS_ONLY'}
+                    'Projection': {'ProjectionType': 'ALL'}
                 }
             ],
             BillingMode='PAY_PER_REQUEST'
         )
 
 # User operations
-def db_create_user_if_not_exists(user_id, email=None, family_id=None):
-    """Create user if they don't exist"""
+def db_create_user_if_not_exists(user_id, email=None):
+    """Create user with default data if they don't exist"""
     try:
         dynamodb = db_get_dynamodb_client()
         table = dynamodb.Table(USERS_TABLE)
@@ -157,20 +222,93 @@ def db_create_user_if_not_exists(user_id, email=None, family_id=None):
         if response.get('Item'):
             return True  # User already exists
         
-        # Create new user
+        # Generate IDs for default data
+        import uuid
+        family_id = str(uuid.uuid4())
+        fund_id = str(uuid.uuid4())
+        budget_id = str(uuid.uuid4())
+        member_id = str(uuid.uuid4())
+        
+        # Create default family member data
+        default_family_data = [{
+            'id': member_id,
+            'name': 'Stolz',
+            'date_of_birth': '1986-01-31',
+            'life_expectancy': 90,
+            'retirement_age': 65,
+        }]
+        
+        # Create default fund data
+        default_fund_data = {
+            'id': fund_id,
+            'name': 'Fund',
+            'family_member_id': member_id,
+            'initial_investment': 1000,
+            'regular_contribution': 10,
+            'contribution_frequency': 12,
+            'start_date': datetime.now().strftime('%Y-%m-%d'),
+            'return_rate_params': [],
+            'contribution_params': [],
+            'actual_data': []
+        }
+        
+        # Create default budget data
+        default_budget_data = {
+            'family_id': family_id,
+            'month': datetime.now().month,
+            'year': datetime.now().year,
+            'planned_income': 5000,
+            'planned_expenses': 4000,
+            'actual_income': 0,
+            'actual_expenses': 0
+        }
+        
+        # Create user record
         user_item = {
             'user_id': user_id,
             'email': email or f'{user_id}@example.com',
+            'family_id': family_id,
             'created_at': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat()
         }
         
-        if family_id:
-            user_item['family_id'] = family_id
-            
+        # Create all records atomically
         table.put_item(Item=user_item)
+        
+        # Create family record
+        family_table = dynamodb.Table(FAMILIES_TABLE)
+        family_item = {
+            'family_id': family_id,
+            'family_data': default_family_data,
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        family_table.put_item(Item=family_item)
+        
+        # Create retirement fund record
+        funds_table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
+        fund_item = {
+            'fund_id': fund_id,
+            'family_id': family_id,  # Required for GSI
+            **default_fund_data,  # Spread fund data at top level
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        funds_table.put_item(Item=fund_item)
+        
+        # Create budget record
+        budgets_table = dynamodb.Table(BUDGETS_TABLE)
+        budget_item = {
+            'budget_id': budget_id,
+            'budget_data': default_budget_data,
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        budgets_table.put_item(Item=budget_item)
+        
         return True
-    except Exception:
+    except Exception as e:
+        print(f"Error creating default user data: {e}")
         return False
 
 def db_update_user_family(user_id, family_id):
@@ -233,14 +371,28 @@ def db_get_user_data(user_id):
         family_response = family_table.get_item(Key={'family_id': family_id})
         family_info = family_response.get('Item')
         
-        # Get retirement funds
+        # Get retirement funds using BatchGetItem for efficiency
         funds_table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
+        
+        # First, query GSI to get fund IDs
         funds_response = funds_table.query(
             IndexName='familyId-index',
             KeyConditionExpression='family_id = :family_id',
             ExpressionAttributeValues={':family_id': family_id}
         )
-        retirement_funds = funds_response.get('Items', [])
+        fund_ids = [item['fund_id'] for item in funds_response.get('Items', [])]
+        
+        # Then batch get complete fund records
+        retirement_funds = []
+        if fund_ids:
+            batch_response = dynamodb.batch_get_item(
+                RequestItems={
+                    RETIREMENT_FUNDS_TABLE: {
+                        'Keys': [{'fund_id': fund_id} for fund_id in fund_ids]
+                    }
+                }
+            )
+            retirement_funds = batch_response.get('Responses', {}).get(RETIREMENT_FUNDS_TABLE, [])
         
         # Get budgets
         budgets_table = dynamodb.Table(BUDGETS_TABLE)
@@ -304,28 +456,41 @@ def db_update_retirement_fund(fund_id, fund_data):
         
         fund_data = convert_floats_to_decimals(fund_data)
         
+        # Build update expression dynamically
+        update_expression_parts = []
+        expression_attribute_values = {}
+        
+        for key, value in fund_data.items():
+            if key != 'fund_id':  # Don't update the key
+                update_expression_parts.append(f'{key} = :{key}')
+                expression_attribute_values[f':{key}'] = value
+        
+        update_expression_parts.append('updated_at = :updated')
+        expression_attribute_values[':updated'] = datetime.now().isoformat()
+        
         response = table.update_item(
             Key={'fund_id': fund_id},
-            UpdateExpression='SET fund_data = :data, updated_at = :updated',
-            ExpressionAttributeValues={
-                ':data': fund_data,
-                ':updated': datetime.now().isoformat()
-            },
+            UpdateExpression='SET ' + ', '.join(update_expression_parts),
+            ExpressionAttributeValues=expression_attribute_values,
             ConditionExpression='attribute_exists(fund_id)',
             ReturnValues='ALL_NEW'
         )
         return response['Attributes']
     except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
         # Item doesn't exist, create it
-        table.put_item(
-            Item={
-                'fund_id': fund_id,
-                'family_id': fund_data.get('family_id'),
-                'fund_data': fund_data,
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
-        )
+        item = {
+            'fund_id': fund_id,
+            **fund_data,  # Spread fund data at top level
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        # Ensure family_id is set for GSI
+        if 'family_id' not in item:
+            # If family_id is missing, we need to get it from somewhere
+            # For now, let's throw an error
+            raise ValueError("family_id is required for new retirement fund")
+        
+        table.put_item(Item=item)
         return table.get_item(Key={'fund_id': fund_id})['Item']
     except Exception as e:
         print(f"Error updating retirement fund: {str(e)}")
