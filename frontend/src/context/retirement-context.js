@@ -42,22 +42,20 @@ export const RetirementProvider = ({ children }) => {
     setError(null);
 
     try {
-      if (process.env.REACT_APP_BACKEND_API_URL) {
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/user_data/${user_id}`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          setUserData(data);
-          return;
-        } else if (response.status === 404 || response.status === 500) {
-          // No data exists, create defaults using the new optimized flow
-          await createDefaultUserData();
-          return;
-        }
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/user_data/${user_id}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUserData(data);
+      } else if (response.status === 404) {
+        // No data exists, create defaults using the new optimized flow
+        await createDefaultUserData();
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      // Fallback to offline data - keep existing data
     } catch (err) {
       setError(err.message);
+      console.error('Error fetching user data:', err);
     } finally {
       setLoading(false);
       fetchingRef.current.retirement = false;
@@ -105,7 +103,7 @@ export const RetirementProvider = ({ children }) => {
     });
     if (!response.ok) throw new Error('Failed to create family');
     const result = await response.json();
-    return result.family || result;
+    return result.family_info || result;
   };
 
   const createDefaultFund = async (fundId, fundData) => {
@@ -171,7 +169,7 @@ export const RetirementProvider = ({ children }) => {
       
       if (updatedFund === null) {
         // Delete fund
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/user/${userId}/retirement_fund/${fundId}`, {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/retirement_fund/${fundId}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -187,7 +185,7 @@ export const RetirementProvider = ({ children }) => {
       } else {
         // Create or update fund
         const fundData = { ...updatedFund, id: fundId };
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/user/${userId}/retirement_fund/${fundId}`, {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/retirement_fund/${fundId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(fundData)
@@ -256,38 +254,34 @@ export const RetirementProvider = ({ children }) => {
       }
 
       // Sync with backend and update local state
-      if (process.env.REACT_APP_BACKEND_API_URL) {
-        const userId = userData?.user?.id;
-        if (!userId) throw new Error('User ID not available');
-        
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/user/${userId}/retirement_fund/${fundId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ actual_data: updatedActualData })
+      const userId = userData?.user?.id;
+      if (!userId) throw new Error('User ID not available');
+      
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/retirement_fund/${fundId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actual_data: updatedActualData })
+      });
+      if (!response.ok) throw new Error('Backend sync failed');
+      
+      const result = await response.json();
+      
+      // Update local state with the returned fund (includes updated projections)
+      if (result.fund) {
+        setUserData(prevData => {
+          const existingFunds = prevData.retirement_funds || [];
+          const fundIndex = existingFunds.findIndex(f => f.id === fundId);
+          
+          if (fundIndex >= 0) {
+            const updatedFunds = [...existingFunds];
+            updatedFunds[fundIndex] = { ...updatedFunds[fundIndex], ...result.fund };
+            return { ...prevData, retirement_funds: updatedFunds };
+          }
+          return prevData;
         });
-        if (!response.ok) throw new Error('Backend sync failed');
-        
-        const result = await response.json();
-        
-        // Update local state with the returned fund (includes updated projections)
-        if (result.fund) {
-          setUserData(prevData => {
-            const existingFunds = prevData.retirement_funds || [];
-            const fundIndex = existingFunds.findIndex(f => f.id === fundId);
-            
-            if (fundIndex >= 0) {
-              const updatedFunds = [...existingFunds];
-              updatedFunds[fundIndex] = { ...updatedFunds[fundIndex], ...result.fund };
-              return { ...prevData, retirement_funds: updatedFunds };
-            }
-            return prevData;
-          });
-        }
-        
-        return true;
       }
       
-      return false;
+      return true;
     } catch (err) {
       setError(err.message);
       return false;
@@ -318,27 +312,23 @@ export const RetirementProvider = ({ children }) => {
       }
 
       // Sync with backend
-      if (process.env.REACT_APP_BACKEND_API_URL) {
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/family_info/${familyId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ family_data: updatedFamilyData })
-        });
-        
-        if (!response.ok) throw new Error('Backend sync failed');
-        
-        const result = await response.json();
-        
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/family_info/${familyId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ family_data: updatedFamilyData })
+      });
+      
+      if (!response.ok) throw new Error('Backend sync failed');
+      
+      const result = await response.json();
+      
         // Update local state with the returned family data
-        if (result.family) {
+        if (result.family_info) {
           setUserData(prevData => ({
             ...prevData,
-            family_info: result.family
+            family_info: result.family_info
           }));
-        }
-      }
-
-      return true;
+        }      return true;
     } catch (err) {
       setError(err.message);
       return false;

@@ -15,16 +15,9 @@ def lambda_handler(event, context):
         db_create_tables_if_not_exist()
         
         # Get user_id and fund_id from path parameters
-        user_id = event['pathParameters']['user_id']
         fund_id = event['pathParameters']['fund_id']
+        user_id = event['pathParameters'].get('user_id')  # Optional for POST, required for DELETE
         
-        if not user_id or user_id.strip() == "":
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({"message": "user_id not provided", "status": "error"})
-            }
-            
         if not fund_id or fund_id.strip() == "":
             return {
                 'statusCode': 400,
@@ -34,9 +27,9 @@ def lambda_handler(event, context):
         
         # Handle DELETE method
         if event.get('httpMethod') == 'DELETE':
-            return handle_delete_fund(user_id, fund_id)
+            return handle_delete_fund(fund_id)
         
-        # Handle POST method (update/create)
+        # Handle POST method (update/create) - user_id is optional
         return handle_update_fund(event, user_id, fund_id)
         
     except Exception as e:
@@ -47,7 +40,7 @@ def lambda_handler(event, context):
             'body': json.dumps({"message": f"An error occurred: {str(e)}", "status": "error"})
         }
 
-def handle_delete_fund(user_id, fund_id):
+def handle_delete_fund(fund_id):
     """Delete a retirement fund"""
     try:
         # Delete from database

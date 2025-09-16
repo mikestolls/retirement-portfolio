@@ -36,7 +36,7 @@ def lambda_handler(event, context):
             }
         
         # Calculate retirement projections if we have funds and family data
-        if user_data['retirement_funds'] and user_data['family_info']:
+        if user_data.get('retirement_funds') and user_data.get('family_info'):
             for fund in user_data['retirement_funds']:
                 calculate_retirement_projection(fund, user_data['family_info'])
         

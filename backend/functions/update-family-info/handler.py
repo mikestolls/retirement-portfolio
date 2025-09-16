@@ -60,7 +60,7 @@ def lambda_handler(event, context):
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({"family": updated_family, "status": "success"}, default=str)
+            'body': json.dumps({"family_info": updated_family, "status": "success"}, default=str)
         }
         
     except Exception as e:

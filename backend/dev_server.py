@@ -28,9 +28,9 @@ def load_handler(function_name):
 
 # Load handlers
 health_handler = load_handler('health')
-update_family_handler = load_handler('update-family')
+update_family_handler = load_handler('update-family-info')
 get_user_data_handler = load_handler('get-user-data')
-update_fund_handler = load_handler('update-fund')
+update_fund_handler = load_handler('update-retirement-fund')
 update_budget_handler = load_handler('update-budget')
 
 app = Flask(__name__)
@@ -42,10 +42,15 @@ def lambda_to_flask(handler):
         # Build Lambda event from Flask request
         event = {
             'pathParameters': kwargs,
+            'queryStringParameters': dict(request.args) if request.args else None,
             'body': request.get_data(as_text=True) if request.data else None,
             'httpMethod': request.method,
             'headers': dict(request.headers)
         }
+        
+        # For DELETE requests with user_id query param, add it to pathParameters
+        if request.method == 'DELETE' and request.args.get('user_id'):
+            event['pathParameters']['user_id'] = request.args.get('user_id')
         
         # Call Lambda handler
         response = handler(event, {})
@@ -60,19 +65,19 @@ def lambda_to_flask(handler):
 def health():
     return lambda_to_flask(health_handler)()
 
-@app.route('/api/users/<user_id>/data', methods=['GET'])
+@app.route('/api/user_data/<user_id>', methods=['GET'])
 def get_user_data(user_id):
     return lambda_to_flask(get_user_data_handler)(user_id=user_id)
 
-@app.route('/api/families/<family_id>', methods=['POST'])
+@app.route('/api/family_info/<family_id>', methods=['POST'])
 def update_family(family_id):
     return lambda_to_flask(update_family_handler)(family_id=family_id)
 
-@app.route('/api/funds/<fund_id>', methods=['POST'])
+@app.route('/api/retirement_fund/<fund_id>', methods=['POST', 'DELETE'])
 def update_fund(fund_id):
     return lambda_to_flask(update_fund_handler)(fund_id=fund_id)
 
-@app.route('/api/budgets/<budget_id>', methods=['POST'])
+@app.route('/api/budget/<budget_id>', methods=['POST'])
 def update_budget(budget_id):
     return lambda_to_flask(update_budget_handler)(budget_id=budget_id)
 
