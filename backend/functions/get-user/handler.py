@@ -1,14 +1,13 @@
 import json
 import logging
-from db.dynamodb import db_get_user_data, db_create_tables_if_not_exist
-from services.retirement_calculator import calculate_retirement_projection
+from db.dynamodb import db_create_tables_if_not_exist, db_get_dynamodb_client, USERS_TABLE
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
-    """Get all user data from 4 tables"""    
+    """Get just user data from users table"""
     try:
         # Ensure tables exist
         db_create_tables_if_not_exist()
@@ -23,28 +22,30 @@ def lambda_handler(event, context):
                 'body': json.dumps({"message": "user_id not provided", "status": "error"})
             }
         
-        # Get all user data from 4 tables
-        user_data = db_get_user_data(user_id)
-        if not user_data or not user_data.get('user'):
+        # Get user from users table only
+        dynamodb = db_get_dynamodb_client()
+        user_table = dynamodb.Table(USERS_TABLE)
+        user_response = user_table.get_item(Key={'user_id': user_id})
+        user = user_response.get('Item')
+        
+        if not user:
             return {
                 'statusCode': 404,
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
                 'body': json.dumps({"message": "User not found", "status": "error"})
             }
         
-        # Calculate retirement projections if we have funds and family data
-        if user_data.get('retirement_funds') and user_data.get('family_info'):
-            for fund in user_data['retirement_funds']:
-                calculate_retirement_projection(fund, user_data['family_info'])
-        
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps(user_data, default=str)
+            'body': json.dumps({
+                'user': user,
+                'status': 'success'
+            }, default=str)
         }
         
     except Exception as e:
-        logger.error(f"Error processing user data: {str(e)}", exc_info=True)
+        logger.error(f"Error in lambda_handler: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},

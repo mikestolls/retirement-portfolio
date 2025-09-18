@@ -28,8 +28,10 @@ def load_handler(function_name):
 
 # Load handlers
 health_handler = load_handler('health')
-update_family_handler = load_handler('update-family-info')
+get_user_handler = load_handler('get-user')
 get_user_data_handler = load_handler('get-user-data')
+update_user_data_handler = load_handler('update-user-data')
+update_family_handler = load_handler('update-family-info')
 update_fund_handler = load_handler('update-retirement-fund')
 update_budget_handler = load_handler('update-budget')
 
@@ -45,7 +47,8 @@ def lambda_to_flask(handler):
             'queryStringParameters': dict(request.args) if request.args else None,
             'body': request.get_data(as_text=True) if request.data else None,
             'httpMethod': request.method,
-            'headers': dict(request.headers)
+            'headers': dict(request.headers),
+            'path': request.path  # Add the path for route detection
         }
         
         # For DELETE requests with user_id query param, add it to pathParameters
@@ -65,17 +68,40 @@ def lambda_to_flask(handler):
 def health():
     return lambda_to_flask(health_handler)()
 
-@app.route('/api/user_data/<user_id>', methods=['GET'])
+@app.route('/api/users/<user_id>', methods=['GET'])
+def get_user(user_id):
+    return lambda_to_flask(get_user_handler)(user_id=user_id)
+
+@app.route('/api/users/<user_id>', methods=['POST'])
+def update_user_data(user_id):
+    return lambda_to_flask(update_user_data_handler)(user_id=user_id)
+
+@app.route('/api/users/<user_id>/data', methods=['GET'])
 def get_user_data(user_id):
     return lambda_to_flask(get_user_data_handler)(user_id=user_id)
+
+# Family routes - create and update
+@app.route('/api/family_info', methods=['POST'])
+def create_family():
+    return lambda_to_flask(update_family_handler)()
 
 @app.route('/api/family_info/<family_id>', methods=['POST'])
 def update_family_info(family_id):
     return lambda_to_flask(update_family_handler)(family_id=family_id)
 
+# Fund routes - create, update, and delete
+@app.route('/api/retirement_fund', methods=['POST'])
+def create_fund():
+    return lambda_to_flask(update_fund_handler)()
+
 @app.route('/api/retirement_fund/<fund_id>', methods=['POST', 'DELETE'])
 def update_retirement_fund(fund_id):
     return lambda_to_flask(update_fund_handler)(fund_id=fund_id)
+
+# Budget routes - create and update
+@app.route('/api/budget', methods=['POST'])
+def create_budget():
+    return lambda_to_flask(update_budget_handler)()
 
 @app.route('/api/budget/<budget_id>', methods=['POST'])
 def update_budget(budget_id):

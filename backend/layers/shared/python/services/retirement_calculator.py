@@ -27,8 +27,8 @@ def calculate_retirement_projection(retirement_fund, family_info):
     Returns:
         dict: Retirement projection data by year (modifies fund_data in place)
     """
-    # Get family members from family_data field
-    family_members = family_info.get('family_data', [])
+    # Get family members from family_member_data field
+    family_members = family_info.get('family_member_data', [])
     
     # Find the latest retirement year across all family members
     latest_retirement_year = 0

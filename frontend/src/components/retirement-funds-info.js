@@ -20,7 +20,7 @@ const contribution_frequencies = [
 ];
 
 export default function RetirementFundsInfo() {
-  const { updateRetirementFund, userData, loading, error, updateActualBalance } = useRetirement();
+  const { updateRetirementFund, userData, setUserData, loading, error, updateActualBalance } = useRetirement();
 
   // Extract data from new structure
   const retirementData = { retirement_fund_data: userData?.retirement_funds || [] };
@@ -49,6 +49,7 @@ export default function RetirementFundsInfo() {
     const params = contributionParams[index] || fund?.['contribution_params'] || [];
     return params;
   };
+
   const setContributionParamsForFund = (fundIndex, params) => {
     setContributionParams(prev => ({ ...prev, [fundIndex]: params }));
   };
@@ -93,7 +94,6 @@ export default function RetirementFundsInfo() {
     });
   };
 
-
   const deleteFund = async (index) => {
     await updateRetirementFund(index, null);
     setFormStates(prev => {
@@ -114,32 +114,73 @@ export default function RetirementFundsInfo() {
     }
   };
 
-  const handleAddFund = () => {
+  const handleAddFund = async () => {
     const newIndex = retirementData?.retirement_fund_data?.length || 0;
     setSelectedFund(newIndex);
     setEditingFund(newIndex);
     setDrawerOpen(true);
-    
-    updateRetirementFund(newIndex, {
-      'id': crypto.randomUUID(),
-      'name': 'New Fund',
-      'family_member_id': familyInfoData?.family_info_data?.[0]?.id || '',
-      'initial_investment': 1000,
-      'regular_contribution': 10,
-      'contribution_frequency': 12,
-      'start_date': new Date().toISOString().split('T')[0],
-      'return_rate_params': [],
-      'contribution_params': [],
-      'actual_data': []
-    });
+
+    // Generate a new fund ID and get first family member
+    const fundId = crypto.randomUUID();
+    const familyMemberId = familyInfoData?.family_member_data?.[0]?.id || '';
+    const familyId = userData?.user?.family_id;
+
+    if (!familyId || !familyMemberId) {
+      console.error('Missing family_id or family_member_id');
+      return;
+    }
+
+    // Create new fund with default data
+    const newFund = {
+      id: fundId,
+      name: 'Fund',
+      family_member_id: familyMemberId,
+      family_id: familyId,
+      initial_investment: 1000,
+      regular_contribution: 10,
+      contribution_frequency: 12,
+      start_date: new Date().toISOString().split('T')[0],
+      return_rate_params: [],
+      contribution_params: [],
+      actual_data: []
+    };
+
+    try {
+      // Send fund data to simplified backend
+      const response = await fetch(`/api/retirement_fund/${fundId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newFund),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        // Update local state by adding the new fund
+        setUserData(prevData => ({
+          ...prevData,
+          retirement_funds: [...(prevData.retirement_funds || []), result.fund]
+        }));
+      } else {
+        console.error('Error adding fund:', result.message);
+      }
+    } catch (error) {
+      console.error('Error adding fund:', error);
+    }
   };
 
   const renderFundCards = () => {
     if (error) return null;
     
-    const fundCards = retirementData?.retirement_fund_data?.length ? 
-      retirementData.retirement_fund_data.map((fund, index) => {
-        const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family_member_id']);
+    const fundCards = userData?.retirement_funds?.length ? 
+      userData.retirement_funds.map((fund, index) => {
+        const member = familyInfoData?.family_member_data?.find(m => m.id === fund['family_member_id']);
         const latestProjection = fund.retirement_projection?.[fund.retirement_projection.length - 1];
         
         return (
@@ -263,7 +304,7 @@ export default function RetirementFundsInfo() {
                 value={getFormData(editingFund)['family_member_id'] || retirementData.retirement_fund_data[editingFund]['family_member_id']}
                 onChange={handleChange(editingFund)}
               >
-                {familyInfoData?.family_info_data?.map((member) => (
+                {familyInfoData?.family_member_data?.map((member) => (
                   <MenuItem key={member.id} value={member.id}>
                     {member.name}
                   </MenuItem>
@@ -717,7 +758,7 @@ export default function RetirementFundsInfo() {
             <Typography variant="h6" sx={{ mb: 2 }}>Fund Projection - {retirementData.retirement_fund_data[selectedFund]?.name || 'Loading...'}</Typography>
             {retirementData.retirement_fund_data[selectedFund]?.retirement_projection && (() => {
               const fund = retirementData.retirement_fund_data[selectedFund];
-              const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family_member_id']);
+              const member = familyInfoData?.family_member_data?.find(m => m.id === fund['family_member_id']);
               
               if (!member) return null;
               
@@ -850,7 +891,7 @@ export default function RetirementFundsInfo() {
                   <TableBody>
                     {(() => {
                       const fund = retirementData.retirement_fund_data[selectedFund];
-                      const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family_member_id']);
+                      const member = familyInfoData?.family_member_data?.find(m => m.id === fund['family_member_id']);
                       
                       if (!member) return null;
                       

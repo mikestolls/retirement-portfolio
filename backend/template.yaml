@@ -1,16 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: 'Retirement Portfolio Lambda Funct      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/user/{user_id}/retirement_fund/{fund_id}
-            Method: post
-        DeleteApi:
-          Type: Api
-          Properties:
-            Path: /api/user/{user_id}/retirement_fund/{fund_id}
-            Method: deletend API Gateway'
+Description: 'Retirement Portfolio Lambda Functions and API Gateway'
 
 Globals:
   Function:
@@ -27,7 +17,7 @@ Globals:
       - !Ref SharedLayer
   Api:
     Cors:
-      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowMethods: "'GET,POST,DELETE,OPTIONS'"
       AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
       AllowOrigin: "'*'"
 
@@ -91,13 +81,57 @@ Resources:
                 - dynamodb:CreateTable
                 - dynamodb:GetItem
                 - dynamodb:Query
+                - dynamodb:BatchGetItem
               Resource: "*"
       Events:
         Api:
           Type: Api
           Properties:
-            Path: /api/user_data/{user_id}
+            Path: /api/users/{user_id}/data
             Method: get
+
+  GetUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/get-user/
+      Handler: handler.lambda_handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: users
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+                - dynamodb:CreateTable
+                - dynamodb:GetItem
+              Resource: "*"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/users/{user_id}
+            Method: get
+
+  UpdateUserDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/update-user-data/
+      Handler: handler.lambda_handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: users
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ListTables
+                - dynamodb:CreateTable
+              Resource: "*"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/user/{user_id}
+            Method: post
 
   UpdateFamilyFunction:
     Type: AWS::Serverless::Function
@@ -114,10 +148,15 @@ Resources:
                 - dynamodb:CreateTable
               Resource: "*"
       Events:
-        Api:
+        ApiUpdate:
           Type: Api
           Properties:
             Path: /api/family_info/{family_id}
+            Method: post
+        ApiCreate:
+          Type: Api
+          Properties:
+            Path: /api/family_info
             Method: post
 
   UpdateFundFunction:
@@ -145,6 +184,11 @@ Resources:
           Properties:
             Path: /api/retirement_fund/{fund_id}
             Method: delete
+        ApiCreate:
+          Type: Api
+          Properties:
+            Path: /api/retirement_fund
+            Method: post
 
   UpdateBudgetFunction:
     Type: AWS::Serverless::Function
@@ -161,13 +205,16 @@ Resources:
                 - dynamodb:CreateTable
               Resource: "*"
       Events:
-        Api:
+        ApiUpdate:
           Type: Api
           Properties:
             Path: /api/budget/{budget_id}
             Method: post
-
-
+        ApiCreate:
+          Type: Api
+          Properties:
+            Path: /api/budget
+            Method: post
 
 Outputs:
   ApiUrl:

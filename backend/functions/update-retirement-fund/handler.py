@@ -1,130 +1,98 @@
 import json
 import logging
+from datetime import datetime
 from db.dynamodb import db_update_retirement_fund, db_create_tables_if_not_exist, db_delete_retirement_fund
-from services.retirement_calculator import calculate_retirement_projection
 from models.retirement_fund_data import RetirementFundData
+from utils.handler_utils import (
+    create_error_response, 
+    create_success_response,
+    process_crud_request, 
+    generate_uuid
+)
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
-    """Update or delete a specific retirement fund"""
+    """Retirement fund handler supporting create, update, and delete"""
     try:
         # Ensure tables exist
         db_create_tables_if_not_exist()
         
-        # Get user_id and fund_id from path parameters
-        fund_id = event['pathParameters']['fund_id']
+        # Get fund ID from path parameters (None for create operations)
+        fund_id = event.get('pathParameters', {}).get('fund_id')
         
-        if not fund_id or fund_id.strip() == "":
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({"message": "fund_id not provided", "status": "error"})
-            }
+        # Handle POST request for both create and update
+        if event.get('httpMethod') == 'POST':
+            if fund_id:
+                # Update existing fund
+                return handle_update_fund(event, fund_id)
+            else:
+                # Create new fund
+                return handle_create_fund(event)
         
-        # Handle DELETE method
-        if event.get('httpMethod') == 'DELETE':
-            return handle_delete_fund(fund_id)
+        # Handle DELETE request to delete fund
+        elif event.get('httpMethod') == 'DELETE':
+            if not fund_id:
+                return create_error_response(400, "fund_id is required for DELETE")
+            return handle_delete_fund(event, fund_id)
         
-        # Handle POST method (update/create) - user_id is optional
-        return handle_update_fund(event, fund_id)
+        return create_error_response(405, "Method not allowed")
         
     except Exception as e:
-        logger.error(f"Error in lambda_handler: {str(e)}", exc_info=True)
-        return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({"message": f"An error occurred: {str(e)}", "status": "error"})
-        }
+        logger.error(f"Lambda handler error: {str(e)}")
+        return create_error_response(500, f"Internal server error: {str(e)}")
 
-def handle_delete_fund(fund_id):
-    """Delete a retirement fund"""
+def handle_create_fund(event):
+    """Handle POST requests to create a new retirement fund"""
+    # Generate new fund ID
+    fund_id = generate_uuid()
+    
+    # Data transformation function to add fund ID
+    def transform_fund_data(input_data, resource_id):
+        input_data['id'] = resource_id
+        # Add empty projection for now (will be calculated later)
+        input_data['retirement_projection'] = []
+        # Wrap single fund in array format expected by RetirementFundData
+        return {'retirement_fund_data': [input_data]}
+    
+    return process_crud_request(
+        event=event,
+        resource_id=fund_id,
+        model_class=RetirementFundData,
+        db_function=lambda fund_id, data: db_update_retirement_fund(fund_id, data[0]),  # Extract single fund from array
+        success_message='Retirement fund created successfully',
+        status_code=201,
+        data_key='retirement_fund_data',
+        data_transform=transform_fund_data
+    )
+
+def handle_delete_fund(event, fund_id):
+    """Handle DELETE requests to delete a retirement fund"""
     try:
-        # Delete from database
         success = db_delete_retirement_fund(fund_id)
-        
-        if not success:
-            return {
-                'statusCode': 404,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({"message": "Fund not found", "status": "error"})
-            }
-        
-        # Return simple success response for deletion
-        return {
-            'statusCode': 200,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({
-                'message': 'Retirement fund deleted successfully',
-                'fund_id': fund_id,
-                'status': 'success'
-            })
-        }
-        
+        if success:
+            return create_success_response(200, "Fund deleted successfully")
+        else:
+            return create_error_response(404, "Fund not found")
     except Exception as e:
-        logger.error(f"Error deleting fund: {str(e)}", exc_info=True)
-        return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({"message": f"Error deleting fund: {str(e)}", "status": "error"})
-        }
+        return create_error_response(500, f"Error deleting fund: {str(e)}")
 
 def handle_update_fund(event, fund_id):
-    """Handle POST requests to update/create a retirement fund"""
-    # Get JSON data from request body
-    if not event.get('body'):
-        return {
-            'statusCode': 400,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({"message": "No data provided!", "status": "error"})
-        }
-
-    # Parse request body
-    try:
-        input_data = json.loads(event['body'])
-    except json.JSONDecodeError:
-        return {
-            'statusCode': 400,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({"message": "Invalid JSON in request body", "status": "error"})
-        }
-
-    # Create and validate input model
-    # Wrap single fund in array format expected by RetirementFundData
-    fund_validation_data = {'retirement_fund_data': [input_data]}
-    retirement_fund_data = RetirementFundData(fund_validation_data)
-    is_valid, error_message = retirement_fund_data.validate()
+    """Handle POST requests to update a retirement fund"""
+    # Data transformation function for fund updates
+    def transform_fund_data(input_data, resource_id):
+        # Wrap single fund in array format expected by RetirementFundData
+        return {'retirement_fund_data': [input_data]}
     
-    if not is_valid:
-        return {
-            'statusCode': 400,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({"message": error_message, "status": "error"})
-        }
-
-    # Get validated input data (extract the single fund from the array)
-    validated_fund_data = retirement_fund_data.to_dict()['retirement_fund_data'][0]
-    
-    # Update fund in retirement_funds table
-    updated_fund = db_update_retirement_fund(fund_id, validated_fund_data)
-    if not updated_fund:
-        return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({"message": "Failed to update fund", "status": "error"})
-        }
-    
-    # Return the updated fund without projection calculation
-    # Frontend will handle projection calculation with its existing family data
-    return {
-        'statusCode': 200,
-        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        'body': json.dumps({
-            'message': 'Retirement fund updated successfully',
-            'fund_id': fund_id,
-            'fund': updated_fund,
-            'status': 'success'
-        }, default=str)
-    }
+    return process_crud_request(
+        event=event,
+        resource_id=fund_id,
+        model_class=RetirementFundData,
+        db_function=lambda fund_id, data: db_update_retirement_fund(fund_id, data[0]),  # Extract single fund from array
+        success_message='Retirement fund updated successfully',
+        status_code=200,
+        data_key='retirement_fund_data',
+        data_transform=transform_fund_data
+    )
