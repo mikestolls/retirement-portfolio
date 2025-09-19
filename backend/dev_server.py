@@ -80,31 +80,31 @@ def update_user_data(user_id):
 def get_user_data(user_id):
     return lambda_to_flask(get_user_data_handler)(user_id=user_id)
 
-# Family routes - create and update
+# Family routes - create, update, and get
 @app.route('/api/family_info', methods=['POST'])
 def create_family():
     return lambda_to_flask(update_family_handler)()
 
-@app.route('/api/family_info/<family_id>', methods=['POST'])
-def update_family_info(family_id):
+@app.route('/api/family_info/<family_id>', methods=['GET', 'POST'])
+def family_info(family_id):
     return lambda_to_flask(update_family_handler)(family_id=family_id)
 
-# Fund routes - create, update, and delete
+# Fund routes - create, update, delete, and get
 @app.route('/api/retirement_fund', methods=['POST'])
 def create_fund():
     return lambda_to_flask(update_fund_handler)()
 
-@app.route('/api/retirement_fund/<fund_id>', methods=['POST', 'DELETE'])
-def update_retirement_fund(fund_id):
+@app.route('/api/retirement_fund/<fund_id>', methods=['GET', 'POST', 'DELETE'])
+def retirement_fund(fund_id):
     return lambda_to_flask(update_fund_handler)(fund_id=fund_id)
 
-# Budget routes - create and update
+# Budget routes - create, update, and get
 @app.route('/api/budget', methods=['POST'])
 def create_budget():
     return lambda_to_flask(update_budget_handler)()
 
-@app.route('/api/budget/<budget_id>', methods=['POST'])
-def update_budget(budget_id):
+@app.route('/api/budget/<budget_id>', methods=['GET', 'POST'])
+def budget(budget_id):
     return lambda_to_flask(update_budget_handler)(budget_id=budget_id)
 
 if __name__ == '__main__':

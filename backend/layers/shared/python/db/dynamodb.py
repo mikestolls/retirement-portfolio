@@ -207,6 +207,39 @@ def db_get_user_data(user_id):
         print(f"Error getting user data: {str(e)}")
         return None
 
+def db_get_family_info(family_id):
+    """Get family info by family_id"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        table = dynamodb.Table(FAMILIES_TABLE)
+        response = table.get_item(Key={'family_id': family_id})
+        return response.get('Item')
+    except Exception as e:
+        print(f"Error getting family info: {str(e)}")
+        return None
+
+def db_get_retirement_fund(fund_id):
+    """Get retirement fund by fund_id"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
+        response = table.get_item(Key={'fund_id': fund_id})
+        return response.get('Item')
+    except Exception as e:
+        print(f"Error getting retirement fund: {str(e)}")
+        return None
+
+def db_get_budget(budget_id):
+    """Get budget by budget_id"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        table = dynamodb.Table(BUDGETS_TABLE)
+        response = table.get_item(Key={'budget_id': budget_id})
+        return response.get('Item')
+    except Exception as e:
+        print(f"Error getting budget: {str(e)}")
+        return None
+
 def db_update_family_info(family_id, family_member_data):
     """Update family info or create if doesn't exist"""
     try:

@@ -143,7 +143,7 @@ export const RetirementProvider = ({ children }) => {
       // Update local state with all the created data (no need to fetch!)
       setUserData({
         user: userData,
-        family_info: familyData,
+        family_info: { family_member_data: familyData },
         retirement_funds: [fundData],
         budgets: [budgetData]
       });
@@ -344,7 +344,7 @@ export const RetirementProvider = ({ children }) => {
       const familyId = userData?.user?.family_id;
       if (!familyId) throw new Error('Family ID not available');
 
-      let updatedFamilyData = [...(userData?.family_info || [])];
+      let updatedFamilyData = [...(userData?.family_info?.family_member_data || [])];
 
       if (updatedMember === null) {
         // Delete member
@@ -372,7 +372,7 @@ export const RetirementProvider = ({ children }) => {
       if (result.family_data && result.family_data.family_member_data) {
         setUserData(prevData => ({
           ...prevData,
-          family_info: result.family_data.family_member_data
+          family_info: { family_member_data: result.family_data.family_member_data }
         }));
       }
       
@@ -391,14 +391,14 @@ export const RetirementProvider = ({ children }) => {
   }, []);
 
   const householdProjection = useMemo(() => {
-    if (!userData?.retirement_funds || !userData?.family_info) return { data: [], legendMap: {} };
+    if (!userData?.retirement_funds || !userData?.family_info?.family_member_data) return { data: [], legendMap: {} };
     
     const yearData = {};
     const legendMap = {};
     
     userData.retirement_funds.forEach((fund, fundIndex) => {
       if (fund.retirement_projection) {
-        const member = userData.family_info.find(m => m.id === fund['family_member_id']);
+        const member = userData.family_info.family_member_data.find(m => m.id === fund['family_member_id']);
         const fundKey = `fund_${fundIndex}`;
         const legendName = `${fund.name} (${member?.name || 'Unknown'})`;
         

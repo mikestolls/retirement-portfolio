@@ -109,7 +109,7 @@ export default function FamilyInfo() {
     };
 
     // Add the new member to current family data
-    const currentFamilyData = userData?.family_info || [];
+    const currentFamilyData = userData?.family_info.family_member_data || [];
     const updatedFamilyData = [...currentFamilyData, newMember];
 
     try {
@@ -126,7 +126,7 @@ export default function FamilyInfo() {
         // Update local state with the returned family data
         setUserData(prevData => ({
           ...prevData,
-          family_info: result.family_info.family_member_data
+          family_info: result.family_info
         }));
         
         // Open drawer to edit the new member (will be last in array)
@@ -259,7 +259,7 @@ export default function FamilyInfo() {
               }
               
               // Calculate retirement years for markers
-              const retirementMarkers = userData?.family_info?.map(member => {
+              const retirementMarkers = userData?.family_info?.family_member_data?.map(member => {
                 const currentAge = Math.floor((new Date() - new Date(member['date_of_birth'])) / (365.25 * 24 * 60 * 60 * 1000));
                 const retirementYear = new Date().getFullYear() + (member['retirement_age'] - currentAge);
                 return { name: member.name, year: retirementYear };
@@ -415,20 +415,20 @@ export default function FamilyInfo() {
             </IconButton>
           </Stack>
           
-          {editingMember !== null && userData?.family_info?.[editingMember] && (
+          {editingMember !== null && userData?.family_info?.family_member_data?.[editingMember] && (
             <Stack spacing={2}>
               <TextField 
                 label="Name" 
                 name="name"
                 variant="outlined"
                 fullWidth
-                value={getFormData(editingMember)['name'] || userData.family_info[editingMember]['name']}
+                value={getFormData(editingMember)['name'] || userData.family_info.family_member_data[editingMember]['name']}
                 onChange={handleChange(editingMember)}
               />
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   label="Date of Birth"
-                  value={dayjs(getFormData(editingMember)['date_of_birth'] || userData.family_info[editingMember]['date_of_birth'])}
+                  value={dayjs(getFormData(editingMember)['date_of_birth'] || userData.family_info.family_member_data[editingMember]['date_of_birth'])}
                   onChange={(newValue) => {
                     setFormData(editingMember, {
                       ...getFormData(editingMember),
@@ -451,7 +451,7 @@ export default function FamilyInfo() {
                 fullWidth
                 type="number"
                 slotProps={{ htmlInput: { min: 50, max: 80 } }}
-                value={getFormData(editingMember)['retirement_age'] || userData.family_info[editingMember]['retirement_age']}
+                value={getFormData(editingMember)['retirement_age'] || userData.family_info.family_member_data[editingMember]['retirement_age']}
                 onChange={handleChange(editingMember)}
               />
               <TextField
@@ -461,7 +461,7 @@ export default function FamilyInfo() {
                 fullWidth
                 type="number"
                 slotProps={{ htmlInput: { min: 60, max: 120 } }}
-                value={getFormData(editingMember)['life_expectancy'] || userData.family_info[editingMember]['life_expectancy']}
+                value={getFormData(editingMember)['life_expectancy'] || userData.family_info.family_member_data[editingMember]['life_expectancy']}
                 onChange={handleChange(editingMember)}
               />
               <Button 

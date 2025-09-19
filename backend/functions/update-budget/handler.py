@@ -1,11 +1,12 @@
 import json
 import logging
 from datetime import datetime
-from db.dynamodb import db_update_budget, db_create_tables_if_not_exist
+from db.dynamodb import db_update_budget, db_get_budget, db_create_tables_if_not_exist
 from models.budget_data import BudgetData
 from utils.handler_utils import (
     create_error_response, 
     process_crud_request, 
+    process_get_request,
     generate_uuid
 )
 
@@ -31,6 +32,12 @@ def lambda_handler(event, context):
                 # Create new budget
                 return handle_create_budget(event)
         
+        # Handle GET request to retrieve budget
+        elif event.get('httpMethod') == 'GET':
+            if not budget_id:
+                return create_error_response(400, "budget_id is required for GET")
+            return handle_get_budget(budget_id)
+        
         return create_error_response(405, "Method not allowed")
         
     except Exception as e:
@@ -54,7 +61,9 @@ def handle_create_budget(event):
         success_message='Budget created successfully',
         status_code=201,
         data_key='budget_data',
-        data_transform=transform_budget_data
+        data_transform=transform_budget_data,
+        id_key='budget_id',
+        response_key='budget_info'
     )
 
 def handle_update_budget(event, budget_id):
@@ -71,5 +80,16 @@ def handle_update_budget(event, budget_id):
         success_message='Budget updated successfully',
         status_code=200,
         data_key='budget_data',
-        data_transform=transform_budget_data
+        data_transform=transform_budget_data,
+        id_key='budget_id',
+        response_key='budget_info'
+    )
+
+def handle_get_budget(budget_id):
+    """Handle GET requests to retrieve budget info"""
+    return process_get_request(
+        resource_id=budget_id,
+        db_function=db_get_budget,
+        response_key='budget_info',
+        not_found_message="Budget not found"
     )

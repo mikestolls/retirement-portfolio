@@ -1,11 +1,12 @@
 import json
 import logging
 from datetime import datetime
-from db.dynamodb import db_update_family_info, db_create_tables_if_not_exist
+from db.dynamodb import db_update_family_info, db_get_family_info, db_create_tables_if_not_exist
 from models.family_info_data import FamilyInfoData
 from utils.handler_utils import (
     create_error_response, 
     process_crud_request, 
+    process_get_request,
     generate_uuid
 )
 
@@ -33,7 +34,7 @@ def lambda_handler(event, context):
         family_id = event.get('pathParameters', {}).get('family_id')
         logger.info(f"Extracted family_id: {family_id}")
         
-        # Handle POST request for both create and update
+        # Handle different HTTP methods
         if event.get('httpMethod') == 'POST':
             if family_id:
                 # Update existing family
@@ -41,6 +42,12 @@ def lambda_handler(event, context):
             else:
                 # Create new family
                 return handle_create_family(event)
+        elif event.get('httpMethod') == 'GET':
+            if family_id:
+                # Get existing family
+                return handle_get_family(family_id)
+            else:
+                return create_error_response(400, "Family ID is required for GET requests")
         
         return create_error_response(405, "Method not allowed")
         
@@ -69,7 +76,7 @@ def handle_create_family(event):
         data_transform=transform_family_data,
         data_key='family_member_data',
         id_key='family_id',
-        response_key='family_data'
+        response_key='family_info'
     )
 
 def handle_update_family(event, family_id):
@@ -91,5 +98,14 @@ def handle_update_family(event, family_id):
         data_transform=transform_family_data,
         data_key='family_member_data',
         id_key='family_id',
-        response_key='family_data'
+        response_key='family_info'
+    )
+
+def handle_get_family(family_id):
+    """Handle GET requests to retrieve family info"""
+    return process_get_request(
+        resource_id=family_id,
+        db_function=db_get_family_info,
+        response_key='family_info',
+        not_found_message="Family not found"
     )

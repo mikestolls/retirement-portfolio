@@ -1,12 +1,13 @@
 import json
 import logging
 from datetime import datetime
-from db.dynamodb import db_update_retirement_fund, db_create_tables_if_not_exist, db_delete_retirement_fund
+from db.dynamodb import db_update_retirement_fund, db_get_retirement_fund, db_create_tables_if_not_exist, db_delete_retirement_fund
 from models.retirement_fund_data import RetirementFundData
 from utils.handler_utils import (
     create_error_response, 
     create_success_response,
     process_crud_request, 
+    process_get_request,
     generate_uuid
 )
 
@@ -38,6 +39,12 @@ def lambda_handler(event, context):
                 return create_error_response(400, "fund_id is required for DELETE")
             return handle_delete_fund(event, fund_id)
         
+        # Handle GET request to retrieve fund
+        elif event.get('httpMethod') == 'GET':
+            if not fund_id:
+                return create_error_response(400, "fund_id is required for GET")
+            return handle_get_fund(fund_id)
+        
         return create_error_response(405, "Method not allowed")
         
     except Exception as e:
@@ -65,7 +72,9 @@ def handle_create_fund(event):
         success_message='Retirement fund created successfully',
         status_code=201,
         data_key='retirement_fund_data',
-        data_transform=transform_fund_data
+        data_transform=transform_fund_data,
+        id_key='fund_id',
+        response_key='retirement_fund_info'
     )
 
 def handle_delete_fund(event, fund_id):
@@ -94,5 +103,16 @@ def handle_update_fund(event, fund_id):
         success_message='Retirement fund updated successfully',
         status_code=200,
         data_key='retirement_fund_data',
-        data_transform=transform_fund_data
+        data_transform=transform_fund_data,
+        id_key='fund_id',
+        response_key='retirement_fund_info'
+    )
+
+def handle_get_fund(fund_id):
+    """Handle GET requests to retrieve retirement fund info"""
+    return process_get_request(
+        resource_id=fund_id,
+        db_function=db_get_retirement_fund,
+        response_key='retirement_fund_info',
+        not_found_message="Fund not found"
     )

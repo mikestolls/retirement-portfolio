@@ -75,6 +75,19 @@ def create_error_response(status_code: int, message: str) -> Dict[str, Any]:
     """Create error response"""
     return create_response(status_code, message, None, "error")
 
+def create_data_response(status_code: int, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Create clean data response without message/status keys"""
+    headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+    }
+    
+    return {
+        'statusCode': status_code,
+        'headers': headers,
+        'body': json.dumps(data, default=str)
+    }
+
 def process_crud_request(
     event: Dict[str, Any],
     resource_id: Optional[str],
@@ -125,16 +138,10 @@ def process_crud_request(
         if not result:
             return create_error_response(500, f"Failed to {'create' if status_code == 201 else 'update'} resource")
         
-        # Prepare response data
-        response_data = {}
-        if resource_id:
-            # For create/update operations, include the ID and data
-            response_data[id_key] = resource_id
+        # Prepare response data - just return the result with the response key
+        response_data = {response_key: result}
             
-        # Include the result data
-        response_data[response_key] = result
-            
-        return create_success_response(status_code, success_message, response_data)
+        return create_data_response(status_code, response_data)
         
     except Exception as e:
         logger.error(f"Database operation error: {str(e)}")
@@ -143,3 +150,38 @@ def process_crud_request(
 def generate_uuid() -> str:
     """Generate a new UUID string"""
     return str(uuid.uuid4())
+
+def process_get_request(
+    resource_id: str,
+    db_function: Callable,
+    response_key: str = 'data',
+    not_found_message: str = "Resource not found"
+) -> Dict[str, Any]:
+    """
+    Generic GET request processor
+    
+    Args:
+        resource_id: ID for the resource to retrieve
+        db_function: Database function to call (should take resource_id as parameter)
+        response_key: Key to use for the result data in response (e.g., 'family_info', 'retirement_fund_info')
+        not_found_message: Message to return when resource is not found
+    """
+    try:
+        # Call database function
+        result = db_function(resource_id)
+        
+        if not result:
+            return create_error_response(404, not_found_message)
+        
+        # Convert Decimals to floats for JSON serialization
+        from utils.converter import convert_decimals_to_floats
+        result = convert_decimals_to_floats(result)
+        
+        # Prepare response data
+        response_data = {response_key: result}
+            
+        return create_data_response(200, response_data)
+        
+    except Exception as e:
+        logger.error(f"Database get operation error: {str(e)}")
+        return create_error_response(500, f"Error retrieving resource: {str(e)}")
