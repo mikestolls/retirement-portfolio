@@ -2,6 +2,25 @@ import React, { createContext, useState, useContext, useEffect, useRef, useMemo 
 
 const RetirementContext = createContext();
 
+// Default family member template used throughout the app
+const DEFAULT_FAMILY_MEMBER = {
+  name: 'Stolz',
+  date_of_birth: '1986-01-31',
+  life_expectancy: 90,
+  retirement_age: 65,
+};
+
+// Default retirement fund template used throughout the app
+const DEFAULT_RETIREMENT_FUND = {
+  name: 'Fund',
+  initial_investment: 1000,
+  regular_contribution: 10,
+  contribution_frequency: 12,
+  return_rate_params: [],
+  contribution_params: [],
+  actual_data: []
+};
+
 export const RetirementProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -49,12 +68,7 @@ export const RetirementProvider = ({ children }) => {
   const createDefaultUserData = async () => {
     try {
       // Define default data structures (frontend controls structure, backend generates IDs)
-      const defaultFamilyMember = {
-        name: 'Stolz',
-        date_of_birth: '1986-01-31',
-        life_expectancy: 90,
-        retirement_age: 65,
-      };
+      const defaultFamilyMember = DEFAULT_FAMILY_MEMBER;
 
       // 1. Create family with default member first (no ID in request)
       const familyResponse = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/family_info`, {
@@ -68,22 +82,16 @@ export const RetirementProvider = ({ children }) => {
       }
 
       const familyResult = await familyResponse.json();
-      const familyId = familyResult.family_id;
-      const memberId = familyResult.family_data.family_member_data[0].id; // Backend generated member ID
-      const familyData = familyResult.family_data.family_member_data;
+      const familyId = familyResult.family_info.family_id;
+      const memberId = familyResult.family_info.family_member_data[0].id; // Backend generated member ID
+      const familyData = familyResult.family_info.family_member_data;
 
       // 2. Create default retirement fund (references family_id and member_id)
       const defaultFund = {
-        name: 'Fund',
+        ...DEFAULT_RETIREMENT_FUND,
         family_member_id: memberId,
         family_id: familyId,
-        initial_investment: 1000,
-        regular_contribution: 10,
-        contribution_frequency: 12,
-        start_date: new Date().toISOString().split('T')[0],
-        return_rate_params: [],
-        contribution_params: [],
-        actual_data: []
+        start_date: new Date().toISOString().split('T')[0]
       };
 
       const fundResponse = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/retirement_fund`, {
@@ -97,7 +105,7 @@ export const RetirementProvider = ({ children }) => {
       }
 
       const fundResult = await fundResponse.json();
-      const fundData = fundResult.retirement_fund_data;
+      const fundData = fundResult.retirement_fund_info;
 
       // 3. Create default budget (references family_id)
       const defaultBudget = {
@@ -121,7 +129,7 @@ export const RetirementProvider = ({ children }) => {
       }
 
       const budgetResult = await budgetResponse.json();
-      const budgetData = budgetResult.budget_data;
+      const budgetData = budgetResult.budget_info;
 
       // 4. Finally, create user record with family_id reference
       const userResponse = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/users/${user_id}`, {
@@ -236,8 +244,8 @@ export const RetirementProvider = ({ children }) => {
         result = await response.json();
         
         // Use the ID returned from backend (for new funds) or the existing ID
-        const returnedFundId = result.fund_id || fundId;
-        const returnedFund = result.retirement_fund_data;
+        const returnedFundId = result.retirement_fund_info?.fund_id || fundId;
+        const returnedFund = result.retirement_fund_info;
         
         // Update local state with the returned fund (includes calculated projections)
         if (returnedFund) {
@@ -313,14 +321,14 @@ export const RetirementProvider = ({ children }) => {
       const result = await response.json();
       
       // Update local state with the returned fund (includes updated projections)
-      if (result.retirement_fund_data) {
+      if (result.retirement_fund_info) {
         setUserData(prevData => {
           const existingFunds = prevData.retirement_funds || [];
           const fundIndex = existingFunds.findIndex(f => f.id === fundId);
           
           if (fundIndex >= 0) {
             const updatedFunds = [...existingFunds];
-            updatedFunds[fundIndex] = { ...updatedFunds[fundIndex], ...result.retirement_fund_data };
+            updatedFunds[fundIndex] = { ...updatedFunds[fundIndex], ...result.retirement_fund_info };
             return { ...prevData, retirement_funds: updatedFunds };
           }
           return prevData;
@@ -335,6 +343,15 @@ export const RetirementProvider = ({ children }) => {
       setLoading(false);
     }
   };
+
+  const getDefaultFamilyMember = () => ({ ...DEFAULT_FAMILY_MEMBER });
+
+  const getDefaultRetirementFund = (familyMemberId, familyId) => ({
+    ...DEFAULT_RETIREMENT_FUND,
+    family_member_id: familyMemberId,
+    family_id: familyId,
+    start_date: new Date().toISOString().split('T')[0]
+  });
 
   const updateFamilyInfoData = async (memberIndex, updatedMember) => {
     setLoading(true);
@@ -353,8 +370,9 @@ export const RetirementProvider = ({ children }) => {
         // Update existing member
         updatedFamilyData[memberIndex] = { ...updatedFamilyData[memberIndex], ...updatedMember };
       } else {
-        // Add new member - backend will generate ID
-        updatedFamilyData.push({ ...updatedMember }); // No ID, backend will add it
+        // Add new member - use defaults if empty object provided
+        const memberData = Object.keys(updatedMember).length === 0 ? getDefaultFamilyMember() : updatedMember;
+        updatedFamilyData.push({ ...memberData }); // No ID, backend will add it
       }
 
       // Send entire family data array to simplified backend
@@ -369,10 +387,10 @@ export const RetirementProvider = ({ children }) => {
       const result = await response.json();
       
       // Update local state with the returned family data
-      if (result.family_data && result.family_data.family_member_data) {
+      if (result.family_info && result.family_info.family_member_data) {
         setUserData(prevData => ({
           ...prevData,
-          family_info: { family_member_data: result.family_data.family_member_data }
+          family_info: { family_member_data: result.family_info.family_member_data }
         }));
       }
       
@@ -428,6 +446,8 @@ export const RetirementProvider = ({ children }) => {
       updateRetirementFund, // Legacy index-based
       updateFamilyInfoData,
       updateActualBalance,
+      getDefaultFamilyMember,
+      getDefaultRetirementFund,
       householdProjection,
       loading, 
       error

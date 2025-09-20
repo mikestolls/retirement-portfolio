@@ -92,45 +92,16 @@ export default function FamilyInfo() {
   };
 
   const handleAddMember = async () => {
-    const familyId = userData?.user?.family_id;
-    if (!familyId) {
-      console.error('No family ID found');
-      return;
-    }
-
-    // Create new member locally with default data
-    const newMemberId = `member_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newMember = {
-      id: newMemberId,
-      name: 'New Member',
-      date_of_birth: '1990-01-01',
-      life_expectancy: 85,
-      retirement_age: 65,
-    };
-
-    // Add the new member to current family data
-    const currentFamilyData = userData?.family_info.family_member_data || [];
-    const updatedFamilyData = [...currentFamilyData, newMember];
+    // Get current family data length to determine new member index
+    const currentFamilyData = userData?.family_info?.family_member_data || [];
+    const newMemberIndex = currentFamilyData.length;
 
     try {
-      // Send entire family data to backend for update
-      const response = await fetch(`/api/family_info/${familyId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedFamilyData)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        
-        // Update local state with the returned family data
-        setUserData(prevData => ({
-          ...prevData,
-          family_info: result.family_info
-        }));
-        
+      // Use the context method to add a new member (let backend provide defaults)
+      const success = await updateFamilyInfoData(newMemberIndex, {});
+      
+      if (success) {
         // Open drawer to edit the new member (will be last in array)
-        const newMemberIndex = updatedFamilyData.length - 1;
         setEditingMember(newMemberIndex);
         setDrawerOpen(true);
       } else {

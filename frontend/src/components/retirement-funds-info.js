@@ -20,11 +20,11 @@ const contribution_frequencies = [
 ];
 
 export default function RetirementFundsInfo() {
-  const { updateRetirementFund, userData, setUserData, loading, error, updateActualBalance } = useRetirement();
+  const { updateRetirementFund, userData, setUserData, loading, error, updateActualBalance, getDefaultRetirementFund } = useRetirement();
 
   // Extract data from new structure
   const retirementData = { retirement_fund_data: userData?.retirement_funds || [] };
-  const familyInfoData = { family_info_data: userData?.family_info || [] };
+  const familyInfoData = userData?.family_info;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
@@ -116,12 +116,8 @@ export default function RetirementFundsInfo() {
 
   const handleAddFund = async () => {
     const newIndex = retirementData?.retirement_fund_data?.length || 0;
-    setSelectedFund(newIndex);
-    setEditingFund(newIndex);
-    setDrawerOpen(true);
-
-    // Generate a new fund ID and get first family member
-    const fundId = crypto.randomUUID();
+    
+    // Get first family member for default assignment
     const familyMemberId = familyInfoData?.family_member_data?.[0]?.id || '';
     const familyId = userData?.user?.family_id;
 
@@ -130,45 +126,20 @@ export default function RetirementFundsInfo() {
       return;
     }
 
-    // Create new fund with default data
-    const newFund = {
-      id: fundId,
-      name: 'Fund',
-      family_member_id: familyMemberId,
-      family_id: familyId,
-      initial_investment: 1000,
-      regular_contribution: 10,
-      contribution_frequency: 12,
-      start_date: new Date().toISOString().split('T')[0],
-      return_rate_params: [],
-      contribution_params: [],
-      actual_data: []
-    };
+    // Get default retirement fund data from context
+    const newFund = getDefaultRetirementFund(familyMemberId, familyId);
 
     try {
-      // Send fund data to simplified backend
-      const response = await fetch(`/api/retirement_fund/${fundId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newFund),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      // Use the context method to add the new fund
+      const success = await updateRetirementFund(newIndex, newFund);
       
-      if (result.status === 'success') {
-        // Update local state by adding the new fund
-        setUserData(prevData => ({
-          ...prevData,
-          retirement_funds: [...(prevData.retirement_funds || []), result.fund]
-        }));
+      if (success) {
+        // Open drawer to edit the new fund
+        setSelectedFund(newIndex);
+        setEditingFund(newIndex);
+        setDrawerOpen(true);
       } else {
-        console.error('Error adding fund:', result.message);
+        console.error('Failed to add fund');
       }
     } catch (error) {
       console.error('Error adding fund:', error);
