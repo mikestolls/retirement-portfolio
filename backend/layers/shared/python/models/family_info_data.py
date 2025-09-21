@@ -7,7 +7,7 @@ class FamilyInfoData:
     
     def validate(self):
         """
-        Validate family info parameters
+        Validate and normalize family info parameters
         
         Returns:
             tuple: (is_valid, error_message)
@@ -16,8 +16,13 @@ class FamilyInfoData:
         for member in self.family_member_data:
             name = member.get('name', '')
             date_of_birth = member.get('date_of_birth', '')
-            life_expectancy = int(member.get('life_expectancy', 0))
-            retirement_age = int(member.get('retirement_age', 0))
+            
+            # Convert and normalize numeric fields
+            try:
+                member['life_expectancy'] = int(member.get('life_expectancy', 0))
+                member['retirement_age'] = int(member.get('retirement_age', 0))
+            except (ValueError, TypeError):
+                return False, "Life expectancy and retirement age must be valid numbers"
             
             if name is not None and len(name) < 1:
                 return False, "Name must be at least 1 character long"
@@ -25,10 +30,10 @@ class FamilyInfoData:
             if not date_of_birth:
                 return False, "Date of birth is required"
             
-            if life_expectancy < 50 or life_expectancy > 120:
+            if member['life_expectancy'] < 50 or member['life_expectancy'] > 120:
                 return False, "Life expectancy must be between 50 and 120"
             
-            if retirement_age < 50 or retirement_age > 80:
+            if member['retirement_age'] < 50 or member['retirement_age'] > 80:
                 return False, "Retirement age must be between 50 and 80"
                             
         return True, ""

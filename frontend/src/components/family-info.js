@@ -373,10 +373,15 @@ export default function FamilyInfo() {
         anchor="right"
         open={drawerOpen}
         onClose={handleDrawerClose}
-        disableEnforceFocus
-        disableAutoFocus
-        disableRestoreFocus
+        disableEnforceFocus={true}
+        disableAutoFocus={true}
+        disableRestoreFocus={true}
         hideBackdrop={false}
+        keepMounted={false}
+        ModalProps={{
+          disablePortal: true,
+          disableScrollLock: false,
+        }}
       >
         <Box sx={{ width: 400, p: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>

@@ -244,10 +244,15 @@ export default function RetirementFundsInfo() {
         anchor="right"
         open={drawerOpen}
         onClose={handleDrawerClose}
-        disableEnforceFocus
-        disableAutoFocus
-        disableRestoreFocus
+        disableEnforceFocus={true}
+        disableAutoFocus={true}
+        disableRestoreFocus={true}
         hideBackdrop={false}
+        keepMounted={false}
+        ModalProps={{
+          disablePortal: true,
+          disableScrollLock: false,
+        }}
       >
         <Box sx={{ width: 400, p: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -396,6 +401,15 @@ export default function RetirementFundsInfo() {
           }
           setReturnRateDrawerOpen(false);
         }}
+        disableEnforceFocus={true}
+        disableAutoFocus={true}
+        disableRestoreFocus={true}
+        hideBackdrop={false}
+        keepMounted={false}
+        ModalProps={{
+          disablePortal: true,
+          disableScrollLock: false,
+        }}
         sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -510,6 +524,15 @@ export default function RetirementFundsInfo() {
             }
           }
           setContributionDrawerOpen(false);
+        }}
+        disableEnforceFocus={true}
+        disableAutoFocus={true}
+        disableRestoreFocus={true}
+        hideBackdrop={false}
+        keepMounted={false}
+        ModalProps={{
+          disablePortal: true,
+          disableScrollLock: false,
         }}
         sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
       >
@@ -653,6 +676,15 @@ export default function RetirementFundsInfo() {
           }
           setActualsDrawerOpen(false);
           setActualFormData({});
+        }}
+        disableEnforceFocus={true}
+        disableAutoFocus={true}
+        disableRestoreFocus={true}
+        hideBackdrop={false}
+        keepMounted={false}
+        ModalProps={{
+          disablePortal: true,
+          disableScrollLock: false,
         }}
         sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
       >
