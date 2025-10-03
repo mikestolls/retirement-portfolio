@@ -163,30 +163,14 @@ export const RetirementProvider = ({ children }) => {
     }
   };
 
-  const updateRetirementFund = async (fundIdentifier, updatedFund) => {
+  const updateRetirementFund = async (fundId, updatedFund) => {
     setLoading(true);
     setError(null);
 
     try {
-      const userId = userData?.user?.id;
+      // Use the static user_id instead of userData?.user?.id
+      const userId = user_id;
       if (!userId) throw new Error('User ID not available');
-
-      let fundId;
-      
-      // Handle both index-based (legacy) and ID-based calls
-      if (typeof fundIdentifier === 'number') {
-        // Legacy: index-based call
-        const currentFunds = userData?.retirement_funds || [];
-        if (fundIdentifier < currentFunds.length) {
-          fundId = currentFunds[fundIdentifier]?.id;
-        } else {
-          // New fund - will be created with backend-generated ID
-          fundId = null; // Indicates this is a new fund
-        }
-      } else {
-        // Modern: ID-based call
-        fundId = fundIdentifier;
-      }
 
       if (!fundId && updatedFund !== null) {
         // This is a new fund creation case
@@ -222,7 +206,12 @@ export const RetirementProvider = ({ children }) => {
         // Check if this is a new fund (no existing ID) or update
         const existingFunds = userData?.retirement_funds || [];
         const existingFund = existingFunds.find(f => f.id === fundId) || fundId === 'new_fund';
-        
+
+        // removing create and update timestamps, and projects
+        delete fundData.created_at;
+        delete fundData.updated_at;
+        delete fundData.retirement_projection;
+
         let response;
         if (existingFund && fundId !== 'new_fund') {
           // Update existing fund - use ID in path
@@ -311,10 +300,22 @@ export const RetirementProvider = ({ children }) => {
       const familyId = userData?.user?.family_id;
       if (!familyId) throw new Error('Family ID not available');
       
+      // Send complete fund object with updated actual_data
+      const fundData = { 
+        ...fund, 
+        actual_data: updatedActualData, 
+        family_id: familyId 
+      };
+      
+      // Remove timestamp fields that the backend manages automatically
+      delete fundData.created_at;
+      delete fundData.updated_at;
+      delete fundData.retirement_projection;
+      
       const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/retirement_fund/${fundId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actual_data: updatedActualData, family_id: familyId })
+        body: JSON.stringify(fundData)
       });
       if (!response.ok) throw new Error('Backend sync failed');
       
@@ -443,7 +444,7 @@ export const RetirementProvider = ({ children }) => {
       userData,
       setUserData,
       fetchUserData,
-      updateRetirementFund, // Legacy index-based
+      updateRetirementFund,
       updateFamilyInfoData,
       updateActualBalance,
       getDefaultFamilyMember,

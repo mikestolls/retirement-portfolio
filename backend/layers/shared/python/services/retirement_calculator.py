@@ -38,10 +38,10 @@ def calculate_retirement_projection(retirement_fund, family_info):
         member_retirement_year = datetime.now().year + (int(member['retirement_age']) - member_age)
         latest_retirement_year = max(latest_retirement_year, member_retirement_year)
     
-    # Get fund data from retirement fund record
-    fund = retirement_fund.get('fund_data')
+    # Use retirement_fund directly (direct format expected)
+    fund = retirement_fund
     if not fund:
-        return  # Exit early if fund_data structure is missing
+        return  # Exit early if fund data is missing
     
     # get family member data from family_info
     family_member_id = fund['family_member_id']

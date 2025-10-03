@@ -119,7 +119,7 @@ def process_crud_request(
     success, input_data, error_msg = parse_request_body(event)
     if not success:
         return create_error_response(400, error_msg)
-    
+        
     # Apply data transformation if provided
     if data_transform:
         input_data = data_transform(input_data, resource_id)

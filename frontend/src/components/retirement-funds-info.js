@@ -67,18 +67,25 @@ export default function RetirementFundsInfo() {
 
   const handleDrawerClose = () => {
     if (editingFund !== null && formStates[editingFund] && Object.keys(formStates[editingFund]).length > 0) {
-      const updateData = {
-        ...formStates[editingFund],
-        'return_rate_params': getReturnRateParams(editingFund),
-        'contribution_params': getContributionParams(editingFund)
-      };
-      updateRetirementFund(editingFund, updateData).then(() => {
-        setFormStates(prev => {
-          const newStates = { ...prev };
-          delete newStates[editingFund];
-          return newStates;
+      const fund = retirementData?.retirement_fund_data?.[editingFund];
+      const fundId = fund?.id;
+      
+      if (fundId) {
+        const updateData = {
+          ...fund, // Include all original fund data
+          ...formStates[editingFund], // Override with form changes
+          'return_rate_params': getReturnRateParams(editingFund),
+          'contribution_params': getContributionParams(editingFund)
+        };
+                
+        updateRetirementFund(fundId, updateData).then(() => {
+          setFormStates(prev => {
+            const newStates = { ...prev };
+            delete newStates[editingFund];
+            return newStates;
+          });
         });
-      });
+      }
     }
     setDrawerOpen(false);
     setEditingFund(null);
@@ -95,31 +102,34 @@ export default function RetirementFundsInfo() {
   };
 
   const deleteFund = async (index) => {
-    await updateRetirementFund(index, null);
-    setFormStates(prev => {
-      const newStates = {};
-      Object.keys(prev).forEach(key => {
-        const keyIndex = parseInt(key);
-        if (keyIndex < index) {
-          newStates[keyIndex] = prev[key];
-        } else if (keyIndex > index) {
-          newStates[keyIndex - 1] = prev[key];
-        }
+    const fund = retirementData?.retirement_fund_data?.[index];
+    const fundId = fund?.id;
+    
+    if (fundId) {
+      await updateRetirementFund(fundId, null);
+      setFormStates(prev => {
+        const newStates = {};
+        Object.keys(prev).forEach(key => {
+          const keyIndex = parseInt(key);
+          if (keyIndex < index) {
+            newStates[keyIndex] = prev[key];
+          } else if (keyIndex > index) {
+            newStates[keyIndex - 1] = prev[key];
+          }
+        });
+        return newStates;
       });
-      return newStates;
-    });
-    // Reset selectedFund if it's the deleted fund or beyond
-    if (selectedFund >= index) {
-      setSelectedFund(Math.max(0, selectedFund - 1));
+      // Reset selectedFund if it's the deleted fund or beyond
+      if (selectedFund >= index) {
+        setSelectedFund(Math.max(0, selectedFund - 1));
+      }
     }
   };
 
   const handleAddFund = async () => {
-    const newIndex = retirementData?.retirement_fund_data?.length || 0;
-    
     // Get first family member for default assignment
-    const familyMemberId = familyInfoData?.family_member_data?.[0]?.id || '';
-    const familyId = userData?.user?.family_id;
+    const familyMemberId = familyInfoData.family_member_data[0].id || '';
+    const familyId = userData.user.family_id;
 
     if (!familyId || !familyMemberId) {
       console.error('Missing family_id or family_member_id');
@@ -130,11 +140,15 @@ export default function RetirementFundsInfo() {
     const newFund = getDefaultRetirementFund(familyMemberId, familyId);
 
     try {
-      // Use the context method to add the new fund
-      const success = await updateRetirementFund(newIndex, newFund);
+      // Use null as fundId to indicate this is a new fund creation
+      const success = await updateRetirementFund(null, newFund);
       
       if (success) {
-        // Open drawer to edit the new fund
+        // The new fund will be automatically added to the userData by the context
+        // Calculate the new index for the drawer
+        const newIndex = userData.retirement_funds.length;
+        
+        // Open drawer to edit the newly created fund
         setSelectedFund(newIndex);
         setEditingFund(newIndex);
         setDrawerOpen(true);
@@ -393,10 +407,17 @@ export default function RetirementFundsInfo() {
             
             // Only save if parameters have changed
             if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-              const updateData = {
-                'return_rate_params': currentParams
-              };
-              updateRetirementFund(editingFund, updateData);
+              const fund = retirementData?.retirement_fund_data?.[editingFund];
+              const fundId = fund?.id;
+              
+              if (fundId) {
+                const updateData = {
+                  ...fund, // Include all original fund data
+                  ...formStates[editingFund], // Override with form changes
+                  'return_rate_params': currentParams
+                };
+                updateRetirementFund(fundId, updateData);
+              }
             }
           }
           setReturnRateDrawerOpen(false);
@@ -421,10 +442,17 @@ export default function RetirementFundsInfo() {
               
               // Only save if parameters have changed
               if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-                const updateData = {
+                const fund = retirementData?.retirement_fund_data?.[editingFund];
+                const fundId = fund?.id;
+                
+                if (fundId) {
+                  const updateData = {
+                  ...fund, // Include all original fund data
+                  ...formStates[editingFund], // Override with form changes
                   'return_rate_params': currentParams
-                };
-                updateRetirementFund(editingFund, updateData);
+                  };
+                  updateRetirementFund(fundId, updateData);
+                }
               }
             }
             setReturnRateDrawerOpen(false);
@@ -517,10 +545,17 @@ export default function RetirementFundsInfo() {
             
             // Only save if parameters have changed
             if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-              const updateData = {
-                'contribution_params': currentParams
-              };
-              updateRetirementFund(editingFund, updateData);
+              const fund = retirementData?.retirement_fund_data?.[editingFund];
+              const fundId = fund?.id;
+              
+              if (fundId) {
+                const updateData = {
+                  ...fund, // Include all original fund data
+                  ...formStates[editingFund], // Override with form changes
+                  'contribution_params': currentParams
+                };
+                updateRetirementFund(fundId, updateData);
+              }
             }
           }
           setContributionDrawerOpen(false);
@@ -545,10 +580,17 @@ export default function RetirementFundsInfo() {
               
               // Only save if parameters have changed
               if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-                const updateData = {
-                  'contribution_params': currentParams
-                };
-                updateRetirementFund(editingFund, updateData);
+                const fund = retirementData?.retirement_fund_data?.[editingFund];
+                const fundId = fund?.id;
+                
+                if (fundId) {
+                  const updateData = {
+                    ...fund, // Include all original fund data
+                    ...formStates[editingFund], // Override with form changes
+                    'contribution_params': currentParams
+                  };
+                  updateRetirementFund(fundId, updateData);
+                }
               }
             }
             setContributionDrawerOpen(false);

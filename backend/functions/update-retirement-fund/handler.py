@@ -1,8 +1,9 @@
 import json
 import logging
 from datetime import datetime
-from db.dynamodb import db_update_retirement_fund, db_get_retirement_fund, db_create_tables_if_not_exist, db_delete_retirement_fund
+from db.dynamodb import db_update_retirement_fund, db_get_retirement_fund, db_create_tables_if_not_exist, db_delete_retirement_fund, db_get_family_info
 from models.retirement_fund_data import RetirementFundData
+from services.retirement_calculator import calculate_retirement_projection
 from utils.handler_utils import (
     create_error_response, 
     create_success_response,
@@ -59,16 +60,30 @@ def handle_create_fund(event):
     # Data transformation function to add fund ID
     def transform_fund_data(input_data, resource_id):
         input_data['id'] = resource_id
-        # Add empty projection for now (will be calculated later)
-        input_data['retirement_projection'] = []
         # Wrap single fund in array format expected by RetirementFundData
         return {'retirement_fund_data': [input_data]}
+    
+    # Custom database function that includes projection calculation
+    def db_function_with_projection(fund_id, fund_data):
+        # First, save the fund to database
+        result = db_update_retirement_fund(fund_id, fund_data)
+        
+        if result:
+            # Calculate retirement projection
+            family_id = fund_data.get('family_id')
+            if family_id:
+                family_info = db_get_family_info(family_id)
+                if family_info:
+                    # Pass fund data directly to calculator (projection only for response)
+                    calculate_retirement_projection(result, family_info)
+        
+        return result
     
     return process_crud_request(
         event=event,
         resource_id=fund_id,
         model_class=RetirementFundData,
-        db_function=lambda fund_id, data: db_update_retirement_fund(fund_id, data[0]),  # Extract single fund from array
+        db_function=lambda fund_id, data: db_function_with_projection(fund_id, data[0]),  # Extract single fund from array
         success_message='Retirement fund created successfully',
         status_code=201,
         data_key='retirement_fund_data',
@@ -95,11 +110,27 @@ def handle_update_fund(event, fund_id):
         # Wrap single fund in array format expected by RetirementFundData
         return {'retirement_fund_data': [input_data]}
     
+    # Custom database function that includes projection calculation
+    def db_function_with_projection(fund_id, fund_data):
+        # First, save the fund to database
+        result = db_update_retirement_fund(fund_id, fund_data)
+        
+        if result:
+            # Calculate retirement projection
+            family_id = fund_data.get('family_id')
+            if family_id:
+                family_info = db_get_family_info(family_id)
+                if family_info:
+                    # Pass fund data directly to calculator (projection only for response)
+                    calculate_retirement_projection(result, family_info)
+        
+        return result
+    
     return process_crud_request(
         event=event,
         resource_id=fund_id,
         model_class=RetirementFundData,
-        db_function=lambda fund_id, data: db_update_retirement_fund(fund_id, data[0]),  # Extract single fund from array
+        db_function=lambda fund_id, data: db_function_with_projection(fund_id, data[0]),  # Extract single fund from array
         success_message='Retirement fund updated successfully',
         status_code=200,
         data_key='retirement_fund_data',
@@ -109,10 +140,26 @@ def handle_update_fund(event, fund_id):
     )
 
 def handle_get_fund(fund_id):
-    """Handle GET requests to retrieve retirement fund info"""
+    """Handle GET requests to retrieve retirement fund info with projections"""
+    # Custom database function that includes projection calculation
+    def db_function_with_projection(fund_id):
+        # First, get the fund from database
+        result = db_get_retirement_fund(fund_id)
+        
+        if result:
+            # Calculate retirement projection for response only
+            family_id = result.get('family_id')
+            if family_id:
+                family_info = db_get_family_info(family_id)
+                if family_info:
+                    # Calculate and add projection to response (not saved to DB)
+                    calculate_retirement_projection(result, family_info)
+        
+        return result
+    
     return process_get_request(
         resource_id=fund_id,
-        db_function=db_get_retirement_fund,
+        db_function=db_function_with_projection,
         response_key='retirement_fund_info',
         not_found_message="Fund not found"
     )
