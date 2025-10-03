@@ -815,16 +815,20 @@ export default function RetirementFundsInfo() {
               
               // Calculate return rate change markers
               const returnRateParams = fund['return_rate_params'] || [];
-              const returnRateMarkers = returnRateParams.map(param => {
+              const allReturnRateMarkers = returnRateParams.map(param => {
                 const changeYear = new Date().getFullYear() + (param.from_age - currentAge);
                 return {
                   year: changeYear,
                   rate: param.return_rate,
                   age: param.from_age
                 };
-              }).filter(marker => marker.year <= retirementYear && marker.year >= startYear);
+              });
+              const returnRateMarkers = allReturnRateMarkers.filter(marker => marker.year <= retirementYear && marker.year >= startYear);
               const firstYear = filteredData.length > 0 ? filteredData[0].year : startYear;
-              const firstReturnRateMarker = returnRateMarkers.find(marker => marker.year <= firstYear);
+              // Find the appropriate return rate for the first year (including rates that start before the chart range)
+              const firstReturnRateMarker = allReturnRateMarkers
+                .filter(marker => marker.year <= firstYear)
+                .sort((a, b) => b.year - a.year)[0]; // Get the most recent rate that applies to the first year
               const firstReturnRate = firstReturnRateMarker ? firstReturnRateMarker.rate : 7;
               const currentYear = new Date().getFullYear();
               
