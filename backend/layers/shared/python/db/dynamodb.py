@@ -151,7 +151,7 @@ def db_create_tables_if_not_exist():
                     'KeySchema': [
                         {'AttributeName': 'family_id', 'KeyType': 'HASH'}
                     ],
-                    'Projection': {'ProjectionType': 'ALL'}
+                    'Projection': {'ProjectionType': 'KEYS_ONLY'}
                 }
             ],
             BillingMode='PAY_PER_REQUEST'
@@ -201,14 +201,28 @@ def db_get_user_data(user_id):
             )
             retirement_funds = batch_response.get('Responses', {}).get(RETIREMENT_FUNDS_TABLE, [])
         
-        # Get budgets
+        # Get budgets using same pattern as retirement funds
         budgets_table = dynamodb.Table(BUDGETS_TABLE)
+        
+        # First, query GSI to get budget IDs
         budgets_response = budgets_table.query(
             IndexName='familyId-index',
             KeyConditionExpression='family_id = :family_id',
             ExpressionAttributeValues={':family_id': family_id}
         )
-        budgets = budgets_response.get('Items', [])
+        budget_ids = [item['budget_id'] for item in budgets_response.get('Items', [])]
+        
+        # Then batch get complete budget records
+        budgets = []
+        if budget_ids:
+            batch_response = dynamodb.batch_get_item(
+                RequestItems={
+                    BUDGETS_TABLE: {
+                        'Keys': [{'budget_id': budget_id} for budget_id in budget_ids]
+                    }
+                }
+            )
+            budgets = batch_response.get('Responses', {}).get(BUDGETS_TABLE, [])
         
         return {
             'user': user,

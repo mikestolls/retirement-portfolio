@@ -82,7 +82,7 @@ Resources:
             - AttributeName: family_id
               KeyType: HASH
           Projection:
-            ProjectionType: ALL
+            ProjectionType: KEYS_ONLY
 
   # S3 Bucket for Frontend
   FrontendBucket:
