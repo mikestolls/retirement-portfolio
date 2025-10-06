@@ -21,15 +21,25 @@ FAMILIES_TABLE = 'families'
 RETIREMENT_FUNDS_TABLE = 'retirement_funds'
 BUDGETS_TABLE = 'budgets'
 
+# Global DynamoDB client for connection reuse
+_dynamodb_client = None
+
 # Initialize DynamoDB client
 def db_get_dynamodb_client():
-    """Get DynamoDB client based on environment"""
+    """Get DynamoDB client based on environment with connection reuse"""
+    global _dynamodb_client
+    
+    # Reuse existing client if available
+    if _dynamodb_client is not None:
+        print("Reusing existing DynamoDB client")  # Will show in CloudWatch logs
+        return _dynamodb_client
+    
     try:        
         # Check if we're running locally (DynamoDB Local)
         endpoint_url = os.environ.get('DYNAMODB_ENDPOINT_URL')
         if endpoint_url:
             # print(f"Connecting to DynamoDB Local at: {endpoint_url}")
-            return boto3.resource(
+            _dynamodb_client = boto3.resource(
                 'dynamodb',
                 endpoint_url=endpoint_url,
                 region_name='us-east-1',
@@ -37,7 +47,10 @@ def db_get_dynamodb_client():
                 aws_secret_access_key='dummy'
             )
         else:  # AWS environment
-            return boto3.resource('dynamodb', region_name=AWS_REGION)
+            _dynamodb_client = boto3.resource('dynamodb', region_name=AWS_REGION)
+        
+        print("Created new DynamoDB client")  # Will show in CloudWatch logs
+        return _dynamodb_client
     except Exception as e:
         print(f"Error connecting to DynamoDB: {str(e)}")
         raise

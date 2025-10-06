@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from db.dynamodb import db_update_budget, db_get_budget, db_create_tables_if_not_exist
+from db.dynamodb import db_update_budget, db_get_budget
 from models.budget_data import BudgetData
 from utils.handler_utils import (
     create_error_response, 
@@ -17,9 +17,6 @@ logger.setLevel(logging.INFO)
 def lambda_handler(event, context):
     """Budget handler supporting both create and update"""
     try:
-        # Ensure tables exist
-        db_create_tables_if_not_exist()
-        
         # Get budget ID from path parameters (None for create operations)
         budget_id = event.get('pathParameters', {}).get('budget_id')
         

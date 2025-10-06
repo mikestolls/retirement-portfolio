@@ -1,6 +1,6 @@
 import json
 import logging
-from db.dynamodb import db_get_user_data, db_create_tables_if_not_exist
+from db.dynamodb import db_get_user_data
 from services.retirement_calculator import calculate_retirement_projection
 
 # Configure logging
@@ -10,9 +10,6 @@ logger.setLevel(logging.INFO)
 def lambda_handler(event, context):
     """Get all user data from 4 tables"""    
     try:
-        # Ensure tables exist
-        db_create_tables_if_not_exist()
-        
         # Get user_id from path parameters
         user_id = event['pathParameters']['user_id']
         

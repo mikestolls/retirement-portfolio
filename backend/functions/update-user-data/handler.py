@@ -1,6 +1,6 @@
 import json
 import logging
-from db.dynamodb import db_create_tables_if_not_exist, db_get_dynamodb_client, USERS_TABLE
+from db.dynamodb import db_get_dynamodb_client, USERS_TABLE
 from datetime import datetime
 
 # Configure logging
@@ -10,9 +10,6 @@ logger.setLevel(logging.INFO)
 def lambda_handler(event, context):
     """Update or create user data"""
     try:
-        # Ensure tables exist
-        db_create_tables_if_not_exist()
-        
         # Get user_id from path parameters
         user_id = event.get('pathParameters', {}).get('user_id')
         if not user_id:

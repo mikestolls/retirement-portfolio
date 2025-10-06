@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from db.dynamodb import db_update_retirement_fund, db_get_retirement_fund, db_create_tables_if_not_exist, db_delete_retirement_fund, db_get_family_info
+from db.dynamodb import db_update_retirement_fund, db_get_retirement_fund, db_delete_retirement_fund, db_get_family_info
 from models.retirement_fund_data import RetirementFundData
 from services.retirement_calculator import calculate_retirement_projection
 from utils.handler_utils import (
@@ -19,9 +19,6 @@ logger.setLevel(logging.INFO)
 def lambda_handler(event, context):
     """Retirement fund handler supporting create, update, and delete"""
     try:
-        # Ensure tables exist
-        db_create_tables_if_not_exist()
-        
         # Get fund ID from path parameters (None for create operations)
         fund_id = event.get('pathParameters', {}).get('fund_id')
         

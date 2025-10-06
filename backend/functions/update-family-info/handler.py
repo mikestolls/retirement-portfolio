@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from db.dynamodb import db_update_family_info, db_get_family_info, db_create_tables_if_not_exist
+from db.dynamodb import db_update_family_info, db_get_family_info
 from models.family_info_data import FamilyInfoData
 from utils.handler_utils import (
     create_error_response, 
@@ -26,9 +26,6 @@ def lambda_handler(event, context):
     try:
         # Debug: Log the incoming event
         logger.info(f"Lambda handler received event: {json.dumps(event, default=str)}")
-        
-        # Ensure tables exist
-        db_create_tables_if_not_exist()
         
         # Get family ID from path parameters (None for create operations)
         family_id = event.get('pathParameters', {}).get('family_id')

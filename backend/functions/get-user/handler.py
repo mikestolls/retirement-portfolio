@@ -1,6 +1,6 @@
 import json
 import logging
-from db.dynamodb import db_create_tables_if_not_exist, db_get_dynamodb_client, USERS_TABLE
+from db.dynamodb import db_get_dynamodb_client, USERS_TABLE
 
 # Configure logging
 logger = logging.getLogger()
@@ -9,9 +9,6 @@ logger.setLevel(logging.INFO)
 def lambda_handler(event, context):
     """Get just user data from users table"""
     try:
-        # Ensure tables exist
-        db_create_tables_if_not_exist()
-        
         # Get user_id from path parameters
         user_id = event['pathParameters']['user_id']
         
