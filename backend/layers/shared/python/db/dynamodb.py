@@ -192,14 +192,22 @@ def db_get_user_data(user_id):
         # Then batch get complete fund records
         retirement_funds = []
         if fund_ids:
-            batch_response = dynamodb.batch_get_item(
-                RequestItems={
-                    RETIREMENT_FUNDS_TABLE: {
-                        'Keys': [{'fund_id': fund_id} for fund_id in fund_ids]
+            try:
+                batch_response = dynamodb.batch_get_item(
+                    RequestItems={
+                        RETIREMENT_FUNDS_TABLE: {
+                            'Keys': [{'fund_id': fund_id} for fund_id in fund_ids]
+                        }
                     }
-                }
-            )
-            retirement_funds = batch_response.get('Responses', {}).get(RETIREMENT_FUNDS_TABLE, [])
+                )
+                if batch_response:  # Check if batch_response is not None
+                    retirement_funds = batch_response.get('Responses', {}).get(RETIREMENT_FUNDS_TABLE, [])
+                else:
+                    print("Warning: batch_get_item returned None for retirement_funds")
+                    retirement_funds = []
+            except Exception as e:
+                print(f"Error in retirement_funds batch_get_item: {str(e)}")
+                retirement_funds = []
         
         # Get budgets using same pattern as retirement funds
         budgets_table = dynamodb.Table(BUDGETS_TABLE)
@@ -215,14 +223,22 @@ def db_get_user_data(user_id):
         # Then batch get complete budget records
         budgets = []
         if budget_ids:
-            batch_response = dynamodb.batch_get_item(
-                RequestItems={
-                    BUDGETS_TABLE: {
-                        'Keys': [{'budget_id': budget_id} for budget_id in budget_ids]
+            try:
+                batch_response = dynamodb.batch_get_item(
+                    RequestItems={
+                        BUDGETS_TABLE: {
+                            'Keys': [{'budget_id': budget_id} for budget_id in budget_ids]
+                        }
                     }
-                }
-            )
-            budgets = batch_response.get('Responses', {}).get(BUDGETS_TABLE, [])
+                )
+                if batch_response:  # Check if batch_response is not None
+                    budgets = batch_response.get('Responses', {}).get(BUDGETS_TABLE, [])
+                else:
+                    print("Warning: batch_get_item returned None for budgets")
+                    budgets = []
+            except Exception as e:
+                print(f"Error in budget batch_get_item: {str(e)}")
+                budgets = []
         
         return {
             'user': user,
@@ -289,15 +305,19 @@ def db_update_family_info(family_id, family_member_data):
         return response['Attributes']
     except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
         # Item doesn't exist, create it
-        table.put_item(
-            Item={
-                'family_id': family_id,
-                'family_member_data': family_member_data,
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
-        )
-        return table.get_item(Key={'family_id': family_id})['Item']
+        new_item = {
+            'family_id': family_id,
+            'family_member_data': family_member_data,
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        try:
+            table.put_item(Item=new_item)
+            # Only return the item if put_item succeeded
+            return new_item
+        except Exception as put_error:
+            print(f"Error creating new family: {str(put_error)}")
+            return None
     except Exception as e:
         print(f"Error updating family: {str(e)}")
         return None

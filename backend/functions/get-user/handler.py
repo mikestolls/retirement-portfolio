@@ -8,9 +8,11 @@ logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
     """Get just user data from users table"""
+        
     try:
         # Get user_id from path parameters
-        user_id = event['pathParameters']['user_id']
+        path_parameters = event.get('pathParameters') or {}
+        user_id = path_parameters.get('user_id')
         
         if not user_id or user_id.strip() == "":
             return {
@@ -20,10 +22,18 @@ def lambda_handler(event, context):
             }
         
         # Get user from users table only
-        dynamodb = db_get_dynamodb_client()
-        user_table = dynamodb.Table(USERS_TABLE)
-        user_response = user_table.get_item(Key={'user_id': user_id})
-        user = user_response.get('Item')
+        try:
+            dynamodb = db_get_dynamodb_client()
+            user_table = dynamodb.Table(USERS_TABLE)
+            user_response = user_table.get_item(Key={'user_id': user_id})
+            user = user_response.get('Item')
+        except Exception as db_error:
+            logger.error(f"DynamoDB operation failed: {str(db_error)}")
+            return {
+                'statusCode': 403,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({"message": f"Database access error: {str(db_error)}", "status": "error"})
+            }
         
         if not user:
             return {
@@ -42,7 +52,9 @@ def lambda_handler(event, context):
         }
         
     except Exception as e:
-        logger.error(f"Error in lambda_handler: {str(e)}", exc_info=True)
+        import traceback
+        logger.error(f"Error in lambda_handler: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},

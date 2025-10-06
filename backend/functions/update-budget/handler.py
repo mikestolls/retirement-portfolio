@@ -18,7 +18,8 @@ def lambda_handler(event, context):
     """Budget handler supporting both create and update"""
     try:
         # Get budget ID from path parameters (None for create operations)
-        budget_id = event.get('pathParameters', {}).get('budget_id')
+        path_parameters = event.get('pathParameters') or {}
+        budget_id = path_parameters.get('budget_id') if path_parameters else None
         
         # Handle POST request for both create and update
         if event.get('httpMethod') == 'POST':

@@ -11,7 +11,8 @@ def lambda_handler(event, context):
     """Get all user data from 4 tables"""    
     try:
         # Get user_id from path parameters
-        user_id = event['pathParameters']['user_id']
+        path_parameters = event.get('pathParameters') or {}
+        user_id = path_parameters.get('user_id')
         
         if not user_id or user_id.strip() == "":
             return {

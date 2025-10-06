@@ -20,7 +20,8 @@ def lambda_handler(event, context):
     """Retirement fund handler supporting create, update, and delete"""
     try:
         # Get fund ID from path parameters (None for create operations)
-        fund_id = event.get('pathParameters', {}).get('fund_id')
+        path_parameters = event.get('pathParameters') or {}
+        fund_id = path_parameters.get('fund_id') if path_parameters else None
         
         # Handle POST request for both create and update
         if event.get('httpMethod') == 'POST':
@@ -46,7 +47,9 @@ def lambda_handler(event, context):
         return create_error_response(405, "Method not allowed")
         
     except Exception as e:
+        import traceback
         logger.error(f"Lambda handler error: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return create_error_response(500, f"Internal server error: {str(e)}")
 
 def handle_create_fund(event):

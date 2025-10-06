@@ -11,7 +11,8 @@ def lambda_handler(event, context):
     """Update or create user data"""
     try:
         # Get user_id from path parameters
-        user_id = event.get('pathParameters', {}).get('user_id')
+        path_parameters = event.get('pathParameters') or {}
+        user_id = path_parameters.get('user_id') if path_parameters else None
         if not user_id:
             return {
                 'statusCode': 400,
@@ -59,7 +60,12 @@ def lambda_handler(event, context):
         
         return {
             'statusCode': 201 if is_new_user else 200,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'headers': {
+                'Content-Type': 'application/json', 
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+                'Access-Control-Allow-Methods': 'POST,OPTIONS'
+            },
             'body': json.dumps({
                 'message': f'User {"created" if is_new_user else "updated"} successfully',
                 'user': user_item,
@@ -67,8 +73,11 @@ def lambda_handler(event, context):
             }, default=str)
         }
         
-    except Exception as e:
+    except Exception as e:        
+        import traceback
         logger.error(f"Lambda handler error: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},

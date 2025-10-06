@@ -28,7 +28,8 @@ def lambda_handler(event, context):
         logger.info(f"Lambda handler received event: {json.dumps(event, default=str)}")
         
         # Get family ID from path parameters (None for create operations)
-        family_id = event.get('pathParameters', {}).get('family_id')
+        path_parameters = event.get('pathParameters') or {}
+        family_id = path_parameters.get('family_id') if path_parameters else None
         logger.info(f"Extracted family_id: {family_id}")
         
         # Handle different HTTP methods
@@ -49,7 +50,9 @@ def lambda_handler(event, context):
         return create_error_response(405, "Method not allowed")
         
     except Exception as e:
+        import traceback
         logger.error(f"Lambda handler error: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return create_error_response(500, f"Internal server error: {str(e)}")
 
 def handle_create_family(event):

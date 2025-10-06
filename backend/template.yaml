@@ -130,7 +130,7 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /api/user/{user_id}
+            Path: /api/users/{user_id}
             Method: post
 
   UpdateFamilyFunction:
