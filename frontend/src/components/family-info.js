@@ -38,20 +38,28 @@ export default function FamilyInfo() {
   const [editingMember, setEditingMember] = useState(null);
 
   const handleDrawerClose = () => {
-    // Only update if there are changes in formStates for this member
-    if (editingMember !== null && formStates[editingMember] && Object.keys(formStates[editingMember]).length > 0) {
-      updateFamilyInfoData(editingMember, formStates[editingMember]).then(() => {
-        // Clear the form state after successful update
-        setFormStates(prev => {
-          const newStates = { ...prev };
-          delete newStates[editingMember];
-          return newStates;
-        });
-      });
-    }
-
+    // Close drawer immediately for better UX
     setDrawerOpen(false);
     setEditingMember(null);
+    
+    // Handle background update if there are changes
+    if (editingMember !== null && formStates[editingMember] && Object.keys(formStates[editingMember]).length > 0) {
+      // Update in background - components will refresh when complete
+      updateFamilyInfoData(editingMember, formStates[editingMember])
+        .then(() => {
+          // Clear the form state after successful update
+          setFormStates(prev => {
+            const newStates = { ...prev };
+            delete newStates[editingMember];
+            return newStates;
+          });
+          // Note: Components will automatically refresh due to userData state change in context
+        })
+        .catch(error => {
+          console.error('Failed to update family member:', error);
+          // Could add toast notification here for user feedback
+        });
+    }
   };
 
   // Form state management

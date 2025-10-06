@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
-import { Box, Button, Stack, TextField, Card, CardContent, Typography, Drawer, IconButton, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper, InputAdornment } from '@mui/material';
+import { Box, Button, Stack, TextField, Card, CardContent, Typography, Drawer, IconButton, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper, InputAdornment, CircularProgress } from '@mui/material';
 import '../css/app.css';
 import MenuItem from '@mui/material/MenuItem';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -66,6 +66,11 @@ export default function RetirementFundsInfo() {
   };
 
   const handleDrawerClose = () => {
+    // Close drawer immediately for better UX
+    setDrawerOpen(false);
+    setEditingFund(null);
+    
+    // Handle background update if there are changes
     if (editingFund !== null && formStates[editingFund] && Object.keys(formStates[editingFund]).length > 0) {
       const fund = retirementData?.retirement_fund_data?.[editingFund];
       const fundId = fund?.id;
@@ -78,17 +83,87 @@ export default function RetirementFundsInfo() {
           'contribution_params': getContributionParams(editingFund)
         };
                 
-        updateRetirementFund(fundId, updateData).then(() => {
-          setFormStates(prev => {
-            const newStates = { ...prev };
-            delete newStates[editingFund];
-            return newStates;
+        // Update in background - charts/cards will refresh when complete
+        updateRetirementFund(fundId, updateData)
+          .then((success) => {
+            if (success) {
+              // Clear form state after successful update
+              setFormStates(prev => {
+                const newStates = { ...prev };
+                delete newStates[editingFund];
+                return newStates;
+              });
+              // Note: Components will automatically refresh due to userData state change in context
+            }
+          })
+          .catch(error => {
+            console.error('Failed to update fund:', error);
+            // Could add toast notification here for user feedback
           });
-        });
       }
     }
-    setDrawerOpen(false);
-    setEditingFund(null);
+  };
+
+  const handleReturnRateDrawerClose = () => {
+    // Close drawer immediately for better UX
+    setReturnRateDrawerOpen(false);
+    
+    // Handle background update if parameters changed
+    if (editingFund !== null) {
+      const currentParams = getReturnRateParams(editingFund);
+      const originalParams = originalReturnRateParams[editingFund] || [];
+      
+      // Only save if parameters have changed
+      if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
+        const fund = retirementData?.retirement_fund_data?.[editingFund];
+        const fundId = fund?.id;
+        
+        if (fundId) {
+          const updateData = {
+            ...fund, // Include all original fund data
+            ...formStates[editingFund], // Override with form changes
+            'return_rate_params': currentParams
+          };
+          
+          // Update in background - components will refresh when complete
+          updateRetirementFund(fundId, updateData)
+            .catch(error => {
+              console.error('Failed to update return rate parameters:', error);
+            });
+        }
+      }
+    }
+  };
+
+  const handleContributionDrawerClose = () => {
+    // Close drawer immediately for better UX
+    setContributionDrawerOpen(false);
+    
+    // Handle background update if parameters changed
+    if (editingFund !== null) {
+      const currentParams = getContributionParams(editingFund);
+      const originalParams = originalContributionParams[editingFund] || [];
+      
+      // Only save if parameters have changed
+      if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
+        const fund = retirementData?.retirement_fund_data?.[editingFund];
+        const fundId = fund?.id;
+        
+        if (fundId) {
+          const updateData = {
+            ...fund, // Include all original fund data
+            ...formStates[editingFund], // Override with form changes
+            'contribution_params': currentParams
+          };
+          
+          // Update in background - components will refresh when complete
+          updateRetirementFund(fundId, updateData)
+            .catch(error => {
+              console.error('Failed to update contribution parameters:', error);
+            });
+        }
+      }
+    }
   };
 
   const handleChange = (index) => (event) => {
@@ -420,28 +495,7 @@ export default function RetirementFundsInfo() {
       <Drawer
         anchor="right"
         open={returnRateDrawerOpen}
-        onClose={() => {
-          if (editingFund !== null) {
-            const currentParams = getReturnRateParams(editingFund);
-            const originalParams = originalReturnRateParams[editingFund] || [];
-            
-            // Only save if parameters have changed
-            if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-              const fund = retirementData?.retirement_fund_data?.[editingFund];
-              const fundId = fund?.id;
-              
-              if (fundId) {
-                const updateData = {
-                  ...fund, // Include all original fund data
-                  ...formStates[editingFund], // Override with form changes
-                  'return_rate_params': currentParams
-                };
-                updateRetirementFund(fundId, updateData);
-              }
-            }
-          }
-          setReturnRateDrawerOpen(false);
-        }}
+        onClose={handleReturnRateDrawerClose}
         disableEnforceFocus={true}
         disableAutoFocus={true}
         disableRestoreFocus={true}
@@ -455,28 +509,7 @@ export default function RetirementFundsInfo() {
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Return Rate Parameters</Typography>
-          <IconButton onClick={() => {
-            if (editingFund !== null) {
-              const currentParams = getReturnRateParams(editingFund);
-              const originalParams = originalReturnRateParams[editingFund] || [];
-              
-              // Only save if parameters have changed
-              if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-                const fund = retirementData?.retirement_fund_data?.[editingFund];
-                const fundId = fund?.id;
-                
-                if (fundId) {
-                  const updateData = {
-                  ...fund, // Include all original fund data
-                  ...formStates[editingFund], // Override with form changes
-                  'return_rate_params': currentParams
-                  };
-                  updateRetirementFund(fundId, updateData);
-                }
-              }
-            }
-            setReturnRateDrawerOpen(false);
-          }}>
+          <IconButton onClick={handleReturnRateDrawerClose}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -558,28 +591,7 @@ export default function RetirementFundsInfo() {
       <Drawer
         anchor="right"
         open={contributionDrawerOpen}
-        onClose={() => {
-          if (editingFund !== null) {
-            const currentParams = getContributionParams(editingFund);
-            const originalParams = originalContributionParams[editingFund] || [];
-            
-            // Only save if parameters have changed
-            if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-              const fund = retirementData?.retirement_fund_data?.[editingFund];
-              const fundId = fund?.id;
-              
-              if (fundId) {
-                const updateData = {
-                  ...fund, // Include all original fund data
-                  ...formStates[editingFund], // Override with form changes
-                  'contribution_params': currentParams
-                };
-                updateRetirementFund(fundId, updateData);
-              }
-            }
-          }
-          setContributionDrawerOpen(false);
-        }}
+        onClose={handleContributionDrawerClose}
         disableEnforceFocus={true}
         disableAutoFocus={true}
         disableRestoreFocus={true}
@@ -593,28 +605,7 @@ export default function RetirementFundsInfo() {
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Contribution Parameters</Typography>
-          <IconButton onClick={() => {
-            if (editingFund !== null) {
-              const currentParams = getContributionParams(editingFund);
-              const originalParams = originalContributionParams[editingFund] || [];
-              
-              // Only save if parameters have changed
-              if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-                const fund = retirementData?.retirement_fund_data?.[editingFund];
-                const fundId = fund?.id;
-                
-                if (fundId) {
-                  const updateData = {
-                    ...fund, // Include all original fund data
-                    ...formStates[editingFund], // Override with form changes
-                    'contribution_params': currentParams
-                  };
-                  updateRetirementFund(fundId, updateData);
-                }
-              }
-            }
-            setContributionDrawerOpen(false);
-          }}>
+          <IconButton onClick={handleContributionDrawerClose}>
             <CloseIcon />
           </IconButton>
         </Box>
