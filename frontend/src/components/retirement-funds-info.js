@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
-import { Box, Button, Stack, TextField, Card, CardContent, Typography, Drawer, IconButton, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper } from '@mui/material';
+import { Box, Button, Stack, TextField, Card, CardContent, Typography, Drawer, IconButton, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper, InputAdornment } from '@mui/material';
 import '../css/app.css';
 import MenuItem from '@mui/material/MenuItem';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -164,15 +164,25 @@ export default function RetirementFundsInfo() {
     if (error) return null;
     
     const fundCards = userData?.retirement_funds?.length ? 
-      userData.retirement_funds.map((fund, index) => {
+      // Sort funds by created_at (oldest first) before mapping
+      userData.retirement_funds
+        .map((fund, originalIndex) => ({ ...fund, originalIndex })) // Preserve original index
+        .sort((a, b) => {
+          // Sort by created_at if available, otherwise maintain original order
+          if (a.created_at && b.created_at) {
+            return new Date(a.created_at) - new Date(b.created_at);
+          }
+          return a.originalIndex - b.originalIndex;
+        })
+        .map((fund, index) => {
         const member = familyInfoData?.family_member_data?.find(m => m.id === fund['family_member_id']);
         const latestProjection = fund.retirement_projection?.[fund.retirement_projection.length - 1];
         
         return (
           <Card 
             className="rounded-2xl shadow-md standard-card card-300 clickable-card"
-            key={index}
-            onClick={() => setSelectedFund(index)}
+            key={fund.originalIndex}
+            onClick={() => setSelectedFund(fund.originalIndex)}
           >
             <CardContent className="p-4">
               <Stack direction="row" spacing={1} alignItems="center">
@@ -181,10 +191,10 @@ export default function RetirementFundsInfo() {
               </Stack>
               <Stack direction="column" spacing={0.5} alignItems="left" className="mb-2">
                 <p className="text-sm">Owner: {member?.name || 'Unknown'}</p>
-                <p className="text-sm">Initial: ${fund['initial_investment']?.toLocaleString()}</p>
-                <p className="text-sm">Monthly: ${fund['regular_contribution']}</p>
+                <p className="text-sm">Initial: ${fund['initial_investment']?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-sm">Monthly: ${fund['regular_contribution']?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 {latestProjection && (
-                  <p className="text-sm">Final Balance: ${latestProjection.end_amount?.toLocaleString()}</p>
+                  <p className="text-sm">Final Balance: ${latestProjection.end_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 )}
               </Stack>
               <Button
@@ -193,7 +203,7 @@ export default function RetirementFundsInfo() {
                 startIcon={<EditIcon />}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleCardClick(index);
+                  handleCardClick(fund.originalIndex);
                 }}
                 sx={{ mt: 1 }}
               >
@@ -306,7 +316,12 @@ export default function RetirementFundsInfo() {
                 variant="outlined"
                 fullWidth
                 type="number"
-                slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                slotProps={{ 
+                  htmlInput: { min: 0, step: 0.01 },
+                  input: {
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>
+                  }
+                }}
                 value={getFormData(editingFund)['initial_investment'] || retirementData.retirement_fund_data[editingFund]['initial_investment']}
                 onChange={handleChange(editingFund)}
               />
@@ -316,7 +331,12 @@ export default function RetirementFundsInfo() {
                 variant="outlined"
                 fullWidth
                 type="number"
-                slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                slotProps={{ 
+                  htmlInput: { min: 0, step: 0.01 },
+                  input: {
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>
+                  }
+                }}
                 value={getFormData(editingFund)['regular_contribution'] || retirementData.retirement_fund_data[editingFund]['regular_contribution']}
                 onChange={handleChange(editingFund)}
               />
