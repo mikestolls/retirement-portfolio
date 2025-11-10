@@ -10,6 +10,9 @@ from flask_cors import CORS
 # Add layers to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'layers', 'shared', 'python'))
 
+# Now import our logging config
+from utils.logging_config import setup_lambda_logging
+
 # Set environment variables
 os.environ['DYNAMODB_ENDPOINT_URL'] = 'http://localhost:8000'
 os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
@@ -17,15 +20,18 @@ os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 if 'LOG_LEVEL' not in os.environ:
     os.environ['LOG_LEVEL'] = 'DEBUG'
 
+# Configure logging
+logger = setup_lambda_logging()
+
 # Create tables for local development
 from db.dynamodb import db_create_tables_if_not_exist
-print("Creating DynamoDB tables for local development...")
+logger.info("Creating DynamoDB tables for local development...")
 try:
     db_create_tables_if_not_exist()
-    print("✅ DynamoDB tables created/verified successfully")
+    logger.info("DynamoDB tables created/verified successfully")
 except Exception as e:
-    print(f"⚠️  Warning: Could not create tables: {e}")
-    print("Make sure DynamoDB Local is running on http://localhost:8000")
+    logger.info(f"Warning: Could not create tables: {e}")
+    logger.info("Make sure DynamoDB Local is running on http://localhost:8000")
 
 # Import Lambda handlers
 import importlib.util
