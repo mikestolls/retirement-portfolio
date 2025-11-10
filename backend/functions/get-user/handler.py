@@ -1,10 +1,9 @@
 import json
-import logging
 from db.dynamodb import db_get_dynamodb_client, USERS_TABLE
+from utils.logging_config import setup_lambda_logging
 
 # Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger = setup_lambda_logging()
 
 def lambda_handler(event, context):
     """Get just user data from users table"""

@@ -13,6 +13,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'layers', 'shared', '
 # Set environment variables
 os.environ['DYNAMODB_ENDPOINT_URL'] = 'http://localhost:8000'
 os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+# Set default log level for development (can be overridden)
+if 'LOG_LEVEL' not in os.environ:
+    os.environ['LOG_LEVEL'] = 'DEBUG'
 
 # Create tables for local development
 from db.dynamodb import db_create_tables_if_not_exist

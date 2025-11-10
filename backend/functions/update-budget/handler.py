@@ -1,5 +1,4 @@
 import json
-import logging
 from datetime import datetime
 from db.dynamodb import db_update_budget, db_get_budget
 from models.budget_data import BudgetData
@@ -9,10 +8,10 @@ from utils.handler_utils import (
     process_get_request,
     generate_uuid
 )
+from utils.logging_config import setup_lambda_logging
 
 # Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger = setup_lambda_logging()
 
 def lambda_handler(event, context):
     """Budget handler supporting both create and update"""

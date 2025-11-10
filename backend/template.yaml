@@ -2,6 +2,18 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: 'Retirement Portfolio Lambda Functions and API Gateway'
 
+Parameters:
+  LogLevel:
+    Type: String
+    Default: INFO
+    AllowedValues:
+      - DEBUG
+      - INFO
+      - WARNING
+      - ERROR
+      - CRITICAL
+    Description: Log level for Lambda functions
+
 Globals:
   Function:
     Runtime: python3.9
@@ -13,6 +25,7 @@ Globals:
         FAMILIES_TABLE: families
         RETIREMENT_FUNDS_TABLE: retirement_funds
         BUDGETS_TABLE: budgets
+        LOG_LEVEL: !Ref LogLevel
     Layers:
       - !Ref SharedLayer
   Api:

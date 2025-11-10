@@ -1,5 +1,4 @@
 import json
-import logging
 from datetime import datetime
 from db.dynamodb import db_update_family_info, db_get_family_info
 from models.family_info_data import FamilyInfoData
@@ -9,10 +8,10 @@ from utils.handler_utils import (
     process_get_request,
     generate_uuid
 )
+from utils.logging_config import setup_lambda_logging
 
 # Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger = setup_lambda_logging()
 
 def add_member_ids(family_member_data: list) -> list:
     """Add UUIDs to family members that don't have IDs"""

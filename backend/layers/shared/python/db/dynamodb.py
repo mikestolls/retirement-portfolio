@@ -3,10 +3,14 @@ DynamoDB database connection and operations
 """
 import os
 import boto3
+import logging
 from datetime import datetime
 from decimal import Decimal
 import json
 from utils.converter import convert_floats_to_decimals
+
+# Get logger for this module (inherits configuration from handler)
+logger = logging.getLogger(__name__)
 
 # Get DynamoDB configuration from environment variables
 DYNAMODB_ENDPOINT = os.environ.get('DYNAMODB_ENDPOINT_URL')  # Changed to match launch.json
@@ -31,14 +35,14 @@ def db_get_dynamodb_client():
     
     # Reuse existing client if available
     if _dynamodb_client is not None:
-        print("Reusing existing DynamoDB client")  # Will show in CloudWatch logs
+        logger.debug("Reusing existing DynamoDB client")
         return _dynamodb_client
     
     try:        
         # Check if we're running locally (DynamoDB Local)
         endpoint_url = os.environ.get('DYNAMODB_ENDPOINT_URL')
         if endpoint_url:
-            # print(f"Connecting to DynamoDB Local at: {endpoint_url}")
+            logger.debug(f"Connecting to DynamoDB Local at: {endpoint_url}")
             _dynamodb_client = boto3.resource(
                 'dynamodb',
                 endpoint_url=endpoint_url,
@@ -49,10 +53,10 @@ def db_get_dynamodb_client():
         else:  # AWS environment
             _dynamodb_client = boto3.resource('dynamodb', region_name=AWS_REGION)
         
-        print("Created new DynamoDB client")  # Will show in CloudWatch logs
+        logger.info("Created new DynamoDB client")
         return _dynamodb_client
     except Exception as e:
-        print(f"Error connecting to DynamoDB: {str(e)}")
+        logger.error(f"Error connecting to DynamoDB: {str(e)}")
         raise
 
 # Initialize tables
@@ -160,13 +164,18 @@ def db_create_tables_if_not_exist():
 # Simple CRUD operations
 def db_get_user_data(user_id):
     """Get all user data from 4 tables"""
+    import time
+    
     try:
         dynamodb = db_get_dynamodb_client()
         
         # Get user
+        user_start = time.time()
         user_table = dynamodb.Table(USERS_TABLE)
         user_response = user_table.get_item(Key={'user_id': user_id})
         user = user_response.get('Item')
+        user_time = time.time() - user_start
+        logger.debug(f"Get user query: {user_time:.3f}s")
         
         if not user or not user.get('family_id'):
             return {'user': user, 'family': None, 'funds': [], 'budgets': []}
@@ -174,25 +183,32 @@ def db_get_user_data(user_id):
         family_id = user['family_id']
         
         # Get family
+        family_start = time.time()
         family_table = dynamodb.Table(FAMILIES_TABLE)
         family_response = family_table.get_item(Key={'family_id': family_id})
         family_info = family_response.get('Item')
+        family_time = time.time() - family_start
+        logger.debug(f"Get family query: {family_time:.3f}s")
         
         # Get retirement funds using BatchGetItem for efficiency
         funds_table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
         
         # First, query GSI to get fund IDs
+        funds_gsi_start = time.time()
         funds_response = funds_table.query(
             IndexName='familyId-index',
             KeyConditionExpression='family_id = :family_id',
             ExpressionAttributeValues={':family_id': family_id}
         )
         fund_ids = [item['fund_id'] for item in funds_response.get('Items', [])]
+        funds_gsi_time = time.time() - funds_gsi_start
+        logger.debug(f"Funds GSI query: {funds_gsi_time:.3f}s (found {len(fund_ids)} funds)")
         
         # Then batch get complete fund records
         retirement_funds = []
         if fund_ids:
             try:
+                funds_batch_start = time.time()
                 batch_response = dynamodb.batch_get_item(
                     RequestItems={
                         RETIREMENT_FUNDS_TABLE: {
@@ -200,30 +216,37 @@ def db_get_user_data(user_id):
                         }
                     }
                 )
+                funds_batch_time = time.time() - funds_batch_start
+                logger.debug(f"Funds batch get: {funds_batch_time:.3f}s")
+                
                 if batch_response:  # Check if batch_response is not None
                     retirement_funds = batch_response.get('Responses', {}).get(RETIREMENT_FUNDS_TABLE, [])
                 else:
-                    print("Warning: batch_get_item returned None for retirement_funds")
+                    logger.warning("batch_get_item returned None for retirement_funds")
                     retirement_funds = []
             except Exception as e:
-                print(f"Error in retirement_funds batch_get_item: {str(e)}")
+                logger.error(f"Error in retirement_funds batch_get_item: {str(e)}")
                 retirement_funds = []
         
         # Get budgets using same pattern as retirement funds
         budgets_table = dynamodb.Table(BUDGETS_TABLE)
         
         # First, query GSI to get budget IDs
+        budgets_gsi_start = time.time()
         budgets_response = budgets_table.query(
             IndexName='familyId-index',
             KeyConditionExpression='family_id = :family_id',
             ExpressionAttributeValues={':family_id': family_id}
         )
         budget_ids = [item['budget_id'] for item in budgets_response.get('Items', [])]
+        budgets_gsi_time = time.time() - budgets_gsi_start
+        logger.debug(f"Budgets GSI query: {budgets_gsi_time:.3f}s (found {len(budget_ids)} budgets)")
         
         # Then batch get complete budget records
         budgets = []
         if budget_ids:
             try:
+                budgets_batch_start = time.time()
                 batch_response = dynamodb.batch_get_item(
                     RequestItems={
                         BUDGETS_TABLE: {
@@ -231,13 +254,16 @@ def db_get_user_data(user_id):
                         }
                     }
                 )
+                budgets_batch_time = time.time() - budgets_batch_start
+                logger.debug(f"Budgets batch get: {budgets_batch_time:.3f}s")
+                
                 if batch_response:  # Check if batch_response is not None
                     budgets = batch_response.get('Responses', {}).get(BUDGETS_TABLE, [])
                 else:
-                    print("Warning: batch_get_item returned None for budgets")
+                    logger.warning("batch_get_item returned None for budgets")
                     budgets = []
             except Exception as e:
-                print(f"Error in budget batch_get_item: {str(e)}")
+                logger.error(f"Error in budget batch_get_item: {str(e)}")
                 budgets = []
         
         return {
@@ -247,7 +273,7 @@ def db_get_user_data(user_id):
             'budgets': budgets
         }
     except Exception as e:
-        print(f"Error getting user data: {str(e)}")
+        logger.error(f"Error getting user data: {str(e)}")
         return None
 
 def db_get_family_info(family_id):
@@ -258,7 +284,7 @@ def db_get_family_info(family_id):
         response = table.get_item(Key={'family_id': family_id})
         return response.get('Item')
     except Exception as e:
-        print(f"Error getting family info: {str(e)}")
+        logger.error(f"Error getting family info: {str(e)}")
         return None
 
 def db_get_retirement_fund(fund_id):
@@ -269,7 +295,7 @@ def db_get_retirement_fund(fund_id):
         response = table.get_item(Key={'fund_id': fund_id})
         return response.get('Item')
     except Exception as e:
-        print(f"Error getting retirement fund: {str(e)}")
+        logger.error(f"Error getting retirement fund: {str(e)}")
         return None
 
 def db_get_budget(budget_id):
@@ -280,7 +306,7 @@ def db_get_budget(budget_id):
         response = table.get_item(Key={'budget_id': budget_id})
         return response.get('Item')
     except Exception as e:
-        print(f"Error getting budget: {str(e)}")
+        logger.error(f"Error getting budget: {str(e)}")
         return None
 
 def db_update_family_info(family_id, family_member_data):
@@ -316,10 +342,10 @@ def db_update_family_info(family_id, family_member_data):
             # Only return the item if put_item succeeded
             return new_item
         except Exception as put_error:
-            print(f"Error creating new family: {str(put_error)}")
+            logger.error(f"Error creating new family: {str(put_error)}")
             return None
     except Exception as e:
-        print(f"Error updating family: {str(e)}")
+        logger.error(f"Error updating family: {str(e)}")
         return None
 
 def db_update_retirement_fund(fund_id, fund_data):
@@ -374,7 +400,7 @@ def db_update_retirement_fund(fund_id, fund_data):
         table.put_item(Item=item)
         return table.get_item(Key={'fund_id': fund_id})['Item']
     except Exception as e:
-        print(f"Error updating retirement fund: {str(e)}")
+        logger.error(f"Error updating retirement fund: {str(e)}")
         return None
 
 def db_update_budget(budget_id, budget_data):
@@ -409,7 +435,7 @@ def db_update_budget(budget_id, budget_data):
         )
         return table.get_item(Key={'budget_id': budget_id})['Item']
     except Exception as e:
-        print(f"Error updating budget: {str(e)}")
+        logger.error(f"Error updating budget: {str(e)}")
         return None
 
 def db_delete_retirement_fund(fund_id):
@@ -428,5 +454,5 @@ def db_delete_retirement_fund(fund_id):
         
         return True
     except Exception as e:
-        print(f"Error deleting retirement fund: {str(e)}")
+        logger.error(f"Error deleting retirement fund: {str(e)}")
         return False

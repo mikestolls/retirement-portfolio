@@ -1,5 +1,4 @@
 import json
-import logging
 from datetime import datetime
 from db.dynamodb import db_update_retirement_fund, db_get_retirement_fund, db_delete_retirement_fund, db_get_family_info
 from models.retirement_fund_data import RetirementFundData
@@ -11,10 +10,10 @@ from utils.handler_utils import (
     process_get_request,
     generate_uuid
 )
+from utils.logging_config import setup_lambda_logging
 
 # Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger = setup_lambda_logging()
 
 def lambda_handler(event, context):
     """Retirement fund handler supporting create, update, and delete"""
