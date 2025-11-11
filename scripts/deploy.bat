@@ -5,7 +5,12 @@ set STACK_NAME=retirement-portfolio
 set REGION=us-east-1
 set S3_BUCKET=%STACK_NAME%-sam-artifacts-%RANDOM%
 
+REM Set log level from parameter or default to INFO
+set LOG_LEVEL=%1
+if "%LOG_LEVEL%"=="" set LOG_LEVEL=INFO
+
 echo Starting Lambda deployment for Retirement Portfolio...
+echo Log Level: %LOG_LEVEL%
 
 REM Step 1: Create S3 bucket for SAM artifacts
 echo Creating S3 bucket for SAM artifacts...
@@ -33,7 +38,7 @@ call sam deploy ^
     --s3-bucket %S3_BUCKET% ^
     --region %REGION% ^
     --capabilities CAPABILITY_IAM ^
-    --parameter-overrides Environment=prod ^
+    --parameter-overrides Environment=prod LogLevel=%LOG_LEVEL% ^
     --profile retirement-portfolio
     
 if %errorlevel% neq 0 goto :error

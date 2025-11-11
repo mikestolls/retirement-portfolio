@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
-import { Box, Button, Stack, TextField, Card, CardContent, Typography, Drawer, IconButton, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper } from '@mui/material';
+import { Box, Button, Stack, TextField, Card, CardContent, Typography, Drawer, IconButton, TableContainer, Table, TableRow, TableCell, TableBody, TableHead, Paper, InputAdornment, CircularProgress } from '@mui/material';
+import '../css/app.css';
 import MenuItem from '@mui/material/MenuItem';
 import TuneIcon from '@mui/icons-material/Tune';
 import CloseIcon from '@mui/icons-material/Close';
@@ -19,7 +20,11 @@ const contribution_frequencies = [
 ];
 
 export default function RetirementFundsInfo() {
-  const { updateRetirementData, fetchRetirementData, retirementData, familyInfoData, loading, error, updateActualBalance } = useRetirement();
+  const { updateRetirementFund, userData, setUserData, loading, error, updateActualBalance, getDefaultRetirementFund, globalSaving, setGlobalSaving } = useRetirement();
+
+  // Extract data from new structure
+  const retirementData = { retirement_fund_data: userData?.retirement_funds || [] };
+  const familyInfoData = userData?.family_info;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
@@ -44,6 +49,7 @@ export default function RetirementFundsInfo() {
     const params = contributionParams[index] || fund?.['contribution_params'] || [];
     return params;
   };
+
   const setContributionParamsForFund = (fundIndex, params) => {
     setContributionParams(prev => ({ ...prev, [fundIndex]: params }));
   };
@@ -60,23 +66,199 @@ export default function RetirementFundsInfo() {
   };
 
   const handleDrawerClose = () => {
-    if (editingFund !== null && formStates[editingFund] && Object.keys(formStates[editingFund]).length > 0) {
-      const updateData = {
-        ...formStates[editingFund],
-        'return_rate_params': getReturnRateParams(editingFund),
-        'contribution_params': getContributionParams(editingFund)
-      };
-      updateRetirementData(editingFund, updateData).then(() => {
-        fetchRetirementData(); // Recalculate projections
-        setFormStates(prev => {
-          const newStates = { ...prev };
-          delete newStates[editingFund];
-          return newStates;
-        });
-      });
-    }
+    // Close drawer immediately for better UX
     setDrawerOpen(false);
     setEditingFund(null);
+    
+    // Handle background update if there are changes
+    if (editingFund !== null && formStates[editingFund] && Object.keys(formStates[editingFund]).length > 0) {
+      const fund = retirementData?.retirement_fund_data?.[editingFund];
+      const fundId = fund?.id;
+      
+      if (fundId) {
+        const updateData = {
+          ...fund, // Include all original fund data
+          ...formStates[editingFund], // Override with form changes
+          'return_rate_params': getReturnRateParams(editingFund),
+          'contribution_params': getContributionParams(editingFund)
+        };
+        
+        // Show saving indicator
+        setGlobalSaving(true);
+        console.log('Updating fund in background...');
+                
+        // Update in background - charts/cards will refresh when complete
+        updateRetirementFund(fundId, updateData)
+          .then((success) => {
+            if (success) {
+              // Clear form state after successful update
+              setFormStates(prev => {
+                const newStates = { ...prev };
+                delete newStates[editingFund];
+                return newStates;
+              });
+              console.log('Fund updated successfully - charts will refresh');
+            } else {
+              console.error('Fund update failed - please refresh page to see latest data');
+            }
+          })
+          .catch(error => {
+            console.error('Failed to update fund:', error);
+            console.error('Please refresh the page to see the latest data');
+          })
+          .finally(() => {
+            // Always clear saving indicator
+            setGlobalSaving(false);
+          });
+      }
+    }
+  };
+
+  const handleReturnRateDrawerClose = () => {
+    // Close drawer immediately for better UX
+    setReturnRateDrawerOpen(false);
+    
+    // Handle background update if parameters changed
+    if (editingFund !== null) {
+      const currentParams = getReturnRateParams(editingFund);
+      const originalParams = originalReturnRateParams[editingFund] || [];
+      
+      // Only save if parameters have changed
+      if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
+        const fund = retirementData?.retirement_fund_data?.[editingFund];
+        const fundId = fund?.id;
+        
+        if (fundId) {
+          const updateData = {
+            ...fund, // Include all original fund data
+            ...formStates[editingFund], // Override with form changes
+            'return_rate_params': currentParams
+          };
+          
+          // Show saving indicator
+          setGlobalSaving(true);
+          console.log('Updating return rate parameters in background...');
+          
+          // Update in background - components will refresh when complete
+          updateRetirementFund(fundId, updateData)
+            .then((success) => {
+              if (success) {
+                console.log('Return rate parameters updated successfully');
+              } else {
+                console.error('Return rate parameters update failed');
+              }
+            })
+            .catch(error => {
+              console.error('Failed to update return rate parameters:', error);
+            })
+            .finally(() => {
+              // Always clear saving indicator
+              setGlobalSaving(false);
+            });
+        }
+      }
+    }
+  };
+
+  const handleContributionDrawerClose = () => {
+    // Close drawer immediately for better UX
+    setContributionDrawerOpen(false);
+    
+    // Handle background update if parameters changed
+    if (editingFund !== null) {
+      const currentParams = getContributionParams(editingFund);
+      const originalParams = originalContributionParams[editingFund] || [];
+      
+      // Only save if parameters have changed
+      if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
+        const fund = retirementData?.retirement_fund_data?.[editingFund];
+        const fundId = fund?.id;
+        
+        if (fundId) {
+          const updateData = {
+            ...fund, // Include all original fund data
+            ...formStates[editingFund], // Override with form changes
+            'contribution_params': currentParams
+          };
+          
+          // Show saving indicator
+          setGlobalSaving(true);
+          console.log('Updating contribution parameters in background...');
+          
+          // Update in background - components will refresh when complete
+          updateRetirementFund(fundId, updateData)
+            .then((success) => {
+              if (success) {
+                console.log('Contribution parameters updated successfully');
+              } else {
+                console.error('Contribution parameters update failed');
+              }
+            })
+            .catch(error => {
+              console.error('Failed to update contribution parameters:', error);
+            })
+            .finally(() => {
+              // Always clear saving indicator
+              setGlobalSaving(false);
+            });
+        }
+      }
+    }
+  };
+
+  const handleActualsDrawerClose = () => {
+    // Close drawer immediately for better UX
+    setActualsDrawerOpen(false);
+    
+    // Handle background update if actual data changed
+    if (editingActuals) {
+      const currentContributions = actualFormData.actual_contributions || 0;
+      const currentBalance = actualFormData.actual_balance || 0;
+      const originalContributions = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.contribution : 0;
+      const originalBalance = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.end_amount : 0;
+      
+      const hasChanges = currentContributions !== originalContributions || currentBalance !== originalBalance;
+      
+      if (hasChanges) {
+        const fund = retirementData.retirement_fund_data[selectedFund];
+        
+        // Show saving indicator
+        setGlobalSaving(true);
+        console.log('Updating actual data in background...');
+        
+        if (currentContributions > 0 || currentBalance > 0) {
+          const beginAmount = editingActuals.yearData.begin_amount;
+          const actualGrowth = currentBalance - beginAmount - currentContributions;
+          updateActualBalance(fund.id, editingActuals.year, currentBalance, currentContributions, actualGrowth)
+            .then(() => {
+              console.log('Actual data updated successfully');
+            })
+            .catch(error => {
+              console.error('Failed to update actual data:', error);
+            })
+            .finally(() => {
+              // Always clear saving indicator
+              setGlobalSaving(false);
+            });
+        } else {
+          // Clear the entry if both fields are empty
+          updateActualBalance(fund.id, editingActuals.year, null, null, null)
+            .then(() => {
+              console.log('Actual data cleared successfully');
+            })
+            .catch(error => {
+              console.error('Failed to clear actual data:', error);
+            })
+            .finally(() => {
+              // Always clear saving indicator
+              setGlobalSaving(false);
+            });
+        }
+      }
+    }
+    
+    // Clean up form data
+    setActualFormData({});
   };
 
   const handleChange = (index) => (event) => {
@@ -89,74 +271,111 @@ export default function RetirementFundsInfo() {
     });
   };
 
-
   const deleteFund = async (index) => {
-    await updateRetirementData(index, null);
-    setFormStates(prev => {
-      const newStates = {};
-      Object.keys(prev).forEach(key => {
-        const keyIndex = parseInt(key);
-        if (keyIndex < index) {
-          newStates[keyIndex] = prev[key];
-        } else if (keyIndex > index) {
-          newStates[keyIndex - 1] = prev[key];
+    const fund = retirementData?.retirement_fund_data?.[index];
+    const fundId = fund?.id;
+    
+    if (fundId) {
+      try {
+        // Show saving indicator while deleting fund
+        setGlobalSaving(true);
+        console.log('Deleting retirement fund...');
+        
+        await updateRetirementFund(fundId, null);
+        
+        console.log('Successfully deleted retirement fund');
+        
+        setFormStates(prev => {
+          const newStates = {};
+          Object.keys(prev).forEach(key => {
+            const keyIndex = parseInt(key);
+            if (keyIndex < index) {
+              newStates[keyIndex] = prev[key];
+            } else if (keyIndex > index) {
+              newStates[keyIndex - 1] = prev[key];
+            }
+          });
+          return newStates;
+        });
+        
+        // Reset selectedFund if it's the deleted fund or beyond
+        if (selectedFund >= index) {
+          setSelectedFund(Math.max(0, selectedFund - 1));
         }
-      });
-      return newStates;
-    });
-    // Reset selectedFund if it's the deleted fund or beyond
-    if (selectedFund >= index) {
-      setSelectedFund(Math.max(0, selectedFund - 1));
+      } catch (error) {
+        console.error('Error deleting retirement fund:', error);
+      } finally {
+        // Hide saving indicator
+        setGlobalSaving(false);
+      }
     }
   };
 
-  const handleAddFund = () => {
-    const newIndex = retirementData?.retirement_fund_data?.length || 0;
-    setSelectedFund(newIndex);
-    setEditingFund(newIndex);
-    setDrawerOpen(true);
-    
-    updateRetirementData(newIndex, {
-      'id': crypto.randomUUID(),
-      'name': 'New Fund',
-      'family_member_id': familyInfoData?.family_info_data?.[0]?.id || '',
-      'initial_investment': 1000,
-      'regular_contribution': 10,
-      'contribution_frequency': 12,
-      'start_date': new Date().toISOString().split('T')[0],
-      'return_rate_params': [],
-      'contribution_params': [],
-      'actual_data': []
-    }).then(() => {
-      fetchRetirementData(); // Refresh to get projections
-    });
+  const handleAddFund = async () => {
+    // Get first family member for default assignment
+    const familyMemberId = familyInfoData.family_member_data[0].id || '';
+    const familyId = userData.user.family_id;
+
+    if (!familyId || !familyMemberId) {
+      console.error('Missing family_id or family_member_id');
+      return;
+    }
+
+    // Get default retirement fund data from context
+    const newFund = getDefaultRetirementFund(familyMemberId, familyId);
+
+    try {
+      // Show saving indicator while adding new fund
+      setGlobalSaving(true);
+      console.log('Adding new retirement fund...');
+      
+      // Use null as fundId to indicate this is a new fund creation
+      const success = await updateRetirementFund(null, newFund);
+      
+      if (success) {
+        console.log('Successfully added new retirement fund');
+        // The new fund will be automatically added to the userData by the context
+        // Calculate the new index for the drawer
+        const newIndex = userData.retirement_funds.length;
+        
+        // Open drawer to edit the newly created fund
+        setSelectedFund(newIndex);
+        setEditingFund(newIndex);
+        setDrawerOpen(true);
+      } else {
+        console.error('Failed to add fund');
+      }
+    } catch (error) {
+      console.error('Error adding fund:', error);
+    } finally {
+      // Hide saving indicator
+      setGlobalSaving(false);
+    }
   };
 
   const renderFundCards = () => {
     if (error) return null;
     
-    const fundCards = retirementData?.retirement_fund_data?.length ? 
-      retirementData.retirement_fund_data.map((fund, index) => {
-        const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family_member_id']);
+    const fundCards = userData?.retirement_funds?.length ? 
+      // Sort funds by created_at (oldest first) before mapping
+      userData.retirement_funds
+        .map((fund, originalIndex) => ({ ...fund, originalIndex })) // Preserve original index
+        .sort((a, b) => {
+          // Sort by created_at if available, otherwise maintain original order
+          if (a.created_at && b.created_at) {
+            return new Date(a.created_at) - new Date(b.created_at);
+          }
+          return a.originalIndex - b.originalIndex;
+        })
+        .map((fund, index) => {
+        const member = familyInfoData?.family_member_data?.find(m => m.id === fund['family_member_id']);
         const latestProjection = fund.retirement_projection?.[fund.retirement_projection.length - 1];
         
         return (
           <Card 
-            className="rounded-2xl shadow-md" 
-            sx={{ 
-              mb: 2, 
-              width: 300,
-              minWidth: 300,
-              cursor: 'pointer',
-              '&:hover': {
-                backgroundColor: '#d4d4d4ff',
-                transform: 'translateY(-2px)',
-                boxShadow: 3
-              },
-              transition: 'all 0.2s ease-in-out'
-            }} 
-            key={index}
-            onClick={() => setSelectedFund(index)}
+            className="rounded-2xl shadow-md standard-card card-300 clickable-card"
+            key={fund.originalIndex}
+            onClick={() => setSelectedFund(fund.originalIndex)}
           >
             <CardContent className="p-4">
               <Stack direction="row" spacing={1} alignItems="center">
@@ -165,10 +384,10 @@ export default function RetirementFundsInfo() {
               </Stack>
               <Stack direction="column" spacing={0.5} alignItems="left" className="mb-2">
                 <p className="text-sm">Owner: {member?.name || 'Unknown'}</p>
-                <p className="text-sm">Initial: ${fund['initial_investment']?.toLocaleString()}</p>
-                <p className="text-sm">Monthly: ${fund['regular_contribution']}</p>
+                <p className="text-sm">Initial: ${fund['initial_investment']?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-sm">Monthly: ${fund['regular_contribution']?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 {latestProjection && (
-                  <p className="text-sm">Final Balance: ${latestProjection.end_amount?.toLocaleString()}</p>
+                  <p className="text-sm">Final Balance: ${latestProjection.end_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 )}
               </Stack>
               <Button
@@ -177,7 +396,7 @@ export default function RetirementFundsInfo() {
                 startIcon={<EditIcon />}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleCardClick(index);
+                  handleCardClick(fund.originalIndex);
                 }}
                 sx={{ mt: 1 }}
               >
@@ -190,22 +409,7 @@ export default function RetirementFundsInfo() {
 
     const addFundCard = (
       <Card 
-        className="rounded-2xl shadow-md" 
-        sx={{ 
-          mb: 2, 
-          width: 300,
-          minWidth: 300,
-          cursor: 'pointer',
-          border: '2px dashed #ccc',
-          backgroundColor: '#f9f9f9',
-          '&:hover': {
-            backgroundColor: '#e8f5e8',
-            border: '2px dashed #4caf50',
-            transform: 'translateY(0px)',
-            boxShadow: 3
-          },
-          transition: 'all 0.2s ease-in-out'
-        }} 
+        className="rounded-2xl shadow-md standard-card card-300 add-card"
         key="add-fund"
         onClick={handleAddFund}
       >
@@ -224,7 +428,6 @@ export default function RetirementFundsInfo() {
   };
 
   const [selectedFund, setSelectedFund] = useState(0);
-  const [actualInputs, setActualInputs] = useState({});
   const [actualsDrawerOpen, setActualsDrawerOpen] = useState(false);
   const [editingActuals, setEditingActuals] = useState(null);
   const [actualFormData, setActualFormData] = useState({});
@@ -232,7 +435,7 @@ export default function RetirementFundsInfo() {
   return (
     <div style={{ width: '100%', overflow: 'hidden' }}>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-
+      
       {/* Funds */}
       <Box 
         sx={{ 
@@ -258,10 +461,15 @@ export default function RetirementFundsInfo() {
         anchor="right"
         open={drawerOpen}
         onClose={handleDrawerClose}
-        disableEnforceFocus
-        disableAutoFocus
-        disableRestoreFocus
+        disableEnforceFocus={true}
+        disableAutoFocus={true}
+        disableRestoreFocus={true}
         hideBackdrop={false}
+        keepMounted={false}
+        ModalProps={{
+          disablePortal: true,
+          disableScrollLock: false,
+        }}
       >
         <Box sx={{ width: 400, p: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -289,7 +497,7 @@ export default function RetirementFundsInfo() {
                 value={getFormData(editingFund)['family_member_id'] || retirementData.retirement_fund_data[editingFund]['family_member_id']}
                 onChange={handleChange(editingFund)}
               >
-                {familyInfoData?.family_info_data?.map((member) => (
+                {familyInfoData?.family_member_data?.map((member) => (
                   <MenuItem key={member.id} value={member.id}>
                     {member.name}
                   </MenuItem>
@@ -301,7 +509,12 @@ export default function RetirementFundsInfo() {
                 variant="outlined"
                 fullWidth
                 type="number"
-                slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                slotProps={{ 
+                  htmlInput: { min: 0, step: 0.01 },
+                  input: {
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>
+                  }
+                }}
                 value={getFormData(editingFund)['initial_investment'] || retirementData.retirement_fund_data[editingFund]['initial_investment']}
                 onChange={handleChange(editingFund)}
               />
@@ -311,7 +524,12 @@ export default function RetirementFundsInfo() {
                 variant="outlined"
                 fullWidth
                 type="number"
-                slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                slotProps={{ 
+                  htmlInput: { min: 0, step: 0.01 },
+                  input: {
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>
+                  }
+                }}
                 value={getFormData(editingFund)['regular_contribution'] || retirementData.retirement_fund_data[editingFund]['regular_contribution']}
                 onChange={handleChange(editingFund)}
               />
@@ -395,44 +613,21 @@ export default function RetirementFundsInfo() {
       <Drawer
         anchor="right"
         open={returnRateDrawerOpen}
-        onClose={() => {
-          if (editingFund !== null) {
-            const currentParams = getReturnRateParams(editingFund);
-            const originalParams = originalReturnRateParams[editingFund] || [];
-            
-            // Only save if parameters have changed
-            if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-              const updateData = {
-                'return_rate_params': currentParams
-              };
-              updateRetirementData(editingFund, updateData).then(() => {
-                fetchRetirementData();
-              });
-            }
-          }
-          setReturnRateDrawerOpen(false);
+        onClose={handleReturnRateDrawerClose}
+        disableEnforceFocus={true}
+        disableAutoFocus={true}
+        disableRestoreFocus={true}
+        hideBackdrop={false}
+        keepMounted={false}
+        ModalProps={{
+          disablePortal: true,
+          disableScrollLock: false,
         }}
         sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Return Rate Parameters</Typography>
-          <IconButton onClick={() => {
-            if (editingFund !== null) {
-              const currentParams = getReturnRateParams(editingFund);
-              const originalParams = originalReturnRateParams[editingFund] || [];
-              
-              // Only save if parameters have changed
-              if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-                const updateData = {
-                  'return_rate_params': currentParams
-                };
-                updateRetirementData(editingFund, updateData).then(() => {
-                  fetchRetirementData();
-                });
-              }
-            }
-            setReturnRateDrawerOpen(false);
-          }}>
+          <IconButton onClick={handleReturnRateDrawerClose}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -514,44 +709,21 @@ export default function RetirementFundsInfo() {
       <Drawer
         anchor="right"
         open={contributionDrawerOpen}
-        onClose={() => {
-          if (editingFund !== null) {
-            const currentParams = getContributionParams(editingFund);
-            const originalParams = originalContributionParams[editingFund] || [];
-            
-            // Only save if parameters have changed
-            if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-              const updateData = {
-                'contribution_params': currentParams
-              };
-              updateRetirementData(editingFund, updateData).then(() => {
-                fetchRetirementData();
-              });
-            }
-          }
-          setContributionDrawerOpen(false);
+        onClose={handleContributionDrawerClose}
+        disableEnforceFocus={true}
+        disableAutoFocus={true}
+        disableRestoreFocus={true}
+        hideBackdrop={false}
+        keepMounted={false}
+        ModalProps={{
+          disablePortal: true,
+          disableScrollLock: false,
         }}
         sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Contribution Parameters</Typography>
-          <IconButton onClick={() => {
-            if (editingFund !== null) {
-              const currentParams = getContributionParams(editingFund);
-              const originalParams = originalContributionParams[editingFund] || [];
-              
-              // Only save if parameters have changed
-              if (JSON.stringify(currentParams) !== JSON.stringify(originalParams)) {
-                const updateData = {
-                  'contribution_params': currentParams
-                };
-                updateRetirementData(editingFund, updateData).then(() => {
-                  fetchRetirementData();
-                });
-              }
-            }
-            setContributionDrawerOpen(false);
-          }}>
+          <IconButton onClick={handleContributionDrawerClose}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -651,30 +823,15 @@ export default function RetirementFundsInfo() {
       <Drawer
         anchor="right"
         open={actualsDrawerOpen}
-        onClose={() => {
-          if (editingActuals) {
-            const currentContributions = actualFormData.actual_contributions || 0;
-            const currentBalance = actualFormData.actual_balance || 0;
-            const originalContributions = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.contribution : 0;
-            const originalBalance = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.end_amount : 0;
-            
-            const hasChanges = currentContributions !== originalContributions || currentBalance !== originalBalance;
-            
-            if (hasChanges) {
-              const fund = retirementData.retirement_fund_data[selectedFund];
-              
-              if (currentContributions > 0 || currentBalance > 0) {
-                const beginAmount = editingActuals.yearData.begin_amount;
-                const actualGrowth = currentBalance - beginAmount - currentContributions;
-                updateActualBalance(fund.id, editingActuals.year, currentBalance, currentContributions, actualGrowth);
-              } else {
-                // Clear the entry if both fields are empty
-                updateActualBalance(fund.id, editingActuals.year, null, null, null);
-              }
-            }
-          }
-          setActualsDrawerOpen(false);
-          setActualFormData({});
+        onClose={handleActualsDrawerClose}
+        disableEnforceFocus={true}
+        disableAutoFocus={true}
+        disableRestoreFocus={true}
+        hideBackdrop={false}
+        keepMounted={false}
+        ModalProps={{
+          disablePortal: true,
+          disableScrollLock: false,
         }}
         sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
       >
@@ -746,19 +903,12 @@ export default function RetirementFundsInfo() {
             pb: 1,
           }}
         >
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "100%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-100-percent"> 
           <CardContent className="p-4">
             <Typography variant="h6" sx={{ mb: 2 }}>Fund Projection - {retirementData.retirement_fund_data[selectedFund]?.name || 'Loading...'}</Typography>
             {retirementData.retirement_fund_data[selectedFund]?.retirement_projection && (() => {
               const fund = retirementData.retirement_fund_data[selectedFund];
-              const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family_member_id']);
+              const member = familyInfoData?.family_member_data?.find(m => m.id === fund['family_member_id']);
               
               if (!member) return null;
               
@@ -770,16 +920,20 @@ export default function RetirementFundsInfo() {
               
               // Calculate return rate change markers
               const returnRateParams = fund['return_rate_params'] || [];
-              const returnRateMarkers = returnRateParams.map(param => {
+              const allReturnRateMarkers = returnRateParams.map(param => {
                 const changeYear = new Date().getFullYear() + (param.from_age - currentAge);
                 return {
                   year: changeYear,
                   rate: param.return_rate,
                   age: param.from_age
                 };
-              }).filter(marker => marker.year <= retirementYear && marker.year >= startYear);
+              });
+              const returnRateMarkers = allReturnRateMarkers.filter(marker => marker.year <= retirementYear && marker.year >= startYear);
               const firstYear = filteredData.length > 0 ? filteredData[0].year : startYear;
-              const firstReturnRateMarker = returnRateMarkers.find(marker => marker.year <= firstYear);
+              // Find the appropriate return rate for the first year (including rates that start before the chart range)
+              const firstReturnRateMarker = allReturnRateMarkers
+                .filter(marker => marker.year <= firstYear)
+                .sort((a, b) => b.year - a.year)[0]; // Get the most recent rate that applies to the first year
               const firstReturnRate = firstReturnRateMarker ? firstReturnRateMarker.rate : 7;
               const currentYear = new Date().getFullYear();
               
@@ -871,14 +1025,7 @@ export default function RetirementFundsInfo() {
             pb: 1,
           }}
         >
-          <Card
-            className="rounded-2xl shadow-md" 
-            sx={{ 
-              mb: 2, 
-              width: "100%",
-              transition: 'all 0.2s ease-in-out'
-            }} 
-          > 
+          <Card className="rounded-2xl shadow-md standard-card card-100-percent"> 
             <CardContent className="p-4">
               <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
                 <Table stickyHeader size="small" sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0' } }}>
@@ -898,7 +1045,7 @@ export default function RetirementFundsInfo() {
                   <TableBody>
                     {(() => {
                       const fund = retirementData.retirement_fund_data[selectedFund];
-                      const member = familyInfoData?.family_info_data?.find(m => m.id === fund['family_member_id']);
+                      const member = familyInfoData?.family_member_data?.find(m => m.id === fund['family_member_id']);
                       
                       if (!member) return null;
                       
