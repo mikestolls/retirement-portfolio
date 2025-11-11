@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
-import { Box, Tabs, Tab, Button, Stack, Paper, TextField, Card, CardContent, LinearProgress, Divider, Drawer, IconButton, Typography } from '@mui/material';
+import { Box, Tabs, Tab, Button, Stack, Paper, TextField, Card, CardContent, LinearProgress, Divider, Drawer, IconButton, Typography, CircularProgress } from '@mui/material';
 import '../css/app.css';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -36,6 +36,7 @@ export default function FamilyInfo() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [savingInBackground, setSavingInBackground] = useState(false);
 
   const handleDrawerClose = () => {
     // Close drawer immediately for better UX
@@ -44,6 +45,10 @@ export default function FamilyInfo() {
     
     // Handle background update if there are changes
     if (editingMember !== null && formStates[editingMember] && Object.keys(formStates[editingMember]).length > 0) {
+      // Show saving indicator
+      setSavingInBackground(true);
+      console.log('Updating family member in background...');
+      
       // Update in background - components will refresh when complete
       updateFamilyInfoData(editingMember, formStates[editingMember])
         .then(() => {
@@ -53,11 +58,16 @@ export default function FamilyInfo() {
             delete newStates[editingMember];
             return newStates;
           });
+          console.log('Family member updated successfully - components will refresh');
           // Note: Components will automatically refresh due to userData state change in context
         })
         .catch(error => {
           console.error('Failed to update family member:', error);
-          // Could add toast notification here for user feedback
+          console.error('Please refresh the page to see the latest data');
+        })
+        .finally(() => {
+          // Always clear saving indicator
+          setSavingInBackground(false);
         });
     }
   };
@@ -78,25 +88,38 @@ export default function FamilyInfo() {
   };
 
   const deleteMember = async (index) => {
-    await updateFamilyInfoData(index, null); // Delete member
-    
-    // Clean up form states - remove deleted index and shift remaining
-    setFormStates(prev => {
-      const newStates = {};
-      Object.keys(prev).forEach(key => {
-        const keyIndex = parseInt(key);
-        if (keyIndex < index) {
-          // Keep states before deleted index
-          newStates[keyIndex] = prev[key];
-        } else if (keyIndex > index) {
-          // Shift states after deleted index down by 1
-          newStates[keyIndex - 1] = prev[key];
-        }
-        // Skip the deleted index
-      });
+    try {
+      // Show saving indicator while deleting member
+      setSavingInBackground(true);
+      console.log('Deleting family member...');
       
-      return newStates;
-    });
+      await updateFamilyInfoData(index, null); // Delete member
+      
+      console.log('Successfully deleted family member');
+      
+      // Clean up form states - remove deleted index and shift remaining
+      setFormStates(prev => {
+        const newStates = {};
+        Object.keys(prev).forEach(key => {
+          const keyIndex = parseInt(key);
+          if (keyIndex < index) {
+            // Keep states before deleted index
+            newStates[keyIndex] = prev[key];
+          } else if (keyIndex > index) {
+            // Shift states after deleted index down by 1
+            newStates[keyIndex - 1] = prev[key];
+          }
+          // Skip the deleted index
+        });
+        
+        return newStates;
+      });
+    } catch (error) {
+      console.error('Error deleting family member:', error);
+    } finally {
+      // Hide saving indicator
+      setSavingInBackground(false);
+    }
   };
 
   const handleAddMember = async () => {
@@ -105,10 +128,15 @@ export default function FamilyInfo() {
     const newMemberIndex = currentFamilyData.length;
 
     try {
+      // Show saving indicator while adding new member
+      setSavingInBackground(true);
+      console.log('Adding new family member...');
+      
       // Use the context method to add a new member (let backend provide defaults)
       const success = await updateFamilyInfoData(newMemberIndex, {});
       
       if (success) {
+        console.log('Successfully added new family member');
         // Open drawer to edit the new member (will be last in array)
         setEditingMember(newMemberIndex);
         setDrawerOpen(true);
@@ -117,6 +145,9 @@ export default function FamilyInfo() {
       }
     } catch (error) {
       console.error('Error adding member:', error);
+    } finally {
+      // Hide saving indicator
+      setSavingInBackground(false);
     }
   };
 
@@ -170,6 +201,14 @@ export default function FamilyInfo() {
   return (
     <div style={{ width: '100%', overflow: 'hidden' }}>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+      
+      {/* Background saving indicator */}
+      {savingInBackground && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, p: 1, bgcolor: 'info.main', color: 'white', borderRadius: 1 }}>
+          <CircularProgress size={16} color="inherit" />
+          <Typography variant="body2">Saving changes...</Typography>
+        </Box>
+      )}
 
       <Box
         sx={{ 

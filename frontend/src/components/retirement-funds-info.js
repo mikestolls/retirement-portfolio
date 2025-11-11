@@ -28,6 +28,7 @@ export default function RetirementFundsInfo() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
+  const [savingInBackground, setSavingInBackground] = useState(false);
   const [returnRateDrawerOpen, setReturnRateDrawerOpen] = useState(false);
   const [returnRateParams, setReturnRateParams] = useState({});
   const [originalReturnRateParams, setOriginalReturnRateParams] = useState({});
@@ -82,6 +83,10 @@ export default function RetirementFundsInfo() {
           'return_rate_params': getReturnRateParams(editingFund),
           'contribution_params': getContributionParams(editingFund)
         };
+        
+        // Show saving indicator
+        setSavingInBackground(true);
+        console.log('Updating fund in background...');
                 
         // Update in background - charts/cards will refresh when complete
         updateRetirementFund(fundId, updateData)
@@ -93,12 +98,18 @@ export default function RetirementFundsInfo() {
                 delete newStates[editingFund];
                 return newStates;
               });
-              // Note: Components will automatically refresh due to userData state change in context
+              console.log('Fund updated successfully - charts will refresh');
+            } else {
+              console.error('Fund update failed - please refresh page to see latest data');
             }
           })
           .catch(error => {
             console.error('Failed to update fund:', error);
-            // Could add toast notification here for user feedback
+            console.error('Please refresh the page to see the latest data');
+          })
+          .finally(() => {
+            // Always clear saving indicator
+            setSavingInBackground(false);
           });
       }
     }
@@ -125,10 +136,25 @@ export default function RetirementFundsInfo() {
             'return_rate_params': currentParams
           };
           
+          // Show saving indicator
+          setSavingInBackground(true);
+          console.log('Updating return rate parameters in background...');
+          
           // Update in background - components will refresh when complete
           updateRetirementFund(fundId, updateData)
+            .then((success) => {
+              if (success) {
+                console.log('Return rate parameters updated successfully');
+              } else {
+                console.error('Return rate parameters update failed');
+              }
+            })
             .catch(error => {
               console.error('Failed to update return rate parameters:', error);
+            })
+            .finally(() => {
+              // Always clear saving indicator
+              setSavingInBackground(false);
             });
         }
       }
@@ -156,14 +182,84 @@ export default function RetirementFundsInfo() {
             'contribution_params': currentParams
           };
           
+          // Show saving indicator
+          setSavingInBackground(true);
+          console.log('Updating contribution parameters in background...');
+          
           // Update in background - components will refresh when complete
           updateRetirementFund(fundId, updateData)
+            .then((success) => {
+              if (success) {
+                console.log('Contribution parameters updated successfully');
+              } else {
+                console.error('Contribution parameters update failed');
+              }
+            })
             .catch(error => {
               console.error('Failed to update contribution parameters:', error);
+            })
+            .finally(() => {
+              // Always clear saving indicator
+              setSavingInBackground(false);
             });
         }
       }
     }
+  };
+
+  const handleActualsDrawerClose = () => {
+    // Close drawer immediately for better UX
+    setActualsDrawerOpen(false);
+    
+    // Handle background update if actual data changed
+    if (editingActuals) {
+      const currentContributions = actualFormData.actual_contributions || 0;
+      const currentBalance = actualFormData.actual_balance || 0;
+      const originalContributions = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.contribution : 0;
+      const originalBalance = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.end_amount : 0;
+      
+      const hasChanges = currentContributions !== originalContributions || currentBalance !== originalBalance;
+      
+      if (hasChanges) {
+        const fund = retirementData.retirement_fund_data[selectedFund];
+        
+        // Show saving indicator
+        setSavingInBackground(true);
+        console.log('Updating actual data in background...');
+        
+        if (currentContributions > 0 || currentBalance > 0) {
+          const beginAmount = editingActuals.yearData.begin_amount;
+          const actualGrowth = currentBalance - beginAmount - currentContributions;
+          updateActualBalance(fund.id, editingActuals.year, currentBalance, currentContributions, actualGrowth)
+            .then(() => {
+              console.log('Actual data updated successfully');
+            })
+            .catch(error => {
+              console.error('Failed to update actual data:', error);
+            })
+            .finally(() => {
+              // Always clear saving indicator
+              setSavingInBackground(false);
+            });
+        } else {
+          // Clear the entry if both fields are empty
+          updateActualBalance(fund.id, editingActuals.year, null, null, null)
+            .then(() => {
+              console.log('Actual data cleared successfully');
+            })
+            .catch(error => {
+              console.error('Failed to clear actual data:', error);
+            })
+            .finally(() => {
+              // Always clear saving indicator
+              setSavingInBackground(false);
+            });
+        }
+      }
+    }
+    
+    // Clean up form data
+    setActualFormData({});
   };
 
   const handleChange = (index) => (event) => {
@@ -181,22 +277,37 @@ export default function RetirementFundsInfo() {
     const fundId = fund?.id;
     
     if (fundId) {
-      await updateRetirementFund(fundId, null);
-      setFormStates(prev => {
-        const newStates = {};
-        Object.keys(prev).forEach(key => {
-          const keyIndex = parseInt(key);
-          if (keyIndex < index) {
-            newStates[keyIndex] = prev[key];
-          } else if (keyIndex > index) {
-            newStates[keyIndex - 1] = prev[key];
-          }
+      try {
+        // Show saving indicator while deleting fund
+        setSavingInBackground(true);
+        console.log('Deleting retirement fund...');
+        
+        await updateRetirementFund(fundId, null);
+        
+        console.log('Successfully deleted retirement fund');
+        
+        setFormStates(prev => {
+          const newStates = {};
+          Object.keys(prev).forEach(key => {
+            const keyIndex = parseInt(key);
+            if (keyIndex < index) {
+              newStates[keyIndex] = prev[key];
+            } else if (keyIndex > index) {
+              newStates[keyIndex - 1] = prev[key];
+            }
+          });
+          return newStates;
         });
-        return newStates;
-      });
-      // Reset selectedFund if it's the deleted fund or beyond
-      if (selectedFund >= index) {
-        setSelectedFund(Math.max(0, selectedFund - 1));
+        
+        // Reset selectedFund if it's the deleted fund or beyond
+        if (selectedFund >= index) {
+          setSelectedFund(Math.max(0, selectedFund - 1));
+        }
+      } catch (error) {
+        console.error('Error deleting retirement fund:', error);
+      } finally {
+        // Hide saving indicator
+        setSavingInBackground(false);
       }
     }
   };
@@ -215,10 +326,15 @@ export default function RetirementFundsInfo() {
     const newFund = getDefaultRetirementFund(familyMemberId, familyId);
 
     try {
+      // Show saving indicator while adding new fund
+      setSavingInBackground(true);
+      console.log('Adding new retirement fund...');
+      
       // Use null as fundId to indicate this is a new fund creation
       const success = await updateRetirementFund(null, newFund);
       
       if (success) {
+        console.log('Successfully added new retirement fund');
         // The new fund will be automatically added to the userData by the context
         // Calculate the new index for the drawer
         const newIndex = userData.retirement_funds.length;
@@ -232,6 +348,9 @@ export default function RetirementFundsInfo() {
       }
     } catch (error) {
       console.error('Error adding fund:', error);
+    } finally {
+      // Hide saving indicator
+      setSavingInBackground(false);
     }
   };
 
@@ -317,6 +436,14 @@ export default function RetirementFundsInfo() {
   return (
     <div style={{ width: '100%', overflow: 'hidden' }}>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+      
+      {/* Background saving indicator */}
+      {savingInBackground && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, p: 1, bgcolor: 'info.main', color: 'white', borderRadius: 1 }}>
+          <CircularProgress size={16} color="inherit" />
+          <Typography variant="body2">Saving changes...</Typography>
+        </Box>
+      )}
 
       {/* Funds */}
       <Box 
@@ -705,31 +832,7 @@ export default function RetirementFundsInfo() {
       <Drawer
         anchor="right"
         open={actualsDrawerOpen}
-        onClose={() => {
-          if (editingActuals) {
-            const currentContributions = actualFormData.actual_contributions || 0;
-            const currentBalance = actualFormData.actual_balance || 0;
-            const originalContributions = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.contribution : 0;
-            const originalBalance = editingActuals.yearData.is_actual_balance ? editingActuals.yearData.end_amount : 0;
-            
-            const hasChanges = currentContributions !== originalContributions || currentBalance !== originalBalance;
-            
-            if (hasChanges) {
-              const fund = retirementData.retirement_fund_data[selectedFund];
-              
-              if (currentContributions > 0 || currentBalance > 0) {
-                const beginAmount = editingActuals.yearData.begin_amount;
-                const actualGrowth = currentBalance - beginAmount - currentContributions;
-                updateActualBalance(fund.id, editingActuals.year, currentBalance, currentContributions, actualGrowth);
-              } else {
-                // Clear the entry if both fields are empty
-                updateActualBalance(fund.id, editingActuals.year, null, null, null);
-              }
-            }
-          }
-          setActualsDrawerOpen(false);
-          setActualFormData({});
-        }}
+        onClose={handleActualsDrawerClose}
         disableEnforceFocus={true}
         disableAutoFocus={true}
         disableRestoreFocus={true}
