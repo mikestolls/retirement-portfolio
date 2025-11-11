@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Box, Typography, Paper, Stack, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Select, MenuItem, FormControl, TableSortLabel } from '@mui/material';
+import { Box, Typography, Paper, Stack, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Select, MenuItem, FormControl, TableSortLabel, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import '../css/app.css';
 
 export default function Budget() {
@@ -10,7 +10,10 @@ export default function Budget() {
     { id: 4, expense: 'Electric Bill', category: 'Other', amount: 0 }
   ]);
 
-  const categories = ['Housing', 'Food', 'Transportation', 'Entertainment', 'Subscriptions', 'Internet', 'TV', 'Phone', 'Other'];
+  const [categories, setCategories] = useState(['Housing', 'Food', 'Transportation', 'Entertainment', 'Subscriptions', 'Internet', 'TV', 'Phone', 'Other']);
+  const [addCategoryDialog, setAddCategoryDialog] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [pendingExpenseId, setPendingExpenseId] = useState(null);
   
   const [sortBy, setSortBy] = useState('');
   const [sortOrder, setSortOrder] = useState('asc');
@@ -67,6 +70,34 @@ export default function Budget() {
   const addExpenseCategory = () => {
     const newId = Math.max(...expenses.map(e => e.id)) + 1;
     setExpenses(prev => [...prev, { id: newId, expense: '', category: 'Other', amount: 0 }]);
+  };
+
+  const handleCategoryChange = (expenseId, value) => {
+    if (value === 'ADD_NEW_CATEGORY') {
+      setPendingExpenseId(expenseId);
+      setAddCategoryDialog(true);
+    } else {
+      updateExpense(expenseId, 'category', value);
+    }
+  };
+
+  const handleAddCategory = () => {
+    if (newCategoryName.trim() && !categories.includes(newCategoryName.trim())) {
+      const newCategory = newCategoryName.trim();
+      setCategories(prev => [...prev, newCategory]);
+      if (pendingExpenseId) {
+        updateExpense(pendingExpenseId, 'category', newCategory);
+      }
+    }
+    setAddCategoryDialog(false);
+    setNewCategoryName('');
+    setPendingExpenseId(null);
+  };
+
+  const handleCancelAddCategory = () => {
+    setAddCategoryDialog(false);
+    setNewCategoryName('');
+    setPendingExpenseId(null);
   };
 
   return (
@@ -157,7 +188,7 @@ export default function Budget() {
               <Table stickyHeader size="small" sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0' } }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>
+                    <TableCell sx={{ width: '50%', minWidth: 200 }}>
                       <TableSortLabel
                         active={sortBy === 'expense'}
                         direction={sortBy === 'expense' ? sortOrder : 'asc'}
@@ -166,7 +197,7 @@ export default function Budget() {
                         Expense
                       </TableSortLabel>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ width: '30%', minWidth: 150 }}>
                       <TableSortLabel
                         active={sortBy === 'category'}
                         direction={sortBy === 'category' ? sortOrder : 'asc'}
@@ -175,7 +206,7 @@ export default function Budget() {
                         Category
                       </TableSortLabel>
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="right" sx={{ width: '20%', minWidth: 120 }}>
                       <TableSortLabel
                         active={sortBy === 'amount'}
                         direction={sortBy === 'amount' ? sortOrder : 'asc'}
@@ -189,7 +220,7 @@ export default function Budget() {
                 <TableBody>
                   {sortedAndFilteredExpenses.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell>
+                      <TableCell sx={{ width: '50%', minWidth: 200 }}>
                         <TextField
                           size="small"
                           value={item.expense}
@@ -198,25 +229,28 @@ export default function Budget() {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ width: '30%', minWidth: 150 }}>
                         <FormControl size="small" fullWidth>
                           <Select
                             value={item.category}
-                            onChange={(e) => updateExpense(item.id, 'category', e.target.value)}
+                            onChange={(e) => handleCategoryChange(item.id, e.target.value)}
                           >
                             {categories.map((cat) => (
                               <MenuItem key={cat} value={cat}>{cat}</MenuItem>
                             ))}
+                            <MenuItem value="ADD_NEW_CATEGORY" sx={{ fontStyle: 'italic', color: 'primary.main' }}>
+                              + Add New Category
+                            </MenuItem>
                           </Select>
                         </FormControl>
                       </TableCell>
-                      <TableCell align="right">
+                      <TableCell align="right" sx={{ width: '20%', minWidth: 120 }}>
                         <TextField
                           size="small"
                           type="number"
                           value={item.amount}
                           onChange={(e) => updateExpense(item.id, 'amount', parseFloat(e.target.value) || 0)}
-                          sx={{ width: 120 }}
+                          fullWidth
                         />
                       </TableCell>
                     </TableRow>
@@ -230,6 +264,33 @@ export default function Budget() {
           </CardContent>
         </Card>
       </Box>
+
+      {/* Add Category Dialog */}
+      <Dialog open={addCategoryDialog} onClose={handleCancelAddCategory}>
+        <DialogTitle>Add New Category</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Category Name"
+            fullWidth
+            variant="outlined"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleAddCategory();
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelAddCategory}>Cancel</Button>
+          <Button onClick={handleAddCategory} variant="contained" disabled={!newCategoryName.trim()}>
+            Add Category
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }
