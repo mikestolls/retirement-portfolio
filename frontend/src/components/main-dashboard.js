@@ -25,7 +25,7 @@ import { useRetirement } from '../context/retirement-context';
 // Routes
 import FamilyInfo from './family-info.js';
 import RetirementFundsInfo from './retirement-funds-info.js';
-import Budget from './budget.js';
+//import Budget from './budget.js';
 
 // Icons
 import MenuIcon from '@mui/icons-material/Menu';
@@ -283,7 +283,7 @@ export default function MainDashboard() {
         <Routes>
           <Route path="/" element={<Navigate to="/family_info" replace />} />
           <Route path="/family_info" element={<FamilyInfo />} />
-          <Route path="/budget" element={<Budget />} />
+          {/*<Route path="/budget" element={<Budget />} />*/}
           <Route path="/retirement_funds" element={<RetirementFundsInfo />} />
         </Routes>
         
