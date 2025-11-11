@@ -10,7 +10,8 @@
             "cwd": "${workspaceFolder}/backend",
             "env": {
                 "DYNAMODB_ENDPOINT_URL": "http://localhost:8000",
-                "AWS_DEFAULT_REGION": "us-east-1"
+                "AWS_DEFAULT_REGION": "us-east-1",
+                "SIMULATE_DELAY": "1"  // Set to number of seconds to simulate delay
             }
         },
         {

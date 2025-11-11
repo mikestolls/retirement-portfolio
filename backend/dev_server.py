@@ -20,6 +20,9 @@ os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 if 'LOG_LEVEL' not in os.environ:
     os.environ['LOG_LEVEL'] = 'DEBUG'
 
+# Add artificial delay to simulate slower AWS responses (set to 0 to disable)
+SIMULATE_DELAY = float(os.getenv('SIMULATE_DELAY', '0'))  # seconds
+
 # Configure logging
 logger = setup_lambda_logging()
 
@@ -60,6 +63,13 @@ CORS(app)
 def lambda_to_flask(handler):
     """Convert Lambda handler to Flask route"""
     def wrapper(*args, **kwargs):
+        import time
+        
+        # Simulate AWS Lambda delay if configured
+        if SIMULATE_DELAY > 0:
+            logger.info(f"Simulating {SIMULATE_DELAY}s delay...")
+            time.sleep(SIMULATE_DELAY)
+        
         # Build Lambda event from Flask request
         event = {
             'pathParameters': kwargs,
