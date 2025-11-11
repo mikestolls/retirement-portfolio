@@ -1,6 +1,10 @@
 # Retirement calculator service - contains business logic for retirement calculations
 from decimal import Decimal
 from datetime import datetime
+from utils.logging_config import setup_lambda_logging
+
+# Set up logging
+logger = setup_lambda_logging()
         
 def get_return_rate_for_age(age, return_rate_params):
     for param in return_rate_params:
@@ -48,6 +52,12 @@ def calculate_retirement_projection(retirement_fund, family_info):
     family_member = next((member for member in family_members if member['id'] == family_member_id), None)
 
     if not family_member:
+        logger.warning(
+            f"Family member not found for retirement fund calculation. "
+            f"fund_id={fund.get('fund_id', 'unknown')}, "
+            f"family_member_id={family_member_id}, "
+            f"available_member_ids={[member['id'] for member in family_members]}"
+        )
         fund['retirement_projection'] = []
         return
 

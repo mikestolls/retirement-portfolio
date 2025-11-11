@@ -154,11 +154,19 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: families
+        - DynamoDBReadPolicy:
+            TableName: retirement_funds
+        - DynamoDBCrudPolicy:
+            TableName: retirement_funds
         - Statement:
             - Effect: Allow
               Action:
                 - dynamodb:ListTables
                 - dynamodb:CreateTable
+                - dynamodb:GetItem
+                - dynamodb:Query
+                - dynamodb:BatchGetItem
+                - dynamodb:UpdateItem
               Resource: "*"
       Events:
         ApiUpdate:
@@ -180,11 +188,16 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: retirement_funds
+        - DynamoDBReadPolicy:
+            TableName: families
         - Statement:
             - Effect: Allow
               Action:
                 - dynamodb:ListTables
                 - dynamodb:CreateTable
+                - dynamodb:GetItem
+                - dynamodb:Query
+                - dynamodb:BatchGetItem
               Resource: "*"
       Events:
         ApiPost:
