@@ -16,8 +16,11 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import { Tooltip } from '@mui/material';
+import { Tooltip, CircularProgress, Fade, Slide } from '@mui/material';
 import Avatar from '@mui/material/Avatar';
+
+// Context
+import { useRetirement } from '../context/retirement-context';
 
 // Routes
 import FamilyInfo from './family-info.js';
@@ -132,6 +135,9 @@ export default function MainDashboard() {
   const [anchorElUser, setAnchorElUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Get global saving state from context
+  const { globalSaving } = useRetirement();
 
   const handleDrawerOpen = () => {
     setDrawerOpen(true);
@@ -271,14 +277,38 @@ export default function MainDashboard() {
         ))}
       </List>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, overflow: 'hidden' }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, overflow: 'hidden', position: 'relative' }}>
         <DrawerHeader />
+        
         <Routes>
           <Route path="/" element={<Navigate to="/family_info" replace />} />
           <Route path="/family_info" element={<FamilyInfo />} />
           <Route path="/budget" element={<Budget />} />
           <Route path="/retirement_funds" element={<RetirementFundsInfo />} />
         </Routes>
+        
+        {/* Global saving indicator - Bottom overlay */}
+        <Slide direction="up" in={globalSaving} mountOnEnter unmountOnExit>
+          <Box sx={{ 
+            position: 'fixed',
+            bottom: 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1, 
+            px: 3,
+            py: 1.5,
+            bgcolor: 'info.main', 
+            color: 'white', 
+            borderRadius: 2,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            zIndex: 1300
+          }}>
+            <CircularProgress size={16} color="inherit" />
+            <Typography variant="body2" fontWeight="medium">Saving changes...</Typography>
+          </Box>
+        </Slide>
       </Box>
     </Box>
   );

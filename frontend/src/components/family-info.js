@@ -20,7 +20,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 export default function FamilyInfo() {
   // Use the shared context
-  const { updateFamilyInfoData, userData, setUserData, householdProjection, loading, error } = useRetirement();
+  const { updateFamilyInfoData, userData, setUserData, householdProjection, loading, error, globalSaving, setGlobalSaving } = useRetirement();
 
   // Fund visibility state
   const [visibleFunds, setVisibleFunds] = useState({});
@@ -36,7 +36,6 @@ export default function FamilyInfo() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
-  const [savingInBackground, setSavingInBackground] = useState(false);
 
   const handleDrawerClose = () => {
     // Close drawer immediately for better UX
@@ -46,7 +45,7 @@ export default function FamilyInfo() {
     // Handle background update if there are changes
     if (editingMember !== null && formStates[editingMember] && Object.keys(formStates[editingMember]).length > 0) {
       // Show saving indicator
-      setSavingInBackground(true);
+      setGlobalSaving(true);
       console.log('Updating family member in background...');
       
       // Update in background - components will refresh when complete
@@ -67,7 +66,7 @@ export default function FamilyInfo() {
         })
         .finally(() => {
           // Always clear saving indicator
-          setSavingInBackground(false);
+          setGlobalSaving(false);
         });
     }
   };
@@ -90,7 +89,7 @@ export default function FamilyInfo() {
   const deleteMember = async (index) => {
     try {
       // Show saving indicator while deleting member
-      setSavingInBackground(true);
+      setGlobalSaving(true);
       console.log('Deleting family member...');
       
       await updateFamilyInfoData(index, null); // Delete member
@@ -118,7 +117,7 @@ export default function FamilyInfo() {
       console.error('Error deleting family member:', error);
     } finally {
       // Hide saving indicator
-      setSavingInBackground(false);
+      setGlobalSaving(false);
     }
   };
 
@@ -129,7 +128,7 @@ export default function FamilyInfo() {
 
     try {
       // Show saving indicator while adding new member
-      setSavingInBackground(true);
+      setGlobalSaving(true);
       console.log('Adding new family member...');
       
       // Use the context method to add a new member (let backend provide defaults)
@@ -147,7 +146,7 @@ export default function FamilyInfo() {
       console.error('Error adding member:', error);
     } finally {
       // Hide saving indicator
-      setSavingInBackground(false);
+      setGlobalSaving(false);
     }
   };
 
@@ -202,14 +201,6 @@ export default function FamilyInfo() {
     <div style={{ width: '100%', overflow: 'hidden' }}>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
       
-      {/* Background saving indicator */}
-      {savingInBackground && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, p: 1, bgcolor: 'info.main', color: 'white', borderRadius: 1 }}>
-          <CircularProgress size={16} color="inherit" />
-          <Typography variant="body2">Saving changes...</Typography>
-        </Box>
-      )}
-
       <Box
         sx={{ 
           display: 'flex', 

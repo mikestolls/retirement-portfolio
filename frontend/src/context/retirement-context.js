@@ -24,6 +24,7 @@ const DEFAULT_RETIREMENT_FUND = {
 export const RetirementProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [globalSaving, setGlobalSaving] = useState(false); // Global saving state for all components
   const initRef = useRef(false);
   const fetchingRef = useRef({ family: false, retirement: false });
 
@@ -451,7 +452,9 @@ export const RetirementProvider = ({ children }) => {
       getDefaultRetirementFund,
       householdProjection,
       loading, 
-      error
+      error,
+      globalSaving,
+      setGlobalSaving
     }}>
       {children}
     </RetirementContext.Provider>

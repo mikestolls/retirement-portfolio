@@ -20,7 +20,7 @@ const contribution_frequencies = [
 ];
 
 export default function RetirementFundsInfo() {
-  const { updateRetirementFund, userData, setUserData, loading, error, updateActualBalance, getDefaultRetirementFund } = useRetirement();
+  const { updateRetirementFund, userData, setUserData, loading, error, updateActualBalance, getDefaultRetirementFund, globalSaving, setGlobalSaving } = useRetirement();
 
   // Extract data from new structure
   const retirementData = { retirement_fund_data: userData?.retirement_funds || [] };
@@ -28,7 +28,6 @@ export default function RetirementFundsInfo() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
-  const [savingInBackground, setSavingInBackground] = useState(false);
   const [returnRateDrawerOpen, setReturnRateDrawerOpen] = useState(false);
   const [returnRateParams, setReturnRateParams] = useState({});
   const [originalReturnRateParams, setOriginalReturnRateParams] = useState({});
@@ -85,7 +84,7 @@ export default function RetirementFundsInfo() {
         };
         
         // Show saving indicator
-        setSavingInBackground(true);
+        setGlobalSaving(true);
         console.log('Updating fund in background...');
                 
         // Update in background - charts/cards will refresh when complete
@@ -109,7 +108,7 @@ export default function RetirementFundsInfo() {
           })
           .finally(() => {
             // Always clear saving indicator
-            setSavingInBackground(false);
+            setGlobalSaving(false);
           });
       }
     }
@@ -137,7 +136,7 @@ export default function RetirementFundsInfo() {
           };
           
           // Show saving indicator
-          setSavingInBackground(true);
+          setGlobalSaving(true);
           console.log('Updating return rate parameters in background...');
           
           // Update in background - components will refresh when complete
@@ -154,7 +153,7 @@ export default function RetirementFundsInfo() {
             })
             .finally(() => {
               // Always clear saving indicator
-              setSavingInBackground(false);
+              setGlobalSaving(false);
             });
         }
       }
@@ -183,7 +182,7 @@ export default function RetirementFundsInfo() {
           };
           
           // Show saving indicator
-          setSavingInBackground(true);
+          setGlobalSaving(true);
           console.log('Updating contribution parameters in background...');
           
           // Update in background - components will refresh when complete
@@ -200,7 +199,7 @@ export default function RetirementFundsInfo() {
             })
             .finally(() => {
               // Always clear saving indicator
-              setSavingInBackground(false);
+              setGlobalSaving(false);
             });
         }
       }
@@ -224,7 +223,7 @@ export default function RetirementFundsInfo() {
         const fund = retirementData.retirement_fund_data[selectedFund];
         
         // Show saving indicator
-        setSavingInBackground(true);
+        setGlobalSaving(true);
         console.log('Updating actual data in background...');
         
         if (currentContributions > 0 || currentBalance > 0) {
@@ -239,7 +238,7 @@ export default function RetirementFundsInfo() {
             })
             .finally(() => {
               // Always clear saving indicator
-              setSavingInBackground(false);
+              setGlobalSaving(false);
             });
         } else {
           // Clear the entry if both fields are empty
@@ -252,7 +251,7 @@ export default function RetirementFundsInfo() {
             })
             .finally(() => {
               // Always clear saving indicator
-              setSavingInBackground(false);
+              setGlobalSaving(false);
             });
         }
       }
@@ -279,7 +278,7 @@ export default function RetirementFundsInfo() {
     if (fundId) {
       try {
         // Show saving indicator while deleting fund
-        setSavingInBackground(true);
+        setGlobalSaving(true);
         console.log('Deleting retirement fund...');
         
         await updateRetirementFund(fundId, null);
@@ -307,7 +306,7 @@ export default function RetirementFundsInfo() {
         console.error('Error deleting retirement fund:', error);
       } finally {
         // Hide saving indicator
-        setSavingInBackground(false);
+        setGlobalSaving(false);
       }
     }
   };
@@ -327,7 +326,7 @@ export default function RetirementFundsInfo() {
 
     try {
       // Show saving indicator while adding new fund
-      setSavingInBackground(true);
+      setGlobalSaving(true);
       console.log('Adding new retirement fund...');
       
       // Use null as fundId to indicate this is a new fund creation
@@ -350,7 +349,7 @@ export default function RetirementFundsInfo() {
       console.error('Error adding fund:', error);
     } finally {
       // Hide saving indicator
-      setSavingInBackground(false);
+      setGlobalSaving(false);
     }
   };
 
@@ -437,14 +436,6 @@ export default function RetirementFundsInfo() {
     <div style={{ width: '100%', overflow: 'hidden' }}>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
       
-      {/* Background saving indicator */}
-      {savingInBackground && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, p: 1, bgcolor: 'info.main', color: 'white', borderRadius: 1 }}>
-          <CircularProgress size={16} color="inherit" />
-          <Typography variant="body2">Saving changes...</Typography>
-        </Box>
-      )}
-
       {/* Funds */}
       <Box 
         sx={{ 
