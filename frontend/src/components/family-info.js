@@ -159,6 +159,9 @@ export default function FamilyInfo() {
           className="rounded-2xl shadow-md standard-card card-300 clickable-card"
           key={index}
           onClick={() => handleCardClick(index)}
+          sx={{ 
+            cursor: 'pointer',
+          }}
         >
           <CardContent className="p-4">
             <Stack direction="row" spacing={1} alignItems="center">

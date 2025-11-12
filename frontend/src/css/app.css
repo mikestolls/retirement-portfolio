@@ -10,7 +10,6 @@
 
 .clickable-card:hover {
   background-color: #d4d4d4ff;
-  transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
 }
 
@@ -23,7 +22,6 @@
 .add-card:hover {
   background-color: #e8f5e8;
   border: 2px dashed #4caf50;
-  transform: translateY(0px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
 }
 

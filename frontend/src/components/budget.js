@@ -1,23 +1,43 @@
 import React, { useState, useMemo } from 'react';
-import { Box, Typography, Paper, Stack, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Select, MenuItem, FormControl, TableSortLabel, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, Paper, Stack, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Select, MenuItem, FormControl, TableSortLabel, Dialog, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import EditIcon from '@mui/icons-material/Edit';
 import '../css/app.css';
 
 export default function Budget() {
-  const [expenses, setExpenses] = useState([
-    { id: 1, expense: 'Rent', category: 'Housing', amount: 0 },
-    { id: 2, expense: 'Groceries', category: 'Food', amount: 0 },
-    { id: 3, expense: 'Gas', category: 'Transportation', amount: 0 },
-    { id: 4, expense: 'Electric Bill', category: 'Other', amount: 0 }
+  // Multiple budgets data structure
+  const [budgets, setBudgets] = useState([
+    {
+      id: 1,
+      name: 'Monthly Budget',
+      totalIncome: 0,
+      expenses: [
+        { id: 1, expense: 'Rent', category: 'Housing', amount: 0 },
+        { id: 2, expense: 'Groceries', category: 'Food', amount: 0 },
+        { id: 3, expense: 'Gas', category: 'Transportation', amount: 0 },
+        { id: 4, expense: 'Electric Bill', category: 'Other', amount: 0 }
+      ],
+      categories: ['Housing', 'Food', 'Transportation', 'Entertainment', 'Subscriptions', 'Internet', 'TV', 'Phone', 'Other']
+    }
   ]);
-
-  const [categories, setCategories] = useState(['Housing', 'Food', 'Transportation', 'Entertainment', 'Subscriptions', 'Internet', 'TV', 'Phone', 'Other']);
+  
+  const [selectedBudget, setSelectedBudget] = useState(0);
   const [addCategoryDialog, setAddCategoryDialog] = useState(false);
+  const [addBudgetDialog, setAddBudgetDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newBudgetName, setNewBudgetName] = useState('');
   const [pendingExpenseId, setPendingExpenseId] = useState(null);
   
   const [sortBy, setSortBy] = useState('');
   const [sortOrder, setSortOrder] = useState('asc');
   const [categoryFilter, setCategoryFilter] = useState('');
+
+  // Get current budget data
+  const currentBudget = budgets[selectedBudget];
+  const expenses = currentBudget?.expenses || [];
+  const categories = currentBudget?.categories || [];
+  const totalIncome = currentBudget?.totalIncome || 0;
 
   const handleSort = (column) => {
     const isAsc = sortBy === column && sortOrder === 'asc';
@@ -56,20 +76,26 @@ export default function Budget() {
     return filtered;
   }, [expenses, sortBy, sortOrder, categoryFilter]);
 
-  // TODO: Pull from family info context
-  const totalIncome = 0;
   const totalExpenses = expenses.reduce((sum, item) => sum + (item.amount || 0), 0);
   const netPosition = totalIncome - totalExpenses;
 
   const updateExpense = (id, field, value) => {
-    setExpenses(prev => prev.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
+    setBudgets(prev => prev.map((budget, index) => 
+      index === selectedBudget 
+        ? { ...budget, expenses: budget.expenses.map(item => 
+            item.id === id ? { ...item, [field]: value } : item
+          )}
+        : budget
     ));
   };
 
   const addExpenseCategory = () => {
     const newId = Math.max(...expenses.map(e => e.id)) + 1;
-    setExpenses(prev => [...prev, { id: newId, expense: '', category: 'Other', amount: 0 }]);
+    setBudgets(prev => prev.map((budget, index) => 
+      index === selectedBudget 
+        ? { ...budget, expenses: [...budget.expenses, { id: newId, expense: '', category: 'Other', amount: 0 }] }
+        : budget
+    ));
   };
 
   const handleCategoryChange = (expenseId, value) => {
@@ -84,7 +110,11 @@ export default function Budget() {
   const handleAddCategory = () => {
     if (newCategoryName.trim() && !categories.includes(newCategoryName.trim())) {
       const newCategory = newCategoryName.trim();
-      setCategories(prev => [...prev, newCategory]);
+      setBudgets(prev => prev.map((budget, index) => 
+        index === selectedBudget 
+          ? { ...budget, categories: [...budget.categories, newCategory] }
+          : budget
+      ));
       if (pendingExpenseId) {
         updateExpense(pendingExpenseId, 'category', newCategory);
       }
@@ -100,29 +130,122 @@ export default function Budget() {
     setPendingExpenseId(null);
   };
 
+  const handleAddBudget = () => {
+    if (newBudgetName.trim()) {
+      const newBudget = {
+        id: Math.max(...budgets.map(b => b.id)) + 1,
+        name: newBudgetName.trim(),
+        totalIncome: 0,
+        expenses: [],
+        categories: ['Housing', 'Food', 'Transportation', 'Entertainment', 'Subscriptions', 'Internet', 'TV', 'Phone', 'Other']
+      };
+      setBudgets(prev => [...prev, newBudget]);
+      setSelectedBudget(budgets.length); // Select the new budget
+    }
+    setAddBudgetDialog(false);
+    setNewBudgetName('');
+  };
+
+  const handleCancelAddBudget = () => {
+    setAddBudgetDialog(false);
+    setNewBudgetName('');
+  };
+
+  const renderBudgetCards = () => {
+    const budgetCards = budgets.map((budget, index) => (
+      <Card 
+        className="rounded-2xl shadow-md standard-card card-300 clickable-card"
+        key={budget.id}
+        onClick={() => setSelectedBudget(index)}
+        sx={{ 
+          cursor: 'pointer',
+          backgroundColor: selectedBudget === index ? 'primary.light' : 'background.paper',
+          border: selectedBudget === index ? 2 : 1,
+          borderColor: selectedBudget === index ? 'primary.main' : 'divider',
+          '&:hover': {
+            backgroundColor: selectedBudget === index ? 'primary.light' : undefined
+          }
+        }}
+      >
+        <CardContent className="p-4">
+          <Stack direction="row" spacing={1} alignItems="center">
+            <AccountBalanceWalletIcon sx={{ 
+              color: selectedBudget === index ? 'primary.main' : 'inherit' 
+            }}/>
+            <h3 className="text-sm" style={{ 
+              color: selectedBudget === index ? 'var(--mui-palette-primary-main)' : 'inherit' 
+            }}>
+              {budget.name}
+            </h3>
+          </Stack>
+          <Stack direction="column" spacing={0.5} alignItems="left" className="mb-2">
+            <p className="text-sm">Income: ${budget.totalIncome.toLocaleString()}</p>
+            <p className="text-sm">Expenses: ${budget.expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0).toLocaleString()}</p>
+            <p className="text-sm">Items: {budget.expenses.length}</p>
+          </Stack>
+        </CardContent>
+      </Card>
+    ));
+
+    const addBudgetCard = (
+      <Card 
+        className="rounded-2xl shadow-md standard-card card-300 add-card"
+        key="add-budget"
+        onClick={() => setAddBudgetDialog(true)}
+        sx={{ cursor: 'pointer' }}
+      >
+        <CardContent className="p-4">
+          <Stack direction="column" spacing={2} alignItems="center" justifyContent="center" sx={{ minHeight: 120 }}>
+            <AddIcon sx={{ fontSize: 40, color: '#666' }} />
+            <Typography variant="h6" color="textSecondary">
+              Add Budget
+            </Typography>
+          </Stack>
+        </CardContent>
+      </Card>
+    );
+
+    return [...budgetCards, addBudgetCard];
+  };
+
   return (
     <div style={{ width: '100%', overflow: 'hidden' }}>
+      {/* Budget Selection Cards */}
       <Box
         sx={{ 
           display: 'flex', 
           overflowX: 'auto',
           gap: 2, 
-          pb: 1,
+          pb: 2,
         }}
       >
-        {/* Total Income */}
-        <Card className="rounded-2xl shadow-md standard-card card-33-percent"> 
-          <CardContent sx={{ textAlign: 'center' }}>
-            <Stack direction="column" spacing={1} alignItems="center">
-              <Typography variant="h6" color="text.secondary">
-                Total Income
-              </Typography>
-              <Typography variant="h4" color="primary">
-                ${totalIncome.toLocaleString()}
-              </Typography>
-            </Stack>
-          </CardContent>
-        </Card>
+        {renderBudgetCards()}
+      </Box>
+
+      {/* Current Budget Content */}
+      {currentBudget && (
+        <>
+          <Box
+            sx={{ 
+              display: 'flex', 
+              overflowX: 'auto',
+              gap: 2, 
+              pb: 1,
+            }}
+          >
+            {/* Total Income */}
+            <Card className="rounded-2xl shadow-md standard-card card-33-percent"> 
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Stack direction="column" spacing={1} alignItems="center">
+                  <Typography variant="h6" color="text.secondary">
+                    Total Income
+                  </Typography>
+                  <Typography variant="h4" color="primary">
+                    ${totalIncome.toLocaleString()}
+                  </Typography>
+                </Stack>
+              </CardContent>
+            </Card>
 
         {/* Total Expenses */}
         <Card className="rounded-2xl shadow-md standard-card card-33-percent"> 
@@ -264,6 +387,8 @@ export default function Budget() {
           </CardContent>
         </Card>
       </Box>
+      </>
+      )}
 
       {/* Add Category Dialog */}
       <Dialog open={addCategoryDialog} onClose={handleCancelAddCategory}>
@@ -288,6 +413,33 @@ export default function Budget() {
           <Button onClick={handleCancelAddCategory}>Cancel</Button>
           <Button onClick={handleAddCategory} variant="contained" disabled={!newCategoryName.trim()}>
             Add Category
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Budget Dialog */}
+      <Dialog open={addBudgetDialog} onClose={handleCancelAddBudget}>
+        <DialogTitle>Add New Budget</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Budget Name"
+            fullWidth
+            variant="outlined"
+            value={newBudgetName}
+            onChange={(e) => setNewBudgetName(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleAddBudget();
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelAddBudget}>Cancel</Button>
+          <Button onClick={handleAddBudget} variant="contained" disabled={!newBudgetName.trim()}>
+            Add Budget
           </Button>
         </DialogActions>
       </Dialog>

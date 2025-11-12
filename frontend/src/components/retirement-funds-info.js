@@ -376,11 +376,26 @@ export default function RetirementFundsInfo() {
             className="rounded-2xl shadow-md standard-card card-300 clickable-card"
             key={fund.originalIndex}
             onClick={() => setSelectedFund(fund.originalIndex)}
+            sx={{ 
+              cursor: 'pointer',
+              backgroundColor: selectedFund === fund.originalIndex ? 'primary.light' : 'background.paper',
+              border: selectedFund === fund.originalIndex ? 2 : 1,
+              borderColor: selectedFund === fund.originalIndex ? 'primary.main' : 'divider',
+              '&:hover': {
+                backgroundColor: selectedFund === fund.originalIndex ? 'primary.light' : undefined
+              }
+            }}
           >
             <CardContent className="p-4">
               <Stack direction="row" spacing={1} alignItems="center">
-                <AccountBalanceIcon/>
-                <h3 className="text-sm">{fund.name}</h3>
+                <AccountBalanceIcon sx={{ 
+                  color: selectedFund === fund.originalIndex ? 'primary.main' : 'inherit' 
+                }}/>
+                <h3 className="text-sm" style={{ 
+                  color: selectedFund === fund.originalIndex ? 'var(--mui-palette-primary-main)' : 'inherit' 
+                }}>
+                  {fund.name}
+                </h3>
               </Stack>
               <Stack direction="column" spacing={0.5} alignItems="left" className="mb-2">
                 <p className="text-sm">Owner: {member?.name || 'Unknown'}</p>
