@@ -411,32 +411,71 @@ def db_update_budget(budget_id, budget_data):
         
         budget_data = convert_floats_to_decimals(budget_data)
         
+        # Build update expression dynamically with expression attribute names (like retirement funds)
+        update_expression_parts = []
+        expression_attribute_values = {}
+        expression_attribute_names = {}
+        
+        for key, value in budget_data.items():
+            if key != 'budget_id':  # Don't update the key
+                # Use expression attribute names to handle reserved keywords
+                attr_name = f'#{key}'
+                attr_value = f':{key}'
+                update_expression_parts.append(f'{attr_name} = {attr_value}')
+                expression_attribute_names[attr_name] = key
+                expression_attribute_values[attr_value] = value
+        
+        update_expression_parts.append('#updated_at = :updated')
+        expression_attribute_names['#updated_at'] = 'updated_at'
+        expression_attribute_values[':updated'] = datetime.now().isoformat()
+        
         response = table.update_item(
             Key={'budget_id': budget_id},
-            UpdateExpression='SET budget_data = :data, updated_at = :updated',
-            ExpressionAttributeValues={
-                ':data': budget_data,
-                ':updated': datetime.now().isoformat()
-            },
+            UpdateExpression='SET ' + ', '.join(update_expression_parts),
+            ExpressionAttributeNames=expression_attribute_names,
+            ExpressionAttributeValues=expression_attribute_values,
             ConditionExpression='attribute_exists(budget_id)',
             ReturnValues='ALL_NEW'
         )
         return response['Attributes']
     except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
         # Item doesn't exist, create it
-        table.put_item(
-            Item={
-                'budget_id': budget_id,
-                'family_id': budget_data.get('family_id'),
-                'budget_data': budget_data,
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
-        )
+        item = {
+            'budget_id': budget_id,
+            **budget_data,  # Spread budget data at top level
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        # Ensure family_id is set for GSI
+        if 'family_id' not in item:
+            # If family_id is missing, we need to get it from somewhere
+            # For now, let's throw an error
+            raise ValueError("family_id is required for new budget")
+        
+        table.put_item(Item=item)
         return table.get_item(Key={'budget_id': budget_id})['Item']
     except Exception as e:
         logger.error(f"Error updating budget: {str(e)}")
         return None
+
+def db_delete_budget(budget_id):
+    """Delete a budget from the budgets table"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        table = dynamodb.Table(BUDGETS_TABLE)
+        
+        # Check if item exists before attempting deletion
+        response = table.get_item(Key={'budget_id': budget_id})
+        if 'Item' not in response:
+            return False
+        
+        # Delete the item
+        table.delete_item(Key={'budget_id': budget_id})
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error deleting budget: {str(e)}")
+        return False
 
 def db_delete_retirement_fund(fund_id):
     """Delete a retirement fund from the retirement_funds table"""

@@ -1,54 +1,81 @@
 # Data model for budget information
 
 class BudgetData:
-    # Model for budget parameters
+    # Model for single budget structure matching frontend
     def __init__(self, data):
-        self.budget_data = data.get('budget_data', {})
+        # Flatten the structure - no need for budget_data wrapper
+        self.name = data.get('name', '')
+        self.totalIncome = data.get('totalIncome', 0)
+        self.expenses = data.get('expenses', [])
+        self.categories = data.get('categories', [])
+        self.family_id = data.get('family_id', '')
     
     def validate(self):
         """
-        Validate budget parameters
+        Validate budget data structure
         
         Returns:
             tuple: (is_valid, error_message)
         """
-        family_id = self.budget_data.get('family_id', '')
-        month = self.budget_data.get('month', 0)
-        year = self.budget_data.get('year', 0)
-        planned_income = self.budget_data.get('planned_income', 0)
-        planned_expenses = self.budget_data.get('planned_expenses', 0)
-        actual_income = self.budget_data.get('actual_income', 0)
-        actual_expenses = self.budget_data.get('actual_expenses', 0)
-        
         # Validate family_id
-        if not family_id or len(family_id.strip()) == 0:
+        if not self.family_id or len(str(self.family_id).strip()) == 0:
             return False, "Family ID is required"
         
-        # Validate month (1-12)
-        if not isinstance(month, int) or month < 1 or month > 12:
-            return False, "Month must be between 1 and 12"
+        # Validate budget name
+        if not self.name or len(str(self.name).strip()) == 0:
+            return False, "Budget must have a name"
         
-        # Validate year
-        if not isinstance(year, int) or year < 2000 or year > 2100:
-            return False, "Year must be between 2000 and 2100"
+        # Validate total income
+        if not isinstance(self.totalIncome, (int, float)) or self.totalIncome < 0:
+            return False, "Total income must be non-negative"
         
-        # Validate monetary amounts (should be non-negative)
-        if planned_income < 0:
-            return False, "Planned income cannot be negative"
+        # Validate expenses array
+        if not isinstance(self.expenses, list):
+            return False, "Expenses must be an array"
         
-        if planned_expenses < 0:
-            return False, "Planned expenses cannot be negative"
+        # Validate each expense
+        for expense_index, expense in enumerate(self.expenses):
+            if not isinstance(expense, dict):
+                return False, f"Expense {expense_index} must be an object"
+            
+            expense_id = expense.get('id')
+            expense_name = expense.get('expense', '')
+            category = expense.get('category', '')
+            amount = expense.get('amount', 0)
+            
+            # Validate expense ID
+            if not expense_id:
+                return False, f"Expense {expense_index} must have an ID"
+            
+            # Validate expense name
+            if not isinstance(expense_name, str):
+                return False, f"Expense {expense_index} name must be a string"
+            
+            # Validate category
+            if not isinstance(category, str) or len(category.strip()) == 0:
+                return False, f"Expense '{expense_name}' must have a category"
+            
+            # Validate amount
+            if not isinstance(amount, (int, float)) or amount < 0:
+                return False, f"Expense '{expense_name}' amount must be non-negative"
         
-        if actual_income < 0:
-            return False, "Actual income cannot be negative"
+        # Validate categories array
+        if not isinstance(self.categories, list):
+            return False, "Categories must be an array"
         
-        if actual_expenses < 0:
-            return False, "Actual expenses cannot be negative"
+        # Validate each category
+        for category_index, category in enumerate(self.categories):
+            if not isinstance(category, str) or len(category.strip()) == 0:
+                return False, f"Category {category_index} must be a non-empty string"
         
         return True, ""
     
     def to_dict(self):
         """Convert to dictionary format for database storage"""
         return {
-            'budget_data': self.budget_data
+            'name': self.name,
+            'totalIncome': self.totalIncome,
+            'expenses': self.expenses,
+            'categories': self.categories,
+            'family_id': self.family_id
         }

@@ -3,24 +3,14 @@ import { Box, Typography, Paper, Stack, Grid, TextField, Button, Table, TableBod
 import AddIcon from '@mui/icons-material/Add';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import EditIcon from '@mui/icons-material/Edit';
+import { useRetirement } from '../context/retirement-context';
 import '../css/app.css';
 
 export default function Budget() {
-  // Multiple budgets data structure
-  const [budgets, setBudgets] = useState([
-    {
-      id: 1,
-      name: 'Monthly Budget',
-      totalIncome: 0,
-      expenses: [
-        { id: 1, expense: 'Rent', category: 'Housing', amount: 0 },
-        { id: 2, expense: 'Groceries', category: 'Food', amount: 0 },
-        { id: 3, expense: 'Gas', category: 'Transportation', amount: 0 },
-        { id: 4, expense: 'Electric Bill', category: 'Other', amount: 0 }
-      ],
-      categories: ['Housing', 'Food', 'Transportation', 'Entertainment', 'Subscriptions', 'Internet', 'TV', 'Phone', 'Other']
-    }
-  ]);
+  const { userData, loading, error, updateBudget, getDefaultBudget } = useRetirement();
+  
+  // Extract data from new structure - direct usage like retirement funds
+  const budgets = userData?.budgets || [];
   
   const [selectedBudget, setSelectedBudget] = useState(0);
   const [addCategoryDialog, setAddCategoryDialog] = useState(false);
@@ -32,6 +22,8 @@ export default function Budget() {
   const [sortBy, setSortBy] = useState('');
   const [sortOrder, setSortOrder] = useState('asc');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [editingIncome, setEditingIncome] = useState(false);
+  const [tempIncomeValue, setTempIncomeValue] = useState('');
 
   // Get current budget data
   const currentBudget = budgets[selectedBudget];
@@ -79,23 +71,49 @@ export default function Budget() {
   const totalExpenses = expenses.reduce((sum, item) => sum + (item.amount || 0), 0);
   const netPosition = totalIncome - totalExpenses;
 
-  const updateExpense = (id, field, value) => {
-    setBudgets(prev => prev.map((budget, index) => 
-      index === selectedBudget 
-        ? { ...budget, expenses: budget.expenses.map(item => 
-            item.id === id ? { ...item, [field]: value } : item
-          )}
-        : budget
-    ));
+  const updateExpense = async (id, field, value) => {
+    // Persist to backend - backend will handle userData updates
+    if (currentBudget?.budget_id) {
+      const updatedBudget = {
+        ...currentBudget,
+        expenses: currentBudget.expenses.map(item => 
+          item.id === id ? { ...item, [field]: value } : item
+        )
+      };
+      
+      // Convert to backend format
+      const backendBudgetData = {
+        name: updatedBudget.name,
+        totalIncome: updatedBudget.totalIncome,
+        expenses: updatedBudget.expenses,
+        categories: updatedBudget.categories
+      };
+      
+      await updateBudget(currentBudget.budget_id, backendBudgetData);
+    }
   };
 
-  const addExpenseCategory = () => {
-    const newId = Math.max(...expenses.map(e => e.id)) + 1;
-    setBudgets(prev => prev.map((budget, index) => 
-      index === selectedBudget 
-        ? { ...budget, expenses: [...budget.expenses, { id: newId, expense: '', category: 'Other', amount: 0 }] }
-        : budget
-    ));
+  const addExpenseCategory = async () => {
+    const newId = expenses.length > 0 ? Math.max(...expenses.map(e => e.id)) + 1 : 1;
+    const newExpense = { id: newId, expense: '', category: 'Other', amount: 0 };
+    
+    // Persist to backend - backend will handle userData updates
+    if (currentBudget?.budget_id) {
+      const updatedBudget = {
+        ...currentBudget,
+        expenses: [...currentBudget.expenses, newExpense]
+      };
+      
+      // Convert to backend format
+      const backendBudgetData = {
+        name: updatedBudget.name,
+        totalIncome: updatedBudget.totalIncome,
+        expenses: updatedBudget.expenses,
+        categories: updatedBudget.categories
+      };
+      
+      await updateBudget(currentBudget.budget_id, backendBudgetData);
+    }
   };
 
   const handleCategoryChange = (expenseId, value) => {
@@ -107,16 +125,30 @@ export default function Budget() {
     }
   };
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (newCategoryName.trim() && !categories.includes(newCategoryName.trim())) {
       const newCategory = newCategoryName.trim();
-      setBudgets(prev => prev.map((budget, index) => 
-        index === selectedBudget 
-          ? { ...budget, categories: [...budget.categories, newCategory] }
-          : budget
-      ));
+      
       if (pendingExpenseId) {
         updateExpense(pendingExpenseId, 'category', newCategory);
+      }
+
+      // Persist to backend (only if not already handled by updateExpense)
+      if (currentBudget?.budget_id && !pendingExpenseId) {
+        const updatedBudget = {
+          ...currentBudget,
+          categories: [...currentBudget.categories, newCategory]
+        };
+        
+        // Convert to backend format
+        const backendBudgetData = {
+          name: updatedBudget.name,
+          totalIncome: updatedBudget.totalIncome,
+          expenses: updatedBudget.expenses,
+          categories: updatedBudget.categories
+        };
+        
+        await updateBudget(currentBudget.budget_id, backendBudgetData);
       }
     }
     setAddCategoryDialog(false);
@@ -130,17 +162,31 @@ export default function Budget() {
     setPendingExpenseId(null);
   };
 
-  const handleAddBudget = () => {
+  const handleAddBudget = async () => {
     if (newBudgetName.trim()) {
-      const newBudget = {
-        id: Math.max(...budgets.map(b => b.id)) + 1,
-        name: newBudgetName.trim(),
-        totalIncome: 0,
-        expenses: [],
-        categories: ['Housing', 'Food', 'Transportation', 'Entertainment', 'Subscriptions', 'Internet', 'TV', 'Phone', 'Other']
+      // Get default budget with family_id (like retirement funds)
+      const familyId = userData?.user?.family_id;
+      if (!familyId) {
+        console.error('Family ID not available for budget creation');
+        return;
+      }
+      
+      const defaultBudget = getDefaultBudget(familyId);
+      const backendBudgetData = {
+        ...defaultBudget,
+        name: newBudgetName.trim()
       };
-      setBudgets(prev => [...prev, newBudget]);
-      setSelectedBudget(budgets.length); // Select the new budget
+      
+      // Create via backend API
+      const success = await updateBudget('new_budget', backendBudgetData);
+      
+      if (success) {
+        // Backend will update userData, context will re-render with updated budgets
+        // Select the new budget (it will be at the end of the list)
+        setTimeout(() => {
+          setSelectedBudget(budgets.length);
+        }, 100);
+      }
     }
     setAddBudgetDialog(false);
     setNewBudgetName('');
@@ -151,11 +197,48 @@ export default function Budget() {
     setNewBudgetName('');
   };
 
+  const updateTotalIncome = async (newIncome) => {
+    const incomeValue = parseFloat(newIncome) || 0;
+    
+    // Persist to backend - backend will handle userData updates
+    if (currentBudget?.budget_id) {
+      const updatedBudget = {
+        ...currentBudget,
+        totalIncome: incomeValue
+      };
+      
+      // Convert to backend format
+      const backendBudgetData = {
+        name: updatedBudget.name,
+        totalIncome: updatedBudget.totalIncome,
+        expenses: updatedBudget.expenses,
+        categories: updatedBudget.categories
+      };
+      
+      await updateBudget(currentBudget.budget_id, backendBudgetData);
+    }
+  };
+
+  const handleIncomeEdit = () => {
+    setTempIncomeValue(totalIncome.toString());
+    setEditingIncome(true);
+  };
+
+  const handleIncomeSave = async () => {
+    await updateTotalIncome(tempIncomeValue);
+    setEditingIncome(false);
+  };
+
+  const handleIncomeCancel = () => {
+    setEditingIncome(false);
+    setTempIncomeValue('');
+  };
+
   const renderBudgetCards = () => {
     const budgetCards = budgets.map((budget, index) => (
       <Card 
         className="rounded-2xl shadow-md standard-card card-300 clickable-card"
-        key={budget.id}
+        key={budget.budget_id}
         onClick={() => setSelectedBudget(index)}
         sx={{ 
           cursor: 'pointer',
@@ -210,6 +293,8 @@ export default function Budget() {
 
   return (
     <div style={{ width: '100%', overflow: 'hidden' }}>
+      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+
       {/* Budget Selection Cards */}
       <Box
         sx={{ 
@@ -237,12 +322,47 @@ export default function Budget() {
             <Card className="rounded-2xl shadow-md standard-card card-33-percent"> 
               <CardContent sx={{ textAlign: 'center' }}>
                 <Stack direction="column" spacing={1} alignItems="center">
-                  <Typography variant="h6" color="text.secondary">
-                    Total Income
-                  </Typography>
-                  <Typography variant="h4" color="primary">
-                    ${totalIncome.toLocaleString()}
-                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="h6" color="text.secondary">
+                      Total Income
+                    </Typography>
+                    {!editingIncome && (
+                      <IconButton size="small" onClick={handleIncomeEdit}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Stack>
+                  {editingIncome ? (
+                    <Stack direction="column" spacing={1} alignItems="center">
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={tempIncomeValue}
+                        onChange={(e) => setTempIncomeValue(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleIncomeSave();
+                          } else if (e.key === 'Escape') {
+                            handleIncomeCancel();
+                          }
+                        }}
+                        autoFocus
+                        sx={{ '& .MuiInputBase-root': { fontSize: '1.5rem' } }}
+                      />
+                      <Stack direction="row" spacing={1}>
+                        <Button size="small" onClick={handleIncomeSave} variant="contained">
+                          Save
+                        </Button>
+                        <Button size="small" onClick={handleIncomeCancel}>
+                          Cancel
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  ) : (
+                    <Typography variant="h4" color="primary">
+                      ${totalIncome.toLocaleString()}
+                    </Typography>
+                  )}
                 </Stack>
               </CardContent>
             </Card>

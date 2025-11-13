@@ -21,6 +21,13 @@ const DEFAULT_RETIREMENT_FUND = {
   actual_data: []
 };
 
+const DEFAULT_BUDGET = {
+  name: 'Budget',
+  totalIncome: 0,
+  expenses: [],
+  categories: ['Housing', 'Food', 'Transportation', 'Entertainment', 'Subscriptions', 'Internet', 'TV', 'Phone', 'Other']
+};
+
 export const RetirementProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -110,13 +117,8 @@ export const RetirementProvider = ({ children }) => {
 
       // 3. Create default budget (references family_id)
       const defaultBudget = {
+        ...DEFAULT_BUDGET,
         family_id: familyId,
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
-        planned_income: 5000,
-        planned_expenses: 4000,
-        actual_income: 0,
-        actual_expenses: 0
       };
 
       const budgetResponse = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/budget`, {
@@ -355,6 +357,111 @@ export const RetirementProvider = ({ children }) => {
     start_date: new Date().toISOString().split('T')[0]
   });
 
+  const getDefaultBudget = (familyId) => ({
+    ...DEFAULT_BUDGET,
+    family_id: familyId,
+  });
+
+  const updateBudget = async (budgetId, updatedBudget) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const userId = user_id;
+      if (!userId) throw new Error('User ID not available');
+
+      if (!budgetId && updatedBudget !== null) {
+        // This is a new budget creation case
+        budgetId = 'new_budget'; // Temporary identifier
+      } else if (!budgetId) {
+        throw new Error('Budget ID could not be determined');
+      }
+
+      let result;
+      
+      if (updatedBudget === null) {
+        // Delete budget
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/budget/${budgetId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Failed to delete budget');
+        result = await response.json();
+        
+        // Update local state by removing the budget
+        setUserData(prevData => ({
+          ...prevData,
+          budgets: prevData.budgets.filter(b => b.budget_id !== budgetId)
+        }));
+        
+      } else {
+        // Create or update budget
+        const familyId = userData?.user?.family_id;
+        if (!familyId) throw new Error('Family ID not available');
+        
+        const budgetData = { ...updatedBudget, family_id: familyId };
+        
+        // Check if this is a new budget (no existing ID) or update
+        const existingBudgets = userData?.budgets || [];
+        const existingBudget = existingBudgets.find(b => b.budget_id === budgetId) || budgetId === 'new_budget';
+
+        // Remove backend-managed timestamps
+        delete budgetData.created_at;
+        delete budgetData.updated_at;
+
+        let response;
+        if (existingBudget && budgetId !== 'new_budget') {
+          // Update existing budget - use ID in path
+          response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/budget/${budgetId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(budgetData)
+          });
+        } else {
+          // Create new budget - no ID in path, backend generates ID
+          response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/budget`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(budgetData)
+          });
+        }
+        
+        if (!response.ok) throw new Error('Backend sync failed');
+        result = await response.json();
+        
+        // Use the ID returned from backend (for new budgets) or the existing ID
+        const returnedBudgetId = result.budget_info?.budget_id || budgetId;
+        const returnedBudget = result.budget_info;
+        
+        // Update local state with the returned budget
+        if (returnedBudget) {
+          setUserData(prevData => {
+            const existingBudgets = prevData.budgets || [];
+            const budgetIndex = existingBudgets.findIndex(b => b.budget_id === returnedBudgetId);
+            
+            if (budgetIndex >= 0) {
+              // Update existing budget
+              const updatedBudgets = [...existingBudgets];
+              updatedBudgets[budgetIndex] = { ...updatedBudgets[budgetIndex], ...returnedBudget, budget_id: returnedBudgetId };
+              return { ...prevData, budgets: updatedBudgets };
+            } else {
+              // Add new budget
+              return { ...prevData, budgets: [...existingBudgets, { ...returnedBudget, budget_id: returnedBudgetId }] };
+            }
+          });
+        }
+      }
+
+      return true;
+      
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateFamilyInfoData = async (memberIndex, updatedMember) => {
     setLoading(true);
     setError(null);
@@ -446,10 +553,12 @@ export const RetirementProvider = ({ children }) => {
       setUserData,
       fetchUserData,
       updateRetirementFund,
+      updateBudget,
       updateFamilyInfoData,
       updateActualBalance,
       getDefaultFamilyMember,
       getDefaultRetirementFund,
+      getDefaultBudget,
       householdProjection,
       loading, 
       error,

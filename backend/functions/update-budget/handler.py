@@ -1,9 +1,10 @@
 import json
 from datetime import datetime
-from db.dynamodb import db_update_budget, db_get_budget
+from db.dynamodb import db_update_budget, db_get_budget, db_delete_budget
 from models.budget_data import BudgetData
 from utils.handler_utils import (
     create_error_response, 
+    create_success_response,
     process_crud_request, 
     process_get_request,
     generate_uuid
@@ -14,7 +15,7 @@ from utils.logging_config import setup_lambda_logging
 logger = setup_lambda_logging()
 
 def lambda_handler(event, context):
-    """Budget handler supporting both create and update"""
+    """Budget handler supporting create, update, and delete"""
     try:
         # Get budget ID from path parameters (None for create operations)
         path_parameters = event.get('pathParameters') or {}
@@ -28,6 +29,12 @@ def lambda_handler(event, context):
             else:
                 # Create new budget
                 return handle_create_budget(event)
+        
+        # Handle DELETE request to delete budget
+        elif event.get('httpMethod') == 'DELETE':
+            if not budget_id:
+                return create_error_response(400, "budget_id is required for DELETE")
+            return handle_delete_budget(event, budget_id)
         
         # Handle GET request to retrieve budget
         elif event.get('httpMethod') == 'GET':
@@ -46,10 +53,6 @@ def handle_create_budget(event):
     # Generate new budget ID
     budget_id = generate_uuid()
     
-    # Data transformation function to wrap budget data
-    def transform_budget_data(input_data, resource_id):
-        return {'budget_data': input_data}
-    
     return process_crud_request(
         event=event,
         resource_id=budget_id,
@@ -57,18 +60,12 @@ def handle_create_budget(event):
         db_function=db_update_budget,
         success_message='Budget created successfully',
         status_code=201,
-        data_key='budget_data',
-        data_transform=transform_budget_data,
         id_key='budget_id',
         response_key='budget_info'
     )
 
 def handle_update_budget(event, budget_id):
     """Handle POST requests to update existing budget"""
-    # Data transformation function to wrap budget data
-    def transform_budget_data(input_data, resource_id):
-        return {'budget_data': input_data}
-    
     return process_crud_request(
         event=event,
         resource_id=budget_id,
@@ -76,11 +73,20 @@ def handle_update_budget(event, budget_id):
         db_function=db_update_budget,
         success_message='Budget updated successfully',
         status_code=200,
-        data_key='budget_data',
-        data_transform=transform_budget_data,
         id_key='budget_id',
         response_key='budget_info'
     )
+
+def handle_delete_budget(event, budget_id):
+    """Handle DELETE requests to delete a budget"""
+    try:
+        success = db_delete_budget(budget_id)
+        if success:
+            return create_success_response(200, "Budget deleted successfully")
+        else:
+            return create_error_response(404, "Budget not found")
+    except Exception as e:
+        return create_error_response(500, f"Error deleting budget: {str(e)}")
 
 def handle_get_budget(budget_id):
     """Handle GET requests to retrieve budget info"""
