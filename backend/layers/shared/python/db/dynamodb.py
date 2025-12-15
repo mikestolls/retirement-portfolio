@@ -1,13 +1,16 @@
-# DynamoDB database connection and operations
-
+"""
+DynamoDB database connection and operations
+"""
 import os
 import boto3
-import uuid
+import logging
 from datetime import datetime
 from decimal import Decimal
 import json
-
 from utils.converter import convert_floats_to_decimals
+
+# Get logger for this module (inherits configuration from handler)
+logger = logging.getLogger(__name__)
 
 # Get DynamoDB configuration from environment variables
 DYNAMODB_ENDPOINT = os.environ.get('DYNAMODB_ENDPOINT_URL')  # Changed to match launch.json
@@ -18,17 +21,29 @@ AWS_SESSION_TOKEN = os.environ.get('AWS_SESSION_TOKEN')
 
 # Table names
 USERS_TABLE = 'users'
-RETIREMENT_DATA_TABLE = 'retirement_data'
+FAMILIES_TABLE = 'families'
+RETIREMENT_FUNDS_TABLE = 'retirement_funds'
+BUDGETS_TABLE = 'budgets'
+
+# Global DynamoDB client for connection reuse
+_dynamodb_client = None
 
 # Initialize DynamoDB client
 def db_get_dynamodb_client():
-    """Get DynamoDB client based on environment"""
+    """Get DynamoDB client based on environment with connection reuse"""
+    global _dynamodb_client
+    
+    # Reuse existing client if available
+    if _dynamodb_client is not None:
+        logger.debug("Reusing existing DynamoDB client")
+        return _dynamodb_client
+    
     try:        
         # Check if we're running locally (DynamoDB Local)
         endpoint_url = os.environ.get('DYNAMODB_ENDPOINT_URL')
         if endpoint_url:
-            # print(f"Connecting to DynamoDB Local at: {endpoint_url}")
-            return boto3.resource(
+            logger.debug(f"Connecting to DynamoDB Local at: {endpoint_url}")
+            _dynamodb_client = boto3.resource(
                 'dynamodb',
                 endpoint_url=endpoint_url,
                 region_name='us-east-1',
@@ -36,9 +51,12 @@ def db_get_dynamodb_client():
                 aws_secret_access_key='dummy'
             )
         else:  # AWS environment
-            return boto3.resource('dynamodb', region_name=AWS_REGION)
+            _dynamodb_client = boto3.resource('dynamodb', region_name=AWS_REGION)
+        
+        logger.info("Created new DynamoDB client")
+        return _dynamodb_client
     except Exception as e:
-        print(f"Error connecting to DynamoDB: {str(e)}")
+        logger.error(f"Error connecting to DynamoDB: {str(e)}")
         raise
 
 # Initialize tables
@@ -84,176 +102,396 @@ def db_create_tables_if_not_exist():
             BillingMode='PAY_PER_REQUEST'
         )
     
-    # Create consolidated retirement data table if it doesn't exist
-    if RETIREMENT_DATA_TABLE not in existing_tables:
+    # Create families table
+    if FAMILIES_TABLE not in existing_tables:
         dynamodb.create_table(
-            TableName=RETIREMENT_DATA_TABLE,
+            TableName=FAMILIES_TABLE,
             KeySchema=[
-                {'AttributeName': 'user_id', 'KeyType': 'HASH'}
+                {'AttributeName': 'family_id', 'KeyType': 'HASH'}
             ],
             AttributeDefinitions=[
-                {'AttributeName': 'user_id', 'AttributeType': 'S'}
+                {'AttributeName': 'family_id', 'AttributeType': 'S'}
+            ],
+            BillingMode='PAY_PER_REQUEST'
+        )
+    
+    # Create retirement funds table with GSI
+    if RETIREMENT_FUNDS_TABLE not in existing_tables:
+        dynamodb.create_table(
+            TableName=RETIREMENT_FUNDS_TABLE,
+            KeySchema=[
+                {'AttributeName': 'fund_id', 'KeyType': 'HASH'}
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'fund_id', 'AttributeType': 'S'},
+                {'AttributeName': 'family_id', 'AttributeType': 'S'}
+            ],
+            GlobalSecondaryIndexes=[
+                {
+                    'IndexName': 'familyId-index',
+                    'KeySchema': [
+                        {'AttributeName': 'family_id', 'KeyType': 'HASH'}
+                    ],
+                    'Projection': {'ProjectionType': 'KEYS_ONLY'}
+                }
+            ],
+            BillingMode='PAY_PER_REQUEST'
+        )
+    
+    # Create budgets table with GSI
+    if BUDGETS_TABLE not in existing_tables:
+        dynamodb.create_table(
+            TableName=BUDGETS_TABLE,
+            KeySchema=[
+                {'AttributeName': 'budget_id', 'KeyType': 'HASH'}
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'budget_id', 'AttributeType': 'S'},
+                {'AttributeName': 'family_id', 'AttributeType': 'S'}
+            ],
+            GlobalSecondaryIndexes=[
+                {
+                    'IndexName': 'familyId-index',
+                    'KeySchema': [
+                        {'AttributeName': 'family_id', 'KeyType': 'HASH'}
+                    ],
+                    'Projection': {'ProjectionType': 'KEYS_ONLY'}
+                }
             ],
             BillingMode='PAY_PER_REQUEST'
         )
 
-def db_create_user_if_not_exists(user_id, email=None):
-    """Create user if they don't exist"""
+# Simple CRUD operations
+def db_get_user_data(user_id):
+    """Get all user data from 4 tables"""
+    import time
+    
     try:
         dynamodb = db_get_dynamodb_client()
-        table = dynamodb.Table(USERS_TABLE)
         
-        # Check if user exists
-        response = table.get_item(Key={'user_id': user_id})
-        if response.get('Item'):
-            return True  # User already exists
+        # Get user
+        user_start = time.time()
+        user_table = dynamodb.Table(USERS_TABLE)
+        user_response = user_table.get_item(Key={'user_id': user_id})
+        user = user_response.get('Item')
+        user_time = time.time() - user_start
+        logger.debug(f"Get user query: {user_time:.3f}s")
         
-        # Create new user
-        table.put_item(
-            Item={
-                'user_id': user_id,
-                'email': email or f'{user_id}@example.com',
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
+        if not user or not user.get('family_id'):
+            return {'user': user, 'family': None, 'funds': [], 'budgets': []}
+        
+        family_id = user['family_id']
+        
+        # Get family
+        family_start = time.time()
+        family_table = dynamodb.Table(FAMILIES_TABLE)
+        family_response = family_table.get_item(Key={'family_id': family_id})
+        family_info = family_response.get('Item')
+        family_time = time.time() - family_start
+        logger.debug(f"Get family query: {family_time:.3f}s")
+        
+        # Get retirement funds using BatchGetItem for efficiency
+        funds_table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
+        
+        # First, query GSI to get fund IDs
+        funds_gsi_start = time.time()
+        funds_response = funds_table.query(
+            IndexName='familyId-index',
+            KeyConditionExpression='family_id = :family_id',
+            ExpressionAttributeValues={':family_id': family_id}
         )
-        return True
-    except Exception:
-        return False
-    
-def db_get_user_id(email):
-    """
-    Get user ID by email
-    Args:
-        email (str): User email
-    Returns:
-        str: User ID or None if not found
-    """
-    dynamodb = db_get_dynamodb_client()
-    table = dynamodb.Table(USERS_TABLE)
-    
-    response = table.query(
-        IndexName='EmailIndex',
-        KeyConditionExpression='email = :email',
-        ExpressionAttributeValues={':email': email}
-    )
-    
-    items = response.get('Items', [])
-    return items[0]['user_id'] if items else None
+        fund_ids = [item['fund_id'] for item in funds_response.get('Items', [])]
+        funds_gsi_time = time.time() - funds_gsi_start
+        logger.debug(f"Funds GSI query: {funds_gsi_time:.3f}s (found {len(fund_ids)} funds)")
+        
+        # Then batch get complete fund records
+        retirement_funds = []
+        if fund_ids:
+            try:
+                funds_batch_start = time.time()
+                batch_response = dynamodb.batch_get_item(
+                    RequestItems={
+                        RETIREMENT_FUNDS_TABLE: {
+                            'Keys': [{'fund_id': fund_id} for fund_id in fund_ids]
+                        }
+                    }
+                )
+                funds_batch_time = time.time() - funds_batch_start
+                logger.debug(f"Funds batch get: {funds_batch_time:.3f}s")
+                
+                if batch_response:  # Check if batch_response is not None
+                    retirement_funds = batch_response.get('Responses', {}).get(RETIREMENT_FUNDS_TABLE, [])
+                else:
+                    logger.warning("batch_get_item returned None for retirement_funds")
+                    retirement_funds = []
+            except Exception as e:
+                logger.error(f"Error in retirement_funds batch_get_item: {str(e)}")
+                retirement_funds = []
+        
+        # Get budgets using same pattern as retirement funds
+        budgets_table = dynamodb.Table(BUDGETS_TABLE)
+        
+        # First, query GSI to get budget IDs
+        budgets_gsi_start = time.time()
+        budgets_response = budgets_table.query(
+            IndexName='familyId-index',
+            KeyConditionExpression='family_id = :family_id',
+            ExpressionAttributeValues={':family_id': family_id}
+        )
+        budget_ids = [item['budget_id'] for item in budgets_response.get('Items', [])]
+        budgets_gsi_time = time.time() - budgets_gsi_start
+        logger.debug(f"Budgets GSI query: {budgets_gsi_time:.3f}s (found {len(budget_ids)} budgets)")
+        
+        # Then batch get complete budget records
+        budgets = []
+        if budget_ids:
+            try:
+                budgets_batch_start = time.time()
+                batch_response = dynamodb.batch_get_item(
+                    RequestItems={
+                        BUDGETS_TABLE: {
+                            'Keys': [{'budget_id': budget_id} for budget_id in budget_ids]
+                        }
+                    }
+                )
+                budgets_batch_time = time.time() - budgets_batch_start
+                logger.debug(f"Budgets batch get: {budgets_batch_time:.3f}s")
+                
+                if batch_response:  # Check if batch_response is not None
+                    budgets = batch_response.get('Responses', {}).get(BUDGETS_TABLE, [])
+                else:
+                    logger.warning("batch_get_item returned None for budgets")
+                    budgets = []
+            except Exception as e:
+                logger.error(f"Error in budget batch_get_item: {str(e)}")
+                budgets = []
+        
+        return {
+            'user': user,
+            'family_info': family_info,
+            'retirement_funds': retirement_funds,
+            'budgets': budgets
+        }
+    except Exception as e:
+        logger.error(f"Error getting user data: {str(e)}")
+        return None
 
-def db_get_retirement_data(user_id):
-    """Get consolidated retirement data for a user"""
-    dynamodb = db_get_dynamodb_client()
-    table = dynamodb.Table(RETIREMENT_DATA_TABLE)
-    
-    response = table.get_item(Key={'user_id': user_id})
-    return response.get('Item')
-
-def db_get_retirement_fund_data(user_id):
-    """Get retirement_fund_data portion"""
-    dynamodb = db_get_dynamodb_client()
-    table = dynamodb.Table(RETIREMENT_DATA_TABLE)
-    
-    response = table.get_item(
-        Key={'user_id': user_id},
-        ProjectionExpression='retirement_fund_data'
-    )
-    item = response.get('Item')
-    return item.get('retirement_fund_data') if item else None
-
-def db_update_retirement_fund_data(user_id, retirement_fund_data):
-    """Update retirement_fund_data portion"""
+def db_get_family_info(family_id):
+    """Get family info by family_id"""
     try:
         dynamodb = db_get_dynamodb_client()
-        table = dynamodb.Table(RETIREMENT_DATA_TABLE)
+        table = dynamodb.Table(FAMILIES_TABLE)
+        response = table.get_item(Key={'family_id': family_id})
+        return response.get('Item')
+    except Exception as e:
+        logger.error(f"Error getting family info: {str(e)}")
+        return None
+
+def db_get_retirement_fund(fund_id):
+    """Get retirement fund by fund_id"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
+        response = table.get_item(Key={'fund_id': fund_id})
+        return response.get('Item')
+    except Exception as e:
+        logger.error(f"Error getting retirement fund: {str(e)}")
+        return None
+
+def db_get_budget(budget_id):
+    """Get budget by budget_id"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        table = dynamodb.Table(BUDGETS_TABLE)
+        response = table.get_item(Key={'budget_id': budget_id})
+        return response.get('Item')
+    except Exception as e:
+        logger.error(f"Error getting budget: {str(e)}")
+        return None
+
+def db_update_family_info(family_id, family_member_data):
+    """Update family info or create if doesn't exist"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        table = dynamodb.Table(FAMILIES_TABLE)
         
-        retirement_fund_data = convert_floats_to_decimals(retirement_fund_data)
+        family_member_data = convert_floats_to_decimals(family_member_data)
         
-        table.update_item(
-            Key={'user_id': user_id},
-            UpdateExpression='SET retirement_fund_data = :data, updated_at = :updated',
+        response = table.update_item(
+            Key={'family_id': family_id},
+            UpdateExpression='SET #data = :data, updated_at = :updated',
+            ExpressionAttributeNames={'#data': 'family_member_data'},
             ExpressionAttributeValues={
-                ':data': retirement_fund_data,
+                ':data': family_member_data,
                 ':updated': datetime.now().isoformat()
-            }
+            },
+            ConditionExpression='attribute_exists(family_id)',
+            ReturnValues='ALL_NEW'
         )
-        return True
-    except Exception:
-        return False
+        return response['Attributes']
+    except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
+        # Item doesn't exist, create it
+        new_item = {
+            'family_id': family_id,
+            'family_member_data': family_member_data,
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        try:
+            table.put_item(Item=new_item)
+            # Only return the item if put_item succeeded
+            return new_item
+        except Exception as put_error:
+            logger.error(f"Error creating new family: {str(put_error)}")
+            return None
+    except Exception as e:
+        logger.error(f"Error updating family: {str(e)}")
+        return None
 
-def db_get_family_info(user_id):
-    """Get family_info_data portion"""
-    dynamodb = db_get_dynamodb_client()
-    table = dynamodb.Table(RETIREMENT_DATA_TABLE)
-    
-    response = table.get_item(
-        Key={'user_id': user_id},
-        ProjectionExpression='family_info_data'
-    )
-    item = response.get('Item')
-    return item.get('family_info_data') if item else None
-
-def db_update_family_info(user_id, family_info_data):
-    """Update family_info_data portion"""
+def db_update_retirement_fund(fund_id, fund_data):
+    """Update retirement fund or create if doesn't exist"""
     try:
         dynamodb = db_get_dynamodb_client()
-        table = dynamodb.Table(RETIREMENT_DATA_TABLE)
-        
-        family_info_data = convert_floats_to_decimals(family_info_data)
-        
-        table.update_item(
-            Key={'user_id': user_id},
-            UpdateExpression='SET family_info_data = :data, updated_at = :updated',
-            ExpressionAttributeValues={
-                ':data': family_info_data,
-                ':updated': datetime.now().isoformat()
-            }
-        )
-        return True
-    except Exception:
-        return False
-
-def db_update_single_fund(user_id, fund_id, fund_data):
-    """Update a specific fund without reading first"""
-    try:
-        dynamodb = db_get_dynamodb_client()
-        table = dynamodb.Table(RETIREMENT_DATA_TABLE)
+        table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
         
         fund_data = convert_floats_to_decimals(fund_data)
         
-        # Find fund index by scanning the list
-        response = table.get_item(
-            Key={'user_id': user_id},
-            ProjectionExpression='retirement_fund_data'
-        )
+        # Build update expression dynamically with expression attribute names
+        update_expression_parts = []
+        expression_attribute_values = {}
+        expression_attribute_names = {}
         
-        if not response.get('Item'):
+        for key, value in fund_data.items():
+            if key != 'fund_id':  # Don't update the key
+                # Use expression attribute names to handle reserved keywords
+                attr_name = f'#{key}'
+                attr_value = f':{key}'
+                update_expression_parts.append(f'{attr_name} = {attr_value}')
+                expression_attribute_names[attr_name] = key
+                expression_attribute_values[attr_value] = value
+        
+        update_expression_parts.append('#updated_at = :updated')
+        expression_attribute_names['#updated_at'] = 'updated_at'
+        expression_attribute_values[':updated'] = datetime.now().isoformat()
+        
+        response = table.update_item(
+            Key={'fund_id': fund_id},
+            UpdateExpression='SET ' + ', '.join(update_expression_parts),
+            ExpressionAttributeNames=expression_attribute_names,
+            ExpressionAttributeValues=expression_attribute_values,
+            ConditionExpression='attribute_exists(fund_id)',
+            ReturnValues='ALL_NEW'
+        )
+        return response['Attributes']
+    except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
+        # Item doesn't exist, create it
+        item = {
+            'fund_id': fund_id,
+            **fund_data,  # Spread fund data at top level
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        # Ensure family_id is set for GSI
+        if 'family_id' not in item:
+            # If family_id is missing, we need to get it from somewhere
+            # For now, let's throw an error
+            raise ValueError("family_id is required for new retirement fund")
+        
+        table.put_item(Item=item)
+        return table.get_item(Key={'fund_id': fund_id})['Item']
+    except Exception as e:
+        logger.error(f"Error updating retirement fund: {str(e)}")
+        return None
+
+def db_update_budget(budget_id, budget_data):
+    """Update budget or create if doesn't exist"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        table = dynamodb.Table(BUDGETS_TABLE)
+        
+        budget_data = convert_floats_to_decimals(budget_data)
+        
+        # Build update expression dynamically with expression attribute names (like retirement funds)
+        update_expression_parts = []
+        expression_attribute_values = {}
+        expression_attribute_names = {}
+        
+        for key, value in budget_data.items():
+            if key != 'budget_id':  # Don't update the key
+                # Use expression attribute names to handle reserved keywords
+                attr_name = f'#{key}'
+                attr_value = f':{key}'
+                update_expression_parts.append(f'{attr_name} = {attr_value}')
+                expression_attribute_names[attr_name] = key
+                expression_attribute_values[attr_value] = value
+        
+        update_expression_parts.append('#updated_at = :updated')
+        expression_attribute_names['#updated_at'] = 'updated_at'
+        expression_attribute_values[':updated'] = datetime.now().isoformat()
+        
+        response = table.update_item(
+            Key={'budget_id': budget_id},
+            UpdateExpression='SET ' + ', '.join(update_expression_parts),
+            ExpressionAttributeNames=expression_attribute_names,
+            ExpressionAttributeValues=expression_attribute_values,
+            ConditionExpression='attribute_exists(budget_id)',
+            ReturnValues='ALL_NEW'
+        )
+        return response['Attributes']
+    except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
+        # Item doesn't exist, create it
+        item = {
+            'budget_id': budget_id,
+            **budget_data,  # Spread budget data at top level
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        # Ensure family_id is set for GSI
+        if 'family_id' not in item:
+            # If family_id is missing, we need to get it from somewhere
+            # For now, let's throw an error
+            raise ValueError("family_id is required for new budget")
+        
+        table.put_item(Item=item)
+        return table.get_item(Key={'budget_id': budget_id})['Item']
+    except Exception as e:
+        logger.error(f"Error updating budget: {str(e)}")
+        return None
+
+def db_delete_budget(budget_id):
+    """Delete a budget from the budgets table"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        table = dynamodb.Table(BUDGETS_TABLE)
+        
+        # Check if item exists before attempting deletion
+        response = table.get_item(Key={'budget_id': budget_id})
+        if 'Item' not in response:
             return False
         
-        funds = response['Item']['retirement_fund_data']
-        fund_index = None
-        
-        for i, fund in enumerate(funds):
-            if fund.get('id') == fund_id:
-                fund_index = i
-                break
-        
-        if fund_index is None:
-            return False
-        
-        # Update specific fund using list index
-        update_expression = f'SET retirement_fund_data[{fund_index}] = :fund_data, updated_at = :updated'
-        
-        table.update_item(
-            Key={'user_id': user_id},
-            UpdateExpression=update_expression,
-            ExpressionAttributeValues={
-                ':fund_data': {**funds[fund_index], **fund_data},
-                ':updated': datetime.now().isoformat()
-            }
-        )
+        # Delete the item
+        table.delete_item(Key={'budget_id': budget_id})
         return True
-    except Exception:
+        
+    except Exception as e:
+        logger.error(f"Error deleting budget: {str(e)}")
         return False
 
-
+def db_delete_retirement_fund(fund_id):
+    """Delete a retirement fund from the retirement_funds table"""
+    try:
+        dynamodb = db_get_dynamodb_client()
+        table = dynamodb.Table(RETIREMENT_FUNDS_TABLE)
+        
+        # Check if item exists before attempting deletion
+        response = table.get_item(Key={'fund_id': fund_id})
+        if 'Item' not in response:
+            return False
+        
+        # Delete the item
+        table.delete_item(Key={'fund_id': fund_id})
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error deleting retirement fund: {str(e)}")
+        return False

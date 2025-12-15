@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useRetirement } from '../context/retirement-context';
 
-import { Box, Tabs, Tab, Button, Stack, Paper, TextField, Card, CardContent, LinearProgress, Divider, Drawer, IconButton, Typography } from '@mui/material';
+import { Box, Tabs, Tab, Button, Stack, Paper, TextField, Card, CardContent, LinearProgress, Divider, Drawer, IconButton, Typography, CircularProgress } from '@mui/material';
+import '../css/app.css';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -13,13 +14,14 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import PersonIcon from '@mui/icons-material/Person';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
 import HouseIcon from '@mui/icons-material/House';
 import InsightsIcon from '@mui/icons-material/Insights';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 export default function FamilyInfo() {
   // Use the shared context
-  const { updateFamilyInfoData, fetchRetirementData, familyInfoData, householdProjection, loading, error } = useRetirement();
+  const { updateFamilyInfoData, userData, setUserData, householdProjection, loading, error, globalSaving, setGlobalSaving } = useRetirement();
 
   // Fund visibility state
   const [visibleFunds, setVisibleFunds] = useState({});
@@ -37,21 +39,37 @@ export default function FamilyInfo() {
   const [editingMember, setEditingMember] = useState(null);
 
   const handleDrawerClose = () => {
-    // Only update if there are changes in formStates for this member
-    if (editingMember !== null && formStates[editingMember] && Object.keys(formStates[editingMember]).length > 0) {
-      updateFamilyInfoData(editingMember, formStates[editingMember]).then(() => {
-        fetchRetirementData(); // Refresh projections
-        // Clear the form state after successful update
-        setFormStates(prev => {
-          const newStates = { ...prev };
-          delete newStates[editingMember];
-          return newStates;
-        });
-      });
-    }
-
+    // Close drawer immediately for better UX
     setDrawerOpen(false);
     setEditingMember(null);
+    
+    // Handle background update if there are changes
+    if (editingMember !== null && formStates[editingMember] && Object.keys(formStates[editingMember]).length > 0) {
+      // Show saving indicator
+      setGlobalSaving(true);
+      console.log('Updating family member in background...');
+      
+      // Update in background - components will refresh when complete
+      updateFamilyInfoData(editingMember, formStates[editingMember])
+        .then(() => {
+          // Clear the form state after successful update
+          setFormStates(prev => {
+            const newStates = { ...prev };
+            delete newStates[editingMember];
+            return newStates;
+          });
+          console.log('Family member updated successfully - components will refresh');
+          // Note: Components will automatically refresh due to userData state change in context
+        })
+        .catch(error => {
+          console.error('Failed to update family member:', error);
+          console.error('Please refresh the page to see the latest data');
+        })
+        .finally(() => {
+          // Always clear saving indicator
+          setGlobalSaving(false);
+        });
+    }
   };
 
   // Form state management
@@ -70,67 +88,97 @@ export default function FamilyInfo() {
   };
 
   const deleteMember = async (index) => {
-    await updateFamilyInfoData(index, null); // Delete member
-    
-    // Clean up form states - remove deleted index and shift remaining
-    setFormStates(prev => {
-      const newStates = {};
-      Object.keys(prev).forEach(key => {
-        const keyIndex = parseInt(key);
-        if (keyIndex < index) {
-          // Keep states before deleted index
-          newStates[keyIndex] = prev[key];
-        } else if (keyIndex > index) {
-          // Shift states after deleted index down by 1
-          newStates[keyIndex - 1] = prev[key];
-        }
-        // Skip the deleted index
-      });
+    try {
+      // Show saving indicator while deleting member
+      setGlobalSaving(true);
+      console.log('Deleting family member...');
       
-      return newStates;
-    });
+      await updateFamilyInfoData(index, null); // Delete member
+      
+      console.log('Successfully deleted family member');
+      
+      // Clean up form states - remove deleted index and shift remaining
+      setFormStates(prev => {
+        const newStates = {};
+        Object.keys(prev).forEach(key => {
+          const keyIndex = parseInt(key);
+          if (keyIndex < index) {
+            // Keep states before deleted index
+            newStates[keyIndex] = prev[key];
+          } else if (keyIndex > index) {
+            // Shift states after deleted index down by 1
+            newStates[keyIndex - 1] = prev[key];
+          }
+          // Skip the deleted index
+        });
+        
+        return newStates;
+      });
+    } catch (error) {
+      console.error('Error deleting family member:', error);
+    } finally {
+      // Hide saving indicator
+      setGlobalSaving(false);
+    }
   };
 
-  const handleAddMember = () => {
-    const newIndex = familyInfoData?.family_info_data?.length || 0;
-    setEditingMember(newIndex);
-    setDrawerOpen(true);
-    
-    updateFamilyInfoData(newIndex, {
-      'id': crypto.randomUUID(),
-      'name': 'New Member',
-      'date_of_birth': '2000-01-01',
-      'life_expectancy': 90,
-      'retirement_age': 65,
-    });
+  const handleAddMember = async () => {
+    // Get current family data length to determine new member index
+    const currentFamilyData = userData?.family_info?.family_member_data || [];
+    const newMemberIndex = currentFamilyData.length;
+
+    try {
+      // Show saving indicator while adding new member
+      setGlobalSaving(true);
+      console.log('Adding new family member...');
+      
+      // Use the context method to add a new member (let backend provide defaults)
+      const success = await updateFamilyInfoData(newMemberIndex, {});
+      
+      if (success) {
+        console.log('Successfully added new family member');
+        // Open drawer to edit the new member (will be last in array)
+        setEditingMember(newMemberIndex);
+        setDrawerOpen(true);
+      } else {
+        console.error('Failed to add member');
+      }
+    } catch (error) {
+      console.error('Error adding member:', error);
+    } finally {
+      // Hide saving indicator
+      setGlobalSaving(false);
+    }
   };
 
   const renderFamilyCards = () => {
     if (error) return null;
     
-    const memberCards = familyInfoData?.family_info_data?.length ? 
-      familyInfoData.family_info_data.map((member, index) => (
+    const memberCards = userData?.family_info?.family_member_data?.length ? 
+      userData.family_info.family_member_data.map((member, index) => (
         <Card 
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: 300,
-            minWidth: 300, // Prevent shrinking
-            cursor: 'pointer',
-            '&:hover': {
-              backgroundColor: '#d4d4d4ff',
-              transform: 'translateY(-2px)',
-              boxShadow: 3
-            },
-            transition: 'all 0.2s ease-in-out'
-          }} 
+          className="rounded-2xl shadow-md standard-card card-300 clickable-card"
           key={index}
           onClick={() => handleCardClick(index)}
+          sx={{ 
+            cursor: 'pointer',
+          }}
         >
           <CardContent className="p-4">
-            <Stack direction="row" spacing={1} alignItems="center">
-              <PersonIcon/>
-              <h3 className="text-sm">{member['name']}</h3>
+            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+              <Stack direction="row" spacing={1} alignItems="center">
+                <PersonIcon/>
+                <h3 className="text-sm">{member['name']}</h3>
+              </Stack>
+              <IconButton 
+                size="small" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCardClick(index);
+                }}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
             </Stack>
             <Stack direction={"column"} spacing={0.5} alignItems="left" className="mb-2">
               <p className="text-sm">Age: {Math.floor((new Date() - new Date(member['date_of_birth'])) / (365.25 * 24 * 60 * 60 * 1000))} | Retirement Age: {member['retirement_age']}</p>
@@ -146,22 +194,7 @@ export default function FamilyInfo() {
     // Add Member card
     const addMemberCard = (
       <Card 
-        className="rounded-2xl shadow-md" 
-        sx={{ 
-          mb: 2, 
-          width: 300,
-          minWidth: 300,
-          cursor: 'pointer',
-          border: '2px dashed #ccc',
-          backgroundColor: '#f9f9f9',
-          '&:hover': {
-            backgroundColor: '#e8f5e8',
-            border: '2px dashed #4caf50',
-            transform: 'translateY(0px)',
-            boxShadow: 3
-          },
-          transition: 'all 0.2s ease-in-out'
-        }} 
+        className="rounded-2xl shadow-md standard-card card-300 add-card"
         key="add-member"
         onClick={handleAddMember}
       >
@@ -182,7 +215,7 @@ export default function FamilyInfo() {
   return (
     <div style={{ width: '100%', overflow: 'hidden' }}>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-
+      
       <Box
         sx={{ 
           display: 'flex', 
@@ -192,14 +225,7 @@ export default function FamilyInfo() {
         }}
       >
         {/* Household Summary */}
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "50%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-50-percent"> 
           <CardContent className="p-4">
             <Stack direction="row" spacing={1} alignItems="center">
               <HouseIcon/>
@@ -217,14 +243,7 @@ export default function FamilyInfo() {
         </Card>
 
         {/* Insights Summary */}
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "50%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-50-percent"> 
           <CardContent className="p-4">
             <Stack direction="row" spacing={1} alignItems="center">
               <InsightsIcon/>
@@ -246,14 +265,7 @@ export default function FamilyInfo() {
           pb: 1,
         }}
       >
-        <Card
-          className="rounded-2xl shadow-md" 
-          sx={{ 
-            mb: 2, 
-            width: "100%",
-            transition: 'all 0.2s ease-in-out'
-          }} 
-        > 
+        <Card className="rounded-2xl shadow-md standard-card card-100-percent"> 
           <CardContent className="p-4">
             <Stack direction="row" spacing={1} alignItems="center">
               <TrendingUpIcon/>
@@ -271,7 +283,7 @@ export default function FamilyInfo() {
               }
               
               // Calculate retirement years for markers
-              const retirementMarkers = familyInfoData?.family_info_data?.map(member => {
+              const retirementMarkers = userData?.family_info?.family_member_data?.map(member => {
                 const currentAge = Math.floor((new Date() - new Date(member['date_of_birth'])) / (365.25 * 24 * 60 * 60 * 1000));
                 const retirementYear = new Date().getFullYear() + (member['retirement_age'] - currentAge);
                 return { name: member.name, year: retirementYear };
@@ -414,10 +426,15 @@ export default function FamilyInfo() {
         anchor="right"
         open={drawerOpen}
         onClose={handleDrawerClose}
-        disableEnforceFocus
-        disableAutoFocus
-        disableRestoreFocus
+        disableEnforceFocus={true}
+        disableAutoFocus={true}
+        disableRestoreFocus={true}
         hideBackdrop={false}
+        keepMounted={false}
+        ModalProps={{
+          disablePortal: true,
+          disableScrollLock: false,
+        }}
       >
         <Box sx={{ width: 400, p: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -427,20 +444,20 @@ export default function FamilyInfo() {
             </IconButton>
           </Stack>
           
-          {editingMember !== null && familyInfoData?.family_info_data?.[editingMember] && (
+          {editingMember !== null && userData?.family_info?.family_member_data?.[editingMember] && (
             <Stack spacing={2}>
               <TextField 
                 label="Name" 
                 name="name"
                 variant="outlined"
                 fullWidth
-                value={getFormData(editingMember)['name'] || familyInfoData.family_info_data[editingMember]['name']}
+                value={getFormData(editingMember)['name'] || userData.family_info.family_member_data[editingMember]['name']}
                 onChange={handleChange(editingMember)}
               />
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   label="Date of Birth"
-                  value={dayjs(getFormData(editingMember)['date_of_birth'] || familyInfoData.family_info_data[editingMember]['date_of_birth'])}
+                  value={dayjs(getFormData(editingMember)['date_of_birth'] || userData.family_info.family_member_data[editingMember]['date_of_birth'])}
                   onChange={(newValue) => {
                     setFormData(editingMember, {
                       ...getFormData(editingMember),
@@ -463,7 +480,7 @@ export default function FamilyInfo() {
                 fullWidth
                 type="number"
                 slotProps={{ htmlInput: { min: 50, max: 80 } }}
-                value={getFormData(editingMember)['retirement_age'] || familyInfoData.family_info_data[editingMember]['retirement_age']}
+                value={getFormData(editingMember)['retirement_age'] || userData.family_info.family_member_data[editingMember]['retirement_age']}
                 onChange={handleChange(editingMember)}
               />
               <TextField
@@ -473,7 +490,7 @@ export default function FamilyInfo() {
                 fullWidth
                 type="number"
                 slotProps={{ htmlInput: { min: 60, max: 120 } }}
-                value={getFormData(editingMember)['life_expectancy'] || familyInfoData.family_info_data[editingMember]['life_expectancy']}
+                value={getFormData(editingMember)['life_expectancy'] || userData.family_info.family_member_data[editingMember]['life_expectancy']}
                 onChange={handleChange(editingMember)}
               />
               <Button 

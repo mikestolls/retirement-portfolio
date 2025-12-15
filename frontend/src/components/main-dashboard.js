@@ -16,12 +16,16 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import { Tooltip } from '@mui/material';
+import { Tooltip, CircularProgress, Fade, Slide } from '@mui/material';
 import Avatar from '@mui/material/Avatar';
+
+// Context
+import { useRetirement } from '../context/retirement-context';
 
 // Routes
 import FamilyInfo from './family-info.js';
 import RetirementFundsInfo from './retirement-funds-info.js';
+import Budget from './budget.js';
 
 // Icons
 import MenuIcon from '@mui/icons-material/Menu';
@@ -30,6 +34,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import HouseIcon from '@mui/icons-material/House';
 import SavingsIcon from '@mui/icons-material/Savings';
 import ElderlyIcon from '@mui/icons-material/Elderly';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 const openedMixin = (theme) => ({
@@ -114,6 +119,7 @@ const drawerWidth = 240;
 const drawerOptions = [
   [
     { text: 'Family Info', icon: <HouseIcon />, path: '/family_info'},
+    { text: 'Budget', icon: <AccountBalanceWalletIcon />, path: '/budget'},
     { text: 'Retirement Funds', icon: <SavingsIcon />, path:'/retirement_funds' },
     { text: 'Retirement Strategy', icon: <ElderlyIcon />, path: '/retirement_strategy' }
   ], 
@@ -129,6 +135,9 @@ export default function MainDashboard() {
   const [anchorElUser, setAnchorElUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Get global saving state from context
+  const { globalSaving } = useRetirement();
 
   const handleDrawerOpen = () => {
     setDrawerOpen(true);
@@ -268,13 +277,38 @@ export default function MainDashboard() {
         ))}
       </List>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, overflow: 'hidden' }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, overflow: 'hidden', position: 'relative' }}>
         <DrawerHeader />
+        
         <Routes>
           <Route path="/" element={<Navigate to="/family_info" replace />} />
           <Route path="/family_info" element={<FamilyInfo />} />
+          <Route path="/budget" element={<Budget />} />
           <Route path="/retirement_funds" element={<RetirementFundsInfo />} />
         </Routes>
+        
+        {/* Global saving indicator - Bottom overlay */}
+        <Slide direction="up" in={globalSaving} mountOnEnter unmountOnExit>
+          <Box sx={{ 
+            position: 'fixed',
+            bottom: 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1, 
+            px: 3,
+            py: 1.5,
+            bgcolor: 'info.main', 
+            color: 'white', 
+            borderRadius: 2,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            zIndex: 1300
+          }}>
+            <CircularProgress size={16} color="inherit" />
+            <Typography variant="body2" fontWeight="medium">Saving changes...</Typography>
+          </Box>
+        </Slide>
       </Box>
     </Box>
   );

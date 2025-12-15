@@ -1,66 +1,110 @@
 import json
-import logging
-from db.dynamodb import db_update_family_info, db_create_tables_if_not_exist, db_create_user_if_not_exists
+from datetime import datetime
+from db.dynamodb import db_update_family_info, db_get_family_info
 from models.family_info_data import FamilyInfoData
+from utils.handler_utils import (
+    create_error_response, 
+    process_crud_request, 
+    process_get_request,
+    generate_uuid
+)
+from utils.logging_config import setup_lambda_logging
 
 # Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger = setup_lambda_logging()
+
+def add_member_ids(family_member_data: list) -> list:
+    """Add UUIDs to family members that don't have IDs"""
+    for member in family_member_data:
+        if not member.get('id'):
+            member['id'] = generate_uuid()
+    return family_member_data
 
 def lambda_handler(event, context):
-    """Update family info for a user"""
+    """Family handler supporting both create and update"""
     try:
-        # Ensure tables exist
-        db_create_tables_if_not_exist()
+        # Debug: Log the incoming event
+        logger.info(f"Lambda handler received event: {json.dumps(event, default=str)}")
         
-        # Get user_id from path parameters
-        user_id = event['pathParameters']['user_id']
+        # Get family ID from path parameters (None for create operations)
+        path_parameters = event.get('pathParameters') or {}
+        family_id = path_parameters.get('family_id') if path_parameters else None
+        logger.info(f"Extracted family_id: {family_id}")
         
-        # Create user if they don't exist
-        db_create_user_if_not_exists(user_id)
+        # Handle different HTTP methods
+        if event.get('httpMethod') == 'POST':
+            if family_id:
+                # Update existing family
+                return handle_update_family(event, family_id)
+            else:
+                # Create new family
+                return handle_create_family(event)
+        elif event.get('httpMethod') == 'GET':
+            if family_id:
+                # Get existing family
+                return handle_get_family(family_id)
+            else:
+                return create_error_response(400, "Family ID is required for GET requests")
         
-        if not user_id or user_id.strip() == "":
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({"message": "user_id parameter is required", "status": "error"})
-            }
-        
-        # Get JSON data from request body
-        if not event.get('body'):
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({"message": "No data provided!", "status": "error"})
-            }
-        
-        input_data = json.loads(event['body'])
-        
-        # Create and validate input model
-        family_info_data = FamilyInfoData(input_data)
-        is_valid, error_message = family_info_data.validate()
-        
-        if not is_valid:
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({"message": error_message, "status": "error"})
-            }
-        
-        # Get validated input data and save
-        validated_input = family_info_data.to_dict()
-        success = db_update_family_info(user_id, validated_input['family_info_data'])
-        
-        return {
-            'statusCode': 200 if success else 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({"status": "success" if success else "error"})
-        }
+        return create_error_response(405, "Method not allowed")
         
     except Exception as e:
-        logger.error(f"Error updating family info data: {str(e)}", exc_info=True)
-        return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({"message": f"An error occurred: {str(e)}", "status": "error"})
-        }
+        import traceback
+        logger.error(f"Lambda handler error: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return create_error_response(500, f"Internal server error: {str(e)}")
+
+def handle_create_family(event):
+    """Handle POST requests to create a new family"""
+    # Generate new family ID
+    family_id = generate_uuid()
+        
+    # Data transformation function to add member IDs
+    def transform_family_data(input_data, resource_id):
+        family_member_data = input_data.get('family_member_data', [])
+        family_member_data = add_member_ids(family_member_data)
+        return {'family_member_data': family_member_data}
+    
+    return process_crud_request(
+        event=event,
+        resource_id=family_id,
+        model_class=FamilyInfoData,
+        db_function=db_update_family_info,
+        success_message='Family created successfully',
+        status_code=201,
+        data_transform=transform_family_data,
+        data_key='family_member_data',
+        id_key='family_id',
+        response_key='family_info'
+    )
+
+def handle_update_family(event, family_id):
+    """Handle POST requests to update family info"""
+    # Data transformation function to add member IDs for any new members
+    def transform_family_data(input_data, resource_id):
+        # Frontend sends 'family_member_data'
+        family_member_data = input_data.get('family_member_data', [])
+        family_member_data = add_member_ids(family_member_data)
+        return {'family_member_data': family_member_data}
+    
+    return process_crud_request(
+        event=event,
+        resource_id=family_id,
+        model_class=FamilyInfoData,
+        db_function=db_update_family_info,
+        success_message='Family updated successfully',
+        status_code=200,
+        data_transform=transform_family_data,
+        data_key='family_member_data',
+        id_key='family_id',
+        response_key='family_info'
+    )
+
+def handle_get_family(family_id):
+    """Handle GET requests to retrieve family info"""
+    return process_get_request(
+        resource_id=family_id,
+        db_function=db_get_family_info,
+        response_key='family_info',
+        not_found_message="Family not found"
+    )

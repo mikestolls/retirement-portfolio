@@ -15,9 +15,15 @@ class RetirementFundData:
         for fund in self.retirement_fund_data:
             name = fund.get('name', '')
             family_member_id = fund.get('family_member_id', '')
-            initial_investment = float(fund.get('initial_investment', 0))
-            regular_contribution = float(fund.get('regular_contribution', 0))
-            contribution_frequency = int(fund.get('contribution_frequency', 0))
+            
+            # Convert and normalize main numeric fields
+            try:
+                fund['initial_investment'] = float(fund.get('initial_investment', 0))
+                fund['regular_contribution'] = float(fund.get('regular_contribution', 0))
+                fund['contribution_frequency'] = int(fund.get('contribution_frequency', 0))
+            except (ValueError, TypeError):
+                return False, "Initial investment, regular contribution, and contribution frequency must be valid numbers"
+            
             start_date = fund.get('start_date', '')
             
             # Convert return rate params to ensure numeric types
@@ -55,13 +61,13 @@ class RetirementFundData:
             if name is not None and len(name) < 1:
                 return False, "Name must be at least 1 character long"
                                                 
-            if initial_investment < 0:
+            if fund['initial_investment'] < 0:
                 return False, "Initial investment must be non-negative"
             
-            if regular_contribution < 0:
+            if fund['regular_contribution'] < 0:
                 return False, "Regular contribution must be non-negative"
             
-            if contribution_frequency <= 0:
+            if fund['contribution_frequency'] <= 0:
                 return False, "Contribution frequency must be greater than 0"
         
         return True, ""
