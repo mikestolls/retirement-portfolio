@@ -14,6 +14,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import PersonIcon from '@mui/icons-material/Person';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
 import HouseIcon from '@mui/icons-material/House';
 import InsightsIcon from '@mui/icons-material/Insights';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -164,9 +165,20 @@ export default function FamilyInfo() {
           }}
         >
           <CardContent className="p-4">
-            <Stack direction="row" spacing={1} alignItems="center">
-              <PersonIcon/>
-              <h3 className="text-sm">{member['name']}</h3>
+            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+              <Stack direction="row" spacing={1} alignItems="center">
+                <PersonIcon/>
+                <h3 className="text-sm">{member['name']}</h3>
+              </Stack>
+              <IconButton 
+                size="small" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCardClick(index);
+                }}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
             </Stack>
             <Stack direction={"column"} spacing={0.5} alignItems="left" className="mb-2">
               <p className="text-sm">Age: {Math.floor((new Date() - new Date(member['date_of_birth'])) / (365.25 * 24 * 60 * 60 * 1000))} | Retirement Age: {member['retirement_age']}</p>

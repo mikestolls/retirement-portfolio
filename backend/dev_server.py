@@ -132,7 +132,7 @@ def retirement_fund(fund_id):
 def create_budget():
     return lambda_to_flask(update_budget_handler)()
 
-@app.route('/api/budget/<budget_id>', methods=['GET', 'POST'])
+@app.route('/api/budget/<budget_id>', methods=['GET', 'POST', 'DELETE'])
 def budget(budget_id):
     return lambda_to_flask(update_budget_handler)(budget_id=budget_id)
 

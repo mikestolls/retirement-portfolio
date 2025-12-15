@@ -241,6 +241,11 @@ Resources:
           Properties:
             Path: /api/budget
             Method: post
+        ApiDelete:
+          Type: Api
+          Properties:
+            Path: /api/budget/{budget_id}
+            Method: delete
 
 Outputs:
   ApiUrl:

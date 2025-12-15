@@ -1,23 +1,25 @@
 import React, { useState, useMemo } from 'react';
-import { Box, Typography, Paper, Stack, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Select, MenuItem, FormControl, TableSortLabel, Dialog, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
+import { Box, Typography, Paper, Stack, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Select, MenuItem, FormControl, TableSortLabel, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Drawer } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import EditIcon from '@mui/icons-material/Edit';
+import CloseIcon from '@mui/icons-material/Close';
 import { useRetirement } from '../context/retirement-context';
 import '../css/app.css';
 
 export default function Budget() {
-  const { userData, loading, error, updateBudget, getDefaultBudget } = useRetirement();
+  const { userData, loading, error, updateBudget, getDefaultBudget, globalSaving, setGlobalSaving } = useRetirement();
   
   // Extract data from new structure - direct usage like retirement funds
   const budgets = userData?.budgets || [];
   
   const [selectedBudget, setSelectedBudget] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState(null);
   const [addCategoryDialog, setAddCategoryDialog] = useState(false);
-  const [addBudgetDialog, setAddBudgetDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [newBudgetName, setNewBudgetName] = useState('');
   const [pendingExpenseId, setPendingExpenseId] = useState(null);
+  const [budgetFormChanges, setBudgetFormChanges] = useState({});
   
   const [sortBy, setSortBy] = useState('');
   const [sortOrder, setSortOrder] = useState('asc');
@@ -81,11 +83,14 @@ export default function Budget() {
         )
       };
       
-      // Convert to backend format
+      // Convert to backend format - ensure all expense amounts are numbers
       const backendBudgetData = {
         name: updatedBudget.name,
-        totalIncome: updatedBudget.totalIncome,
-        expenses: updatedBudget.expenses,
+        totalIncome: parseFloat(updatedBudget.totalIncome) || 0,
+        expenses: updatedBudget.expenses.map(expense => ({
+          ...expense,
+          amount: parseFloat(expense.amount) || 0
+        })),
         categories: updatedBudget.categories
       };
       
@@ -104,11 +109,14 @@ export default function Budget() {
         expenses: [...currentBudget.expenses, newExpense]
       };
       
-      // Convert to backend format
+      // Convert to backend format - ensure all expense amounts are numbers
       const backendBudgetData = {
         name: updatedBudget.name,
-        totalIncome: updatedBudget.totalIncome,
-        expenses: updatedBudget.expenses,
+        totalIncome: parseFloat(updatedBudget.totalIncome) || 0,
+        expenses: updatedBudget.expenses.map(expense => ({
+          ...expense,
+          amount: parseFloat(expense.amount) || 0
+        })),
         categories: updatedBudget.categories
       };
       
@@ -162,40 +170,7 @@ export default function Budget() {
     setPendingExpenseId(null);
   };
 
-  const handleAddBudget = async () => {
-    if (newBudgetName.trim()) {
-      // Get default budget with family_id (like retirement funds)
-      const familyId = userData?.user?.family_id;
-      if (!familyId) {
-        console.error('Family ID not available for budget creation');
-        return;
-      }
-      
-      const defaultBudget = getDefaultBudget(familyId);
-      const backendBudgetData = {
-        ...defaultBudget,
-        name: newBudgetName.trim()
-      };
-      
-      // Create via backend API
-      const success = await updateBudget('new_budget', backendBudgetData);
-      
-      if (success) {
-        // Backend will update userData, context will re-render with updated budgets
-        // Select the new budget (it will be at the end of the list)
-        setTimeout(() => {
-          setSelectedBudget(budgets.length);
-        }, 100);
-      }
-    }
-    setAddBudgetDialog(false);
-    setNewBudgetName('');
-  };
 
-  const handleCancelAddBudget = () => {
-    setAddBudgetDialog(false);
-    setNewBudgetName('');
-  };
 
   const updateTotalIncome = async (newIncome) => {
     const incomeValue = parseFloat(newIncome) || 0;
@@ -234,6 +209,183 @@ export default function Budget() {
     setTempIncomeValue('');
   };
 
+  const handleEditBudget = (index) => {
+    setEditingBudget(index);
+    setBudgetFormChanges({}); // Start with no changes
+    setDrawerOpen(true);
+  };
+
+  const handleAddNewBudget = async () => {
+    const familyId = userData.user.family_id;
+
+    if (!familyId) {
+      console.error('Missing family_id');
+      return;
+    }
+
+    // Get default budget data from context
+    const newBudget = getDefaultBudget(familyId);
+
+    try {
+      // Show saving indicator while adding new budget
+      setGlobalSaving(true);
+      console.log('Adding new budget...');
+      
+      // Use null as budgetId to indicate this is a new budget creation
+      const success = await updateBudget(null, newBudget);
+      
+      if (success) {
+        console.log('Successfully added new budget');
+        // The new budget will be automatically added to the userData by the context
+        // Calculate the new index for the drawer
+        const newIndex = userData.budgets.length;
+        
+        // Open drawer to edit the newly created budget
+        setEditingBudget(newIndex);
+        setBudgetFormChanges({}); // Start with no changes
+        setDrawerOpen(true);
+      } else {
+        console.error('Failed to add budget');
+      }
+    } catch (error) {
+      console.error('Error adding budget:', error);
+    } finally {
+      // Hide saving indicator
+      setGlobalSaving(false);
+    }
+  };
+
+  const handleChange = (field) => (event) => {
+    const value = field === 'totalIncome' ? parseFloat(event.target.value) || 0 : event.target.value;
+    setBudgetFormChanges(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const getBudgetFormData = () => {
+    if (editingBudget !== null) {
+      return { ...budgets[editingBudget], ...budgetFormChanges };
+    }
+    return budgetFormChanges;
+  };
+
+  const handleDrawerClose = () => {
+    // Close drawer immediately for better UX
+    setDrawerOpen(false);
+    
+    // Handle background update if there are changes (like retirement funds)
+    if (editingBudget !== null && budgetFormChanges && Object.keys(budgetFormChanges).length > 0) {
+      // Update existing budget
+      const budget = budgets[editingBudget];
+      const budgetId = budget?.budget_id;
+      
+      if (budgetId) {
+        const updateData = {
+          ...budget, // Include all original budget data
+          ...budgetFormChanges // Override with form changes
+        };
+        
+        // Show saving indicator
+        setGlobalSaving(true);
+        console.log('Updating budget in background...');
+        
+        // Update in background
+        updateBudget(budgetId, updateData)
+          .then((success) => {
+            if (success) {
+              console.log('Budget updated successfully');
+              // Clear form changes after successful update
+              setBudgetFormChanges({});
+            } else {
+              console.error('Budget update failed');
+            }
+          })
+          .catch(error => {
+            console.error('Failed to update budget:', error);
+          })
+          .finally(() => {
+            setGlobalSaving(false);
+          });
+      }
+    } else if (editingBudget === null && budgetFormChanges && Object.keys(budgetFormChanges).length > 0 && budgetFormChanges.name?.trim()) {
+      // Create new budget only if there are changes and a name
+      setGlobalSaving(true);
+      console.log('Creating new budget...');
+      
+      const familyId = userData?.user?.family_id;
+      if (familyId) {
+        const defaultBudget = getDefaultBudget(familyId);
+        const newBudgetData = {
+          ...defaultBudget,
+          ...budgetFormChanges
+        };
+        
+        updateBudget('new_budget', newBudgetData)
+          .then((success) => {
+            if (success) {
+              console.log('Budget created successfully');
+              // Select the new budget
+              setTimeout(() => {
+                setSelectedBudget(budgets.length);
+              }, 100);
+              // Clear form changes after successful creation
+              setBudgetFormChanges({});
+            } else {
+              console.error('Budget creation failed');
+            }
+          })
+          .catch(error => {
+            console.error('Failed to create budget:', error);
+          })
+          .finally(() => {
+            setGlobalSaving(false);
+          });
+      }
+    }
+    
+    // Clean up form data
+    setEditingBudget(null);
+    setBudgetFormChanges({});
+  };
+
+  const handleDeleteBudget = async () => {
+    if (editingBudget !== null) {
+      const budget = budgets[editingBudget];
+      const budgetId = budget?.budget_id;
+      
+      if (budgetId) {
+        // Close drawer immediately for better UX
+        setDrawerOpen(false);
+        setEditingBudget(null);
+        setBudgetFormChanges({});
+        
+        // Reset selected budget if we deleted the current one
+        if (selectedBudget >= editingBudget) {
+          setSelectedBudget(Math.max(0, selectedBudget - 1));
+        }
+        
+        // Show saving indicator and perform delete operation
+        setGlobalSaving(true);
+        console.log('Deleting budget...');
+        
+        try {
+          const success = await updateBudget(budgetId, null); // null means delete
+          
+          if (success) {
+            console.log('Budget deleted successfully');
+          } else {
+            console.error('Budget deletion failed');
+          }
+        } catch (error) {
+          console.error('Failed to delete budget:', error);
+        } finally {
+          setGlobalSaving(false);
+        }
+      }
+    }
+  };
+
   const renderBudgetCards = () => {
     const budgetCards = budgets.map((budget, index) => (
       <Card 
@@ -251,15 +403,27 @@ export default function Budget() {
         }}
       >
         <CardContent className="p-4">
-          <Stack direction="row" spacing={1} alignItems="center">
-            <AccountBalanceWalletIcon sx={{ 
-              color: selectedBudget === index ? 'primary.main' : 'inherit' 
-            }}/>
-            <h3 className="text-sm" style={{ 
-              color: selectedBudget === index ? 'var(--mui-palette-primary-main)' : 'inherit' 
-            }}>
-              {budget.name}
-            </h3>
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+            <Stack direction="row" spacing={1} alignItems="center">
+              <AccountBalanceWalletIcon sx={{ 
+                color: selectedBudget === index ? 'primary.main' : 'inherit' 
+              }}/>
+              <h3 className="text-sm" style={{ 
+                color: selectedBudget === index ? 'var(--mui-palette-primary-main)' : 'inherit' 
+              }}>
+                {budget.name}
+              </h3>
+            </Stack>
+            <IconButton 
+              size="small" 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditBudget(index);
+              }}
+              sx={{ color: selectedBudget === index ? 'primary.main' : 'inherit' }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
           </Stack>
           <Stack direction="column" spacing={0.5} alignItems="left" className="mb-2">
             <p className="text-sm">Income: ${budget.totalIncome.toLocaleString()}</p>
@@ -274,7 +438,7 @@ export default function Budget() {
       <Card 
         className="rounded-2xl shadow-md standard-card card-300 add-card"
         key="add-budget"
-        onClick={() => setAddBudgetDialog(true)}
+        onClick={handleAddNewBudget}
         sx={{ cursor: 'pointer' }}
       >
         <CardContent className="p-4">
@@ -510,6 +674,107 @@ export default function Budget() {
       </>
       )}
 
+      {/* Budget Edit/Add Drawer */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={handleDrawerClose}
+        disableEnforceFocus={true}
+        disableAutoFocus={true}
+        disableRestoreFocus={true}
+        hideBackdrop={false}
+        keepMounted={false}
+        ModalProps={{
+          disablePortal: true,
+          disableScrollLock: false,
+        }}
+      >
+        <Box sx={{ width: 400, p: 3 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="h6">
+              {editingBudget !== null ? 'Edit Budget' : 'Add New Budget'}
+            </Typography>
+            <IconButton onClick={handleDrawerClose}>
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+          
+          <Stack spacing={2}>
+            <TextField 
+              label="Budget Name" 
+              name="name"
+              value={getBudgetFormData().name || ''}
+              onChange={handleChange('name')}
+              fullWidth
+            />
+            
+            <TextField 
+              label="Total Income" 
+              name="totalIncome"
+              type="number"
+              value={getBudgetFormData().totalIncome || 0}
+              onChange={handleChange('totalIncome')}
+              fullWidth
+            />
+            
+            <Typography variant="subtitle1" sx={{ mt: 2 }}>Categories</Typography>
+            <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
+              {(getBudgetFormData().categories || []).map((category, index) => (
+                <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <TextField 
+                    size="small"
+                    value={category}
+                    onChange={(e) => {
+                      const currentCategories = getBudgetFormData().categories || [];
+                      const newCategories = [...currentCategories];
+                      newCategories[index] = e.target.value;
+                      setBudgetFormChanges(prev => ({ ...prev, categories: newCategories }));
+                    }}
+                    fullWidth
+                  />
+                  <IconButton 
+                    size="small" 
+                    onClick={() => {
+                      const currentCategories = getBudgetFormData().categories || [];
+                      const newCategories = currentCategories.filter((_, i) => i !== index);
+                      setBudgetFormChanges(prev => ({ ...prev, categories: newCategories }));
+                    }}
+                    sx={{ ml: 1 }}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ))}
+              <Button 
+                size="small" 
+                onClick={() => {
+                  const currentCategories = getBudgetFormData().categories || [];
+                  setBudgetFormChanges(prev => ({ 
+                    ...prev, 
+                    categories: [...currentCategories, 'New Category'] 
+                  }));
+                }}
+                startIcon={<AddIcon />}
+              >
+                Add Category
+              </Button>
+            </Box>
+            
+            {editingBudget !== null && (
+              <Button 
+                variant="outlined" 
+                color="error"
+                onClick={handleDeleteBudget}
+                fullWidth
+                sx={{ mt: 2 }}
+              >
+                Delete Budget
+              </Button>
+            )}
+          </Stack>
+        </Box>
+      </Drawer>
+
       {/* Add Category Dialog */}
       <Dialog open={addCategoryDialog} onClose={handleCancelAddCategory}>
         <DialogTitle>Add New Category</DialogTitle>
@@ -537,32 +802,7 @@ export default function Budget() {
         </DialogActions>
       </Dialog>
 
-      {/* Add Budget Dialog */}
-      <Dialog open={addBudgetDialog} onClose={handleCancelAddBudget}>
-        <DialogTitle>Add New Budget</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Budget Name"
-            fullWidth
-            variant="outlined"
-            value={newBudgetName}
-            onChange={(e) => setNewBudgetName(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleAddBudget();
-              }
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelAddBudget}>Cancel</Button>
-          <Button onClick={handleAddBudget} variant="contained" disabled={!newBudgetName.trim()}>
-            Add Budget
-          </Button>
-        </DialogActions>
-      </Dialog>
+
     </div>
   );
 }

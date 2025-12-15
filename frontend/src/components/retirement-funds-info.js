@@ -387,15 +387,27 @@ export default function RetirementFundsInfo() {
             }}
           >
             <CardContent className="p-4">
-              <Stack direction="row" spacing={1} alignItems="center">
-                <AccountBalanceIcon sx={{ 
-                  color: selectedFund === fund.originalIndex ? 'primary.main' : 'inherit' 
-                }}/>
-                <h3 className="text-sm" style={{ 
-                  color: selectedFund === fund.originalIndex ? 'var(--mui-palette-primary-main)' : 'inherit' 
-                }}>
-                  {fund.name}
-                </h3>
+              <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <AccountBalanceIcon sx={{ 
+                    color: selectedFund === fund.originalIndex ? 'primary.main' : 'inherit' 
+                  }}/>
+                  <h3 className="text-sm" style={{ 
+                    color: selectedFund === fund.originalIndex ? 'var(--mui-palette-primary-main)' : 'inherit' 
+                  }}>
+                    {fund.name}
+                  </h3>
+                </Stack>
+                <IconButton 
+                  size="small" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCardClick(fund.originalIndex);
+                  }}
+                  sx={{ color: selectedFund === fund.originalIndex ? 'primary.main' : 'inherit' }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
               </Stack>
               <Stack direction="column" spacing={0.5} alignItems="left" className="mb-2">
                 <p className="text-sm">Owner: {member?.name || 'Unknown'}</p>
@@ -405,18 +417,7 @@ export default function RetirementFundsInfo() {
                   <p className="text-sm">Final Balance: ${latestProjection.end_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 )}
               </Stack>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<EditIcon />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCardClick(fund.originalIndex);
-                }}
-                sx={{ mt: 1 }}
-              >
-                Edit
-              </Button>
+
             </CardContent>
           </Card>
         );

@@ -399,7 +399,12 @@ export const RetirementProvider = ({ children }) => {
         const familyId = userData?.user?.family_id;
         if (!familyId) throw new Error('Family ID not available');
         
-        const budgetData = { ...updatedBudget, family_id: familyId };
+        // Ensure totalIncome is a number (similar to other update functions)
+        const budgetData = { 
+          ...updatedBudget, 
+          family_id: familyId,
+          totalIncome: parseInt(updatedBudget.totalIncome) || 0
+        };
         
         // Check if this is a new budget (no existing ID) or update
         const existingBudgets = userData?.budgets || [];
