@@ -137,4 +137,6 @@ def budget(budget_id):
     return lambda_to_flask(update_budget_handler)(budget_id=budget_id)
 
 if __name__ == '__main__':
+    print(f"Starting Flask dev server with Python {sys.version}")
+    print(f"Python executable: {sys.executable}")
     app.run(host='0.0.0.0', port=5000, debug=True)

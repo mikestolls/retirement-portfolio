@@ -6,6 +6,7 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/backend/dev_server.py",
+            "python": "${workspaceFolder}/.venv/bin/python.exe",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/backend",
             "env": {

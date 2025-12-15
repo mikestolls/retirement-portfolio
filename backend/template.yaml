@@ -16,7 +16,7 @@ Parameters:
 
 Globals:
   Function:
-    Runtime: python3.9
+    Runtime: python3.12
     Timeout: 30
     Environment:
       Variables:
@@ -46,7 +46,7 @@ Resources:
       Description: Shared code for retirement portfolio functions
       ContentUri: layers/shared/
       CompatibleRuntimes:
-        - python3.9
+        - python3.12
 
   # Lambda Functions
   OptionsFunction:
