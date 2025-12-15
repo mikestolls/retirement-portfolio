@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Box, Typography, Paper, Stack, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Select, MenuItem, FormControl, TableSortLabel, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Drawer } from '@mui/material';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Box, Typography, Paper, Stack, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Select, MenuItem, FormControl, TableSortLabel, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Drawer, Slide } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import EditIcon from '@mui/icons-material/Edit';
@@ -21,6 +21,11 @@ export default function Budget() {
   const [pendingExpenseId, setPendingExpenseId] = useState(null);
   const [budgetFormChanges, setBudgetFormChanges] = useState({});
   
+  // Local state management for unsaved changes
+  const [localBudgetData, setLocalBudgetData] = useState(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [saveTimeout, setSaveTimeout] = useState(null);
+  
   const [sortBy, setSortBy] = useState('');
   const [sortOrder, setSortOrder] = useState('asc');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -29,9 +34,53 @@ export default function Budget() {
 
   // Get current budget data
   const currentBudget = budgets[selectedBudget];
-  const expenses = currentBudget?.expenses || [];
-  const categories = currentBudget?.categories || [];
-  const totalIncome = currentBudget?.totalIncome || 0;
+  
+  // Initialize local state when budget changes
+  useEffect(() => {
+    if (currentBudget) {
+      setLocalBudgetData({
+        ...currentBudget,
+        totalIncome: parseFloat(currentBudget.totalIncome) || 0,
+        expenses: [...(currentBudget.expenses || [])].map(expense => ({
+          ...expense,
+          amount: parseFloat(expense.amount) || 0
+        }))
+      });
+      setHasUnsavedChanges(false);
+    }
+  }, [currentBudget?.budget_id]);
+  
+  // Update local state when server data changes (e.g., from drawer updates)
+  useEffect(() => {
+    if (currentBudget && localBudgetData && currentBudget.budget_id === localBudgetData.budget_id) {
+      // Only update if we don't have unsaved changes
+      if (!hasUnsavedChanges) {
+        setLocalBudgetData({
+          ...currentBudget,
+          totalIncome: parseFloat(currentBudget.totalIncome) || 0,
+          expenses: [...(currentBudget.expenses || [])].map(expense => ({
+            ...expense,
+            amount: parseFloat(expense.amount) || 0
+          }))
+        });
+      }
+    }
+  }, [currentBudget, hasUnsavedChanges]);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+    };
+  }, [saveTimeout]);
+  
+  // Use local data if available, fallback to server data
+  const workingBudget = localBudgetData || currentBudget;
+  const expenses = workingBudget?.expenses || [];
+  const categories = workingBudget?.categories || [];
+  const totalIncome = workingBudget?.totalIncome || 0;
 
   const handleSort = (column) => {
     const isAsc = sortBy === column && sortOrder === 'asc';
@@ -70,58 +119,101 @@ export default function Budget() {
     return filtered;
   }, [expenses, sortBy, sortOrder, categoryFilter]);
 
-  const totalExpenses = expenses.reduce((sum, item) => sum + (item.amount || 0), 0);
+  const totalExpenses = expenses.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
   const netPosition = totalIncome - totalExpenses;
 
-  const updateExpense = async (id, field, value) => {
-    // Persist to backend - backend will handle userData updates
-    if (currentBudget?.budget_id) {
-      const updatedBudget = {
-        ...currentBudget,
-        expenses: currentBudget.expenses.map(item => 
-          item.id === id ? { ...item, [field]: value } : item
-        )
-      };
-      
-      // Convert to backend format - ensure all expense amounts are numbers
-      const backendBudgetData = {
-        name: updatedBudget.name,
-        totalIncome: parseFloat(updatedBudget.totalIncome) || 0,
-        expenses: updatedBudget.expenses.map(expense => ({
-          ...expense,
-          amount: parseFloat(expense.amount) || 0
-        })),
-        categories: updatedBudget.categories
-      };
-      
-      await updateBudget(currentBudget.budget_id, backendBudgetData);
+  // Debounced save function
+  const debouncedSave = useCallback(async (budgetData) => {
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    
+    const timeoutId = setTimeout(async () => {
+      if (currentBudget?.budget_id && budgetData) {
+        setGlobalSaving(true);
+        try {
+          // Convert to backend format
+          const backendBudgetData = {
+            name: budgetData.name,
+            totalIncome: parseFloat(budgetData.totalIncome) || 0,
+            expenses: budgetData.expenses.map(expense => ({
+              ...expense,
+              amount: parseFloat(expense.amount) || 0
+            })),
+            categories: budgetData.categories
+          };
+          
+          await updateBudget(currentBudget.budget_id, backendBudgetData);
+          setHasUnsavedChanges(false);
+        } catch (error) {
+          console.error('Failed to save budget:', error);
+        } finally {
+          setGlobalSaving(false);
+        }
+      }
+    }, 1000); // 1 second debounce
+    
+    setSaveTimeout(timeoutId);
+  }, [currentBudget?.budget_id, updateBudget, saveTimeout, setGlobalSaving]);
+  
+  const updateExpenseLocally = (id, field, value) => {
+    if (!localBudgetData) return;
+    
+    const updatedBudget = {
+      ...localBudgetData,
+      expenses: localBudgetData.expenses.map(item => 
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    };
+    
+    setLocalBudgetData(updatedBudget);
+    setHasUnsavedChanges(true);
+    debouncedSave(updatedBudget);
+  };
+  
+  const saveNow = async () => {
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+      setSaveTimeout(null);
+    }
+    
+    if (localBudgetData && hasUnsavedChanges) {
+      setGlobalSaving(true);
+      try {
+        const backendBudgetData = {
+          name: localBudgetData.name,
+          totalIncome: parseFloat(localBudgetData.totalIncome) || 0,
+          expenses: localBudgetData.expenses.map(expense => ({
+            ...expense,
+            amount: parseFloat(expense.amount) || 0
+          })),
+          categories: localBudgetData.categories
+        };
+        
+        await updateBudget(currentBudget.budget_id, backendBudgetData);
+        setHasUnsavedChanges(false);
+      } catch (error) {
+        console.error('Failed to save budget:', error);
+      } finally {
+        setGlobalSaving(false);
+      }
     }
   };
 
-  const addExpenseCategory = async () => {
+  const addExpenseCategory = () => {
+    if (!localBudgetData) return;
+    
     const newId = expenses.length > 0 ? Math.max(...expenses.map(e => e.id)) + 1 : 1;
     const newExpense = { id: newId, expense: '', category: 'Other', amount: 0 };
     
-    // Persist to backend - backend will handle userData updates
-    if (currentBudget?.budget_id) {
-      const updatedBudget = {
-        ...currentBudget,
-        expenses: [...currentBudget.expenses, newExpense]
-      };
-      
-      // Convert to backend format - ensure all expense amounts are numbers
-      const backendBudgetData = {
-        name: updatedBudget.name,
-        totalIncome: parseFloat(updatedBudget.totalIncome) || 0,
-        expenses: updatedBudget.expenses.map(expense => ({
-          ...expense,
-          amount: parseFloat(expense.amount) || 0
-        })),
-        categories: updatedBudget.categories
-      };
-      
-      await updateBudget(currentBudget.budget_id, backendBudgetData);
-    }
+    const updatedBudget = {
+      ...localBudgetData,
+      expenses: [...localBudgetData.expenses, newExpense]
+    };
+    
+    setLocalBudgetData(updatedBudget);
+    setHasUnsavedChanges(true);
+    debouncedSave(updatedBudget);
   };
 
   const handleCategoryChange = (expenseId, value) => {
@@ -129,7 +221,7 @@ export default function Budget() {
       setPendingExpenseId(expenseId);
       setAddCategoryDialog(true);
     } else {
-      updateExpense(expenseId, 'category', value);
+      updateExpenseLocally(expenseId, 'category', value);
     }
   };
 
@@ -138,25 +230,19 @@ export default function Budget() {
       const newCategory = newCategoryName.trim();
       
       if (pendingExpenseId) {
-        updateExpense(pendingExpenseId, 'category', newCategory);
+        updateExpenseLocally(pendingExpenseId, 'category', newCategory);
       }
 
-      // Persist to backend (only if not already handled by updateExpense)
-      if (currentBudget?.budget_id && !pendingExpenseId) {
+      // Add category to local state if not handled by updateExpenseLocally
+      if (!pendingExpenseId && localBudgetData) {
         const updatedBudget = {
-          ...currentBudget,
-          categories: [...currentBudget.categories, newCategory]
+          ...localBudgetData,
+          categories: [...localBudgetData.categories, newCategory]
         };
         
-        // Convert to backend format
-        const backendBudgetData = {
-          name: updatedBudget.name,
-          totalIncome: updatedBudget.totalIncome,
-          expenses: updatedBudget.expenses,
-          categories: updatedBudget.categories
-        };
-        
-        await updateBudget(currentBudget.budget_id, backendBudgetData);
+        setLocalBudgetData(updatedBudget);
+        setHasUnsavedChanges(true);
+        debouncedSave(updatedBudget);
       }
     }
     setAddCategoryDialog(false);
@@ -172,26 +258,18 @@ export default function Budget() {
 
 
 
-  const updateTotalIncome = async (newIncome) => {
-    const incomeValue = parseFloat(newIncome) || 0;
+  const updateTotalIncomeLocally = (newIncome) => {
+    if (!localBudgetData) return;
     
-    // Persist to backend - backend will handle userData updates
-    if (currentBudget?.budget_id) {
-      const updatedBudget = {
-        ...currentBudget,
-        totalIncome: incomeValue
-      };
-      
-      // Convert to backend format
-      const backendBudgetData = {
-        name: updatedBudget.name,
-        totalIncome: updatedBudget.totalIncome,
-        expenses: updatedBudget.expenses,
-        categories: updatedBudget.categories
-      };
-      
-      await updateBudget(currentBudget.budget_id, backendBudgetData);
-    }
+    const incomeValue = parseFloat(newIncome) || 0;
+    const updatedBudget = {
+      ...localBudgetData,
+      totalIncome: incomeValue
+    };
+    
+    setLocalBudgetData(updatedBudget);
+    setHasUnsavedChanges(true);
+    debouncedSave(updatedBudget);
   };
 
   const handleIncomeEdit = () => {
@@ -199,8 +277,8 @@ export default function Budget() {
     setEditingIncome(true);
   };
 
-  const handleIncomeSave = async () => {
-    await updateTotalIncome(tempIncomeValue);
+  const handleIncomeSave = () => {
+    updateTotalIncomeLocally(tempIncomeValue);
     setEditingIncome(false);
   };
 
@@ -426,9 +504,9 @@ export default function Budget() {
             </IconButton>
           </Stack>
           <Stack direction="column" spacing={0.5} alignItems="left" className="mb-2">
-            <p className="text-sm">Income: ${budget.totalIncome.toLocaleString()}</p>
-            <p className="text-sm">Expenses: ${budget.expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0).toLocaleString()}</p>
-            <p className="text-sm">Items: {budget.expenses.length}</p>
+            <p className="text-sm">Income: ${(parseFloat(index === selectedBudget && localBudgetData ? localBudgetData.totalIncome : budget.totalIncome) || 0).toLocaleString()}</p>
+            <p className="text-sm">Expenses: ${(index === selectedBudget && localBudgetData ? localBudgetData.expenses : budget.expenses).reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0).toLocaleString()}</p>
+            <p className="text-sm">Items: {(index === selectedBudget && localBudgetData ? localBudgetData.expenses : budget.expenses).length}</p>
           </Stack>
         </CardContent>
       </Card>
@@ -631,7 +709,7 @@ export default function Budget() {
                         <TextField
                           size="small"
                           value={item.expense}
-                          onChange={(e) => updateExpense(item.id, 'expense', e.target.value)}
+                          onChange={(e) => updateExpenseLocally(item.id, 'expense', e.target.value)}
                           placeholder="Expense name"
                           fullWidth
                         />
@@ -656,7 +734,7 @@ export default function Budget() {
                           size="small"
                           type="number"
                           value={item.amount}
-                          onChange={(e) => updateExpense(item.id, 'amount', parseFloat(e.target.value) || 0)}
+                          onChange={(e) => updateExpenseLocally(item.id, 'amount', parseFloat(e.target.value) || 0)}
                           fullWidth
                         />
                       </TableCell>
@@ -802,6 +880,27 @@ export default function Budget() {
         </DialogActions>
       </Dialog>
 
+      {/* Unsaved changes indicator - Bottom overlay */}
+      <Slide direction="up" in={hasUnsavedChanges && !globalSaving} mountOnEnter unmountOnExit>
+        <Box sx={{ 
+          position: 'fixed',
+          bottom: 80,
+          right: 16,
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1, 
+          px: 2,
+          py: 1,
+          bgcolor: 'warning.main', 
+          color: 'white', 
+          borderRadius: 1,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          zIndex: 1200,
+          fontSize: '0.875rem'
+        }}>
+          <Typography variant="body2" fontWeight="medium">Unsaved changes</Typography>
+        </Box>
+      </Slide>
 
     </div>
   );
